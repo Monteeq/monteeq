@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { FlashSkeleton } from '../components/Skeleton';
 import { Flame, Star, ChevronUp, ChevronDown, Sparkles, Zap, Users } from 'lucide-react';
+import NativeFeedAd from '../components/ads/NativeFeedAd';
 
 // Services
 import { adaptiveEngine } from '../services/adaptiveEngine';
@@ -38,7 +39,7 @@ const dedupeById = (existing, incoming) => {
 
 const Flash = () => {
     const { showNotification } = useNotification();
-    const { token } = useAuth();
+    const { token, user } = useAuth();
 
     // ── Feed state ────────────────────────────────────────────────────────────
     const [clips, setClips] = useState([]);
@@ -387,19 +388,26 @@ const Flash = () => {
                     </div>
                 )}
 
-                    {visibleClips.map(clip => (
-                        <div className={s.cardContainer} key={clip.id} data-id={clip.id}>
-                            <FlashCard
-                                video={clip}
-                                isActive={activeVideoId === clip.id}
-                                onLike={handleLike}
-                                onComment={id => setActiveCommentVideoId(id)}
-                                muted={muted}
-                                toggleMute={() => setMuted(m => !m)}
-                                shouldRender={clip.shouldRender}
-                                onSpeedChange={state => setIs2x(state)}
-                            />
-                        </div>
+                    {visibleClips.map((clip, index) => (
+                        <React.Fragment key={clip.id}>
+                            <div className={s.cardContainer} data-id={clip.id}>
+                                <FlashCard
+                                    video={clip}
+                                    isActive={activeVideoId === clip.id}
+                                    onLike={handleLike}
+                                    onComment={id => setActiveCommentVideoId(id)}
+                                    muted={muted}
+                                    toggleMute={() => setMuted(m => !m)}
+                                    shouldRender={clip.shouldRender}
+                                    onSpeedChange={state => setIs2x(state)}
+                                />
+                            </div>
+                            {(index + 1) % 5 === 0 && !user?.is_premium && (
+                                <div className={s.cardContainer} data-id={`ad-${index}`}>
+                                    <NativeFeedAd variant="flash" />
+                                </div>
+                            )}
+                        </React.Fragment>
                     ))}
 
                     {/* Loading-more indicator (shown when feedManager is prefetching) */}

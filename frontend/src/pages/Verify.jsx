@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { API_BASE_URL } from '../api';
-import { Mail, Zap, Loader2, ArrowLeft } from 'lucide-react';
+import { Mail, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import logo from '../assets/images/logo.png';
 
 const Verify = () => {
     const { user, loading, logout, refreshUser } = useAuth();
@@ -41,9 +42,6 @@ const Verify = () => {
             if (!response.ok) throw new Error(data.detail || 'Verification failed');
 
             showNotification('Email verified successfully!', 'success');
-            
-            // Refresh user state to update is_verified
-            await refreshUser();
             
             // Navigate based on onboarding status
             const updatedUser = await refreshUser();
@@ -87,9 +85,9 @@ const Verify = () => {
         <div className="auth-container">
             <div className="auth-card glass">
                 <div className="auth-header">
-                    <div className="logo-section" style={{ justifyContent: 'center', marginBottom: '1rem' }}>
-                        <Zap size={40} fill="currentColor" />
-                        <span>MONTEEQ</span>
+                    <div className="logo-section" style={{ justifyContent: 'center', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <img src={logo} alt="Monteeq" style={{ height: '32px', width: 'auto' }} />
+                        <span style={{ fontWeight: 900, letterSpacing: '-0.5px', fontSize: '1.2rem' }}>MONTEEQ</span>
                     </div>
                     <h1>Verify Your Email</h1>
                     <p>We've sent a 6-digit code to <strong>{user?.email}</strong></p>

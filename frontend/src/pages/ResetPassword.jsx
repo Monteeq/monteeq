@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Zap, Loader2, Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react';
 import { API_BASE_URL } from '../api';
+import logo from '../assets/images/logo.png';
 
 const ResetPassword = () => {
     const [searchParams] = useSearchParams();
@@ -86,12 +87,7 @@ const ResetPassword = () => {
                     animate="visible"
                 >
                     <motion.div variants={itemVariants} className="auth-v4-header">
-                        <motion.div 
-                            animate={{ rotate: [0, 10, -10, 0] }}
-                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                        >
-                            <Zap size={32} fill="#eb0000" color="#eb0000" className="auth-v4-icon" />
-                        </motion.div>
+                        <img src={logo} alt="Monteeq" className="auth-v4-logo-img" />
                         <h1 className="auth-v4-title">Secured <br /><span className="auth-v4-outline">Access.</span></h1>
                         <p>{message ? "Your identity is restored." : "Update your account with a high-performance password."}</p>
                     </motion.div>

@@ -5,8 +5,11 @@ import { searchUnified } from '../api';
 import { SearchUserSkeleton, SearchVideoSkeleton } from '../components/Skeleton';
 import VideoPreviewCard from '../components/VideoPreviewCard';
 import NativeFeedAd from '../components/ads/NativeFeedAd';
+import AdSenseAd from '../components/ads/AdSenseAd';
+import { useAuth } from '../context/AuthContext';
 
 const Search = () => {
+    const { user } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const query = new URLSearchParams(location.search).get('q') || '';
@@ -172,7 +175,14 @@ const Search = () => {
                             </div>
                             <div className="search-results-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {/* Sponsored Search Result */}
-                                <NativeFeedAd variant="list" />
+                                {!user?.is_premium && (
+                                    <AdSenseAd 
+                                        client={import.meta.env.VITE_ADSENSE_CLIENT_ID}
+                                        slot={import.meta.env.VITE_ADSENSE_INFEED_SLOT_ID}
+                                        layoutKey={import.meta.env.VITE_ADSENSE_INFEED_LAYOUT_KEY}
+                                        format="fluid"
+                                    />
+                                )}
                                 
                                 {results.videos.map(video => (
                                     <VideoPreviewCard

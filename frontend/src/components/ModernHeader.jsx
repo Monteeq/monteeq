@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-    Zap, Menu, Search, Bell, Plus, User, 
+import {
+    Zap, Menu, Search, Bell, Plus, User,
     Settings, LogOut, X, ArrowLeft, History, TrendingUp,
     ChevronRight, Sparkles
 } from 'lucide-react';
@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { getSearchSuggestions, getTrendingSuggestions } from '../api';
+import logo from '../assets/images/logo.png';
 import s from './ModernHeader.module.css';
 
 const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
@@ -19,7 +20,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
     const [searchHistory, setSearchHistory] = useState([]);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-    
+
     const dropdownRef = useRef(null);
     const profileRef = useRef(null);
     const { token, user, logout } = useAuth();
@@ -100,7 +101,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                     <Menu size={24} />
                 </button>
                 <div className={s.logo} onClick={() => navigate('/')}>
-                    <Zap size={28} fill="#eb0000" color="#eb0000" />
+                    <img src={logo} alt="Monteeq" className={s.logoImg} />
                     <span className={s.brandName}>MONTEEQ</span>
                 </div>
             </div>
@@ -199,14 +200,14 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
             <AnimatePresence>
                 {showProfileMenu && (
                     <>
-                        <motion.div 
+                        <motion.div
                             className={s.drawerOverlay}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={closeDrawer}
                         />
-                        <motion.div 
+                        <motion.div
                             className={s.profileDrawer}
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
@@ -250,9 +251,9 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                                     <span>Settings</span>
                                     <ChevronRight size={18} className={s.chevron} />
                                 </button>
-                                
+
                                 <div className={s.navDivider} />
-                                
+
                                 <button className={`${s.navItem} ${s.logoutBtn}`} onClick={() => { closeDrawer(); logout(); navigate('/login'); }}>
                                     <div className={s.navIcon}><LogOut size={20} /></div>
                                     <span>Sign Out</span>
@@ -261,7 +262,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
 
                             <div className={s.drawerFooter}>
                                 <div className={s.footerLogo}>
-                                    <Zap size={20} fill="#eb0000" color="#eb0000" />
+                                    <img src={logo} alt="" className={s.footerLogoImg} />
                                     <span>Monteeq v2.0</span>
                                 </div>
                             </div>

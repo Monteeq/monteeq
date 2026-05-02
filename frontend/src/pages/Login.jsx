@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Zap, Loader2, Eye, EyeOff, ArrowRight, Chrome } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/images/logo.png';
 
 const Login = () => {
     const [activeTab, setActiveTab] = useState('google'); // 'google' or 'email'
@@ -52,7 +53,7 @@ const Login = () => {
                     animate="visible"
                 >
                     <motion.div variants={itemVariants} className="auth-v4-header">
-                        <Zap size={32} fill="#eb0000" color="#eb0000" className="auth-v4-icon" />
+                        <img src={logo} alt="Monteeq" className="auth-v4-logo-img" />
                         <h1 className="auth-v4-title">Welcome <br /><span className="auth-v4-outline">Back.</span></h1>
                         <p>Sign in to your Monteeq account.</p>
                     </motion.div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import logo from '../assets/images/logo.png';
 import './Footer.css';
 
 const Footer = ({ className = '', style = {} }) => {
@@ -7,7 +8,7 @@ const Footer = ({ className = '', style = {} }) => {
         <footer className={`global-footer ${className}`} style={style}>
             <div className="footer-content">
                 <div className="footer-brand">
-                    <span className="footer-logo">M</span>
+                    <img src={logo} alt="Monteeq" className="footer-logo-img" />
                     <span className="footer-name">Monteeq</span>
                 </div>
                 <div className="footer-links">

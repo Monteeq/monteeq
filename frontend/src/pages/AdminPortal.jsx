@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, ShieldCheck, Lock, AlertCircle, ArrowLeft, ExternalLink, Zap } from 'lucide-react';
+import logo from '../assets/images/logo.png';
 import { useAuth } from '../context/AuthContext';
 
 const AdminPortal = () => {
@@ -33,6 +34,10 @@ const AdminPortal = () => {
                 background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
             }}>
+                <div className="admin-logo-header" style={{ marginBottom: '2.5rem' }}>
+                    <img src={logo} alt="Monteeq" style={{ height: '36px', width: 'auto' }} />
+                </div>
+
                 <div className="portal-icon-wrapper" style={{
                     width: '80px',
                     height: '80px',
@@ -103,8 +108,8 @@ const AdminPortal = () => {
                     )}
                 </div>
 
-                <div style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    <Zap size={12} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                <div style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    <img src={logo} alt="" style={{ height: '14px', width: 'auto', opacity: 0.5 }} />
                     Managed by Monteeq Security Systems
                 </div>
             </div>

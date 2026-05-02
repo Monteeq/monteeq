@@ -39,7 +39,7 @@ const VideoPlayer = ({
   const [osd, setOsd] = useState({ icon: null, visible: false });
   
   const isPremium = user?.is_premium;
-  const [showPreRoll, setShowPreRoll] = useState(!isPremium);
+  const [showPreRoll, setShowPreRoll] = useState(false);
   
   useEffect(() => {
     if (isPremium) setShowPreRoll(false);

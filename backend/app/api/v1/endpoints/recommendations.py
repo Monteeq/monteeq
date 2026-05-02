@@ -192,11 +192,11 @@ def get_recommended_feed(
     else:
         # Guest: trending-heavy + exploration, no personalization
         n_trending = round(limit * 0.7)
-        trending = rs._trending_videos(db, video_type=video_type, seen_ids=[], limit=n_trending)
+        trending = rs._trending_videos(db, video_type=video_type, history={}, limit=n_trending)
         explore = rs._exploration_videos(
             db,
             video_type=video_type,
-            seen_ids=[],
+            history={},
             already_returned_ids=[v.id for v in trending],
             limit=limit - len(trending),
             prefer_short=False,

@@ -38,7 +38,7 @@ const VideoPlayerV2 = ({
   const [showControls, setShowControls] = useState(true);
   
   const isPremium = user?.is_premium;
-  const [isPreRollActive, setIsPreRollActive] = useState(!isPremium);
+  const [isPreRollActive, setIsPreRollActive] = useState(false);
   
   useEffect(() => {
     if (isPremium) setIsPreRollActive(false);

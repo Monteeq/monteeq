@@ -30,6 +30,12 @@
   letter-spacing: -1px;
 }
 
+.ld-v4-logo-img {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+}
+
 .ld-v4-nav-links {
   display: flex;
   align-items: center;
@@ -58,7 +64,7 @@
 
 /* --- Hero Section --- */
 .ld-v4-hero {
-  padding: 120px 1.5rem 60px;
+  padding: 80px 1.5rem 60px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -322,7 +328,7 @@
   .ld-v4-nav-btn { padding: 12px 24px; font-size: 0.9rem; }
 
   .ld-v4-hero {
-    padding: 200px 4rem 100px;
+    padding: 100px 4rem 100px;
     text-align: left;
     align-items: flex-start;
     flex-direction: row;

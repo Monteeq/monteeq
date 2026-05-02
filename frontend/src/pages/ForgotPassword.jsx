@@ -5,6 +5,8 @@ import { Mail, Zap, Loader2, ArrowRight, CheckCircle2, AlertTriangle } from 'luc
 import { API_BASE_URL } from '../api';
 import debounce from 'lodash/debounce';
 
+import logo from '../assets/images/logo.png';
+
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState('idle'); // idle, loading, success, error
@@ -77,7 +79,7 @@ const ForgotPassword = () => {
                     animate="visible"
                 >
                     <motion.div variants={itemVariants} className="auth-v4-header">
-                        <Zap size={32} fill="#eb0000" color="#eb0000" className="auth-v4-icon" />
+                        <img src={logo} alt="Monteeq" className="auth-v4-logo-img" />
                         <h1 className="auth-v4-title">Forgot <br /><span className="auth-v4-outline">Access.</span></h1>
                         <p>Verify your email to restore your professional identity.</p>
                     </motion.div>

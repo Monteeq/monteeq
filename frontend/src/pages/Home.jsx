@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import VideoPreviewCard from '../components/VideoPreviewCard';
 import NativeFeedAd from '../components/ads/NativeFeedAd';
+import DashboardBannerAd from '../components/ads/DashboardBannerAd';
+import AdSenseAd from '../components/ads/AdSenseAd';
 import { VideoSkeleton, FlashSkeleton, HomeSkeleton } from '../components/Skeleton';
 import Footer from '../components/Footer';
 
@@ -194,6 +196,17 @@ const Home = () => {
                 </div>
             </div>
 
+            {/* AdSense / Banner Section for Non-Pro Users */}
+            {!user?.is_premium && (
+                <div style={{ padding: '0.5rem 0' }}>
+                    {/* You can toggle between DashboardBannerAd and AdSenseAd here */}
+                    <AdSenseAd 
+                        client={import.meta.env.VITE_ADSENSE_CLIENT_ID} 
+                        slot={import.meta.env.VITE_ADSENSE_SLOT_ID} 
+                    />
+                </div>
+            )}
+
             {/* Flash Section (3 Rows) */}
             {flashVideos.length > 0 && (
                 <div className="flash-shelf-container" style={{ margin: '1rem 0', padding: '1.5rem 0', borderTop: '1px solid var(--border-glass)', borderBottom: '1px solid var(--border-glass)' }}>
@@ -241,8 +254,13 @@ const Home = () => {
                                 onClick={() => handleVideoClick(video.id)}
                                 ref={index === videos.slice(8).length - 1 ? lastVideoElementRef : null}
                             />
-                            {(index + 1) % 6 === 0 && (
-                                <NativeFeedAd />
+                            {(index + 1) % 6 === 0 && !user?.is_premium && (
+                                <AdSenseAd 
+                                    client={import.meta.env.VITE_ADSENSE_CLIENT_ID}
+                                    slot={import.meta.env.VITE_ADSENSE_INFEED_SLOT_ID}
+                                    layoutKey={import.meta.env.VITE_ADSENSE_INFEED_LAYOUT_KEY}
+                                    format="fluid"
+                                />
                             )}
                         </React.Fragment>
                     ))}

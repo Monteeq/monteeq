@@ -50,6 +50,13 @@
     cursor: pointer;
 }
 
+.logoImg {
+    height: 36px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px rgba(235, 0, 0, 0.3));
+}
+
 .brandName {
     font-family: 'Outfit', sans-serif;
     font-weight: 900;
@@ -69,7 +76,8 @@
     flex: 1;
     max-width: 600px;
     margin: 0 2rem;
-    display: none; /* Hidden on mobile by default */
+    display: none;
+    /* Hidden on mobile by default */
 }
 
 @media (min-width: 768px) {
@@ -307,8 +315,15 @@
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .dropdownHeader {
@@ -448,7 +463,7 @@
     bottom: 0;
     width: 380px;
     max-width: 100%;
-    background: rgba(10, 10, 10, 0.98); 
+    background: rgba(10, 10, 10, 0.98);
     background-image: linear-gradient(rgba(10, 10, 10, 0.95), rgba(10, 10, 10, 0.92)), url('/drawer-bg.png');
     background-size: cover;
     background-position: center;
@@ -457,7 +472,7 @@
     z-index: 2001;
     display: flex;
     flex-direction: column;
-    box-shadow: -20px 0 50px rgba(0,0,0,0.8);
+    box-shadow: -20px 0 50px rgba(0, 0, 0, 0.8);
 }
 
 .drawerHeader {
@@ -644,11 +659,17 @@
     font-weight: 700;
 }
 
+.footerLogoImg {
+    height: 18px;
+    width: auto;
+    object-fit: contain;
+}
+
 @media (max-width: 480px) {
     .header {
         padding: 0 1rem;
     }
-    
+
     .navSection {
         gap: 0.5rem;
     }

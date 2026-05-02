@@ -9,6 +9,7 @@ import CommentItem from '../components/CommentItem';
 import { WatchSkeleton } from '../components/Skeleton';
 import MonetizationWidget from '../components/MonetizationWidget';
 import SEO from '../components/SEO';
+import AdSenseAd from '../components/ads/AdSenseAd';
 import './WatchV2.css';
 
 const DownloadModal = ({ video, onClose, user }) => {
@@ -178,6 +179,17 @@ const Watch = () => {
                     </div>
 
                     <MonetizationWidget video={video} />
+
+                    {/* Multiplex Ads for Non-Pro Users */}
+                    {!user?.is_premium && (
+                        <div style={{ marginTop: '2rem' }}>
+                            <AdSenseAd 
+                                client={import.meta.env.VITE_ADSENSE_CLIENT_ID}
+                                slot={import.meta.env.VITE_ADSENSE_MULTIPLEX_SLOT_ID}
+                                format="autorelaxed"
+                            />
+                        </div>
+                    )}
 
                     <div style={{ marginTop: '4rem' }}>
                         <h3 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '2rem' }}>Comments ({comments.length})</h3>

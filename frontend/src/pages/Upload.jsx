@@ -6,11 +6,35 @@ import { API_BASE_URL, getUserInsights } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import DashboardBannerAd from '../components/ads/DashboardBannerAd';
+import AdSenseAd from '../components/ads/AdSenseAd';
+import { Play, SkipForward, ShieldCheck } from 'lucide-react';
 
 const Upload = () => {
     const { user, token, refreshUser } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
+
+    // Ad Gate State
+    const [isAdGateActive, setIsAdGateActive] = useState(false);
+    const [adTimeLeft, setAdTimeLeft] = useState(30);
+    const [isAdFinished, setIsAdFinished] = useState(false);
+
+    useEffect(() => {
+        if (!isAdGateActive) return;
+
+        const timer = setInterval(() => {
+            setAdTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    setIsAdFinished(true);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isAdGateActive]);
 
     useEffect(() => {
         if (token) refreshUser();
@@ -84,6 +108,19 @@ const Upload = () => {
         if ((!isPost && !file) || !title) {
             showNotification('error', isPost ? "Please provide post content." : "Please select a file and provide a title.");
             return;
+        }
+
+        // Ad Gate Check for Free Users
+        if (!user?.is_premium && !isAdFinished) {
+            setShowModal(false);
+            setIsAdGateActive(true);
+            return;
+        }
+
+        // Reset for next potential upload
+        if (isAdFinished) {
+            setIsAdFinished(false);
+            setAdTimeLeft(30);
         }
 
         setShowModal(false);
@@ -237,6 +274,130 @@ const Upload = () => {
             padding: '2rem 1rem 8rem',
             background: 'radial-gradient(circle at top right, rgba(255, 62, 62, 0.05) 0%, transparent 40%)'
         }}>
+            {/* Rewarded Ad Gate */}
+            {isAdGateActive && !user?.is_premium && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 9999,
+                    background: '#050505',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2rem'
+                }}>
+                    <div className="glass" style={{
+                        width: '100%',
+                        maxWidth: '800px',
+                        padding: '3rem',
+                        borderRadius: '40px',
+                        textAlign: 'center',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        position: 'relative',
+                        overflow: 'hidden'
+                    }}>
+                        <div style={{
+                            position: 'absolute',
+                            top: 0, left: 0, right: 0, height: '4px',
+                            background: 'rgba(255,255,255,0.1)'
+                        }}>
+                            <div style={{
+                                height: '100%',
+                                width: `${(adTimeLeft / 30) * 100}%`,
+                                background: 'var(--accent-primary)',
+                                transition: 'width 1s linear'
+                            }} />
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', justifyContent: 'center', marginBottom: '2rem' }}>
+                            <div className="pulse-slow" style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--accent-primary)' }} />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--accent-primary)', letterSpacing: '3px' }}>REWARDED AD ACTIVE</span>
+                        </div>
+
+                        <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '1rem' }}>Support Monteeq</h2>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '3rem', fontSize: '1.1rem' }}>
+                            Watch this brief ad to unlock the **Editor Studio** for free.
+                        </p>
+
+                        <div style={{
+                            background: 'rgba(255,255,255,0.02)',
+                            borderRadius: '24px',
+                            padding: '1rem',
+                            marginBottom: '3rem',
+                            minHeight: '280px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <AdSenseAd
+                                client={import.meta.env.VITE_ADSENSE_CLIENT_ID}
+                                slot={import.meta.env.VITE_ADSENSE_SLOT_ID}
+                                style={{ minHeight: '250px' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+                            {adTimeLeft > 0 ? (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '1rem',
+                                    fontSize: '1.2rem',
+                                    fontWeight: 700,
+                                    color: 'white'
+                                }}>
+                                    <div className="glass" style={{ width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                        {adTimeLeft}
+                                    </div>
+                                    <span>seconds until unlock</span>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        setIsAdGateActive(false);
+                                        handleUpload();
+                                    }}
+                                    className="btn-active"
+                                    style={{
+                                        padding: '1.5rem 4rem',
+                                        borderRadius: '20px',
+                                        background: 'white',
+                                        color: 'black',
+                                        border: 'none',
+                                        fontWeight: 900,
+                                        fontSize: '1.2rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '1rem',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 0 40px rgba(255,255,255,0.2)'
+                                    }}
+                                >
+                                    CONTINUE TO UPLOAD <SkipForward fill="black" />
+                                </button>
+                            )}
+
+                            <button
+                                onClick={() => navigate('/pro')}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem'
+                                }}
+                            >
+                                <ShieldCheck size={16} /> Remove ads permanently with Pro
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className="page-header" style={{ maxWidth: '1200px', margin: '0 auto 4rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                     <div style={{
@@ -362,7 +523,7 @@ const Upload = () => {
             </div>
 
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                <DashboardBannerAd 
+                <DashboardBannerAd
                     title="Scale Your Brand with Monteeq"
                     subtitle="Unlock advanced analytics and priority support for your content."
                     cta="EXPLORE PRO"

@@ -36,7 +36,8 @@ const PreRollPlayer = ({ onComplete }) => {
             zIndex: 100,
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            fontFamily: "'Outfit', sans-serif"
         }}>
             <video
                 ref={videoRef}
@@ -47,38 +48,41 @@ const PreRollPlayer = ({ onComplete }) => {
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
 
-            {/* Top Info */}
+            {/* Top Info Area - Glassmorphic */}
             <div style={{
                 position: 'absolute',
-                top: '1.5rem',
-                left: '1.5rem',
+                top: '2rem',
+                left: '2rem',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.8rem',
-                background: 'rgba(0,0,0,0.6)',
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                backdropFilter: 'blur(10px)'
+                gap: '1rem',
+                background: 'rgba(18, 20, 24, 0.4)',
+                padding: '0.8rem 1.5rem',
+                borderRadius: '16px',
+                backdropFilter: 'blur(24px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
             }}>
                 <div style={{ 
-                    width: '12px', 
-                    height: '12px', 
+                    width: '10px', 
+                    height: '10px', 
                     borderRadius: '50%', 
                     background: 'var(--accent-primary)',
-                    boxShadow: '0 0 10px var(--accent-primary)'
+                    boxShadow: '0 0 15px var(--accent-primary-glow)',
+                    animation: 'pulse 2s infinite'
                 }} />
-                <span style={{ fontSize: '0.8rem', fontWeight: 800, letterSpacing: '1px' }}>SPONSORED PRE-ROLL</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 900, letterSpacing: '2px', color: 'rgba(255,255,255,0.9)' }}>SPONSORED PRE-ROLL</span>
             </div>
 
             {/* Skip / Timer Section */}
             <div style={{
                 position: 'absolute',
-                bottom: '3rem',
-                right: '2rem',
+                bottom: '4rem',
+                right: '3rem',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'flex-end',
-                gap: '1rem'
+                gap: '1.2rem'
             }}>
                 {canSkip ? (
                     <button 
@@ -87,49 +91,68 @@ const PreRollPlayer = ({ onComplete }) => {
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.8rem',
-                            padding: '1rem 2rem',
-                            borderRadius: '12px',
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            gap: '1rem',
+                            padding: '1.2rem 2.5rem',
+                            borderRadius: '18px',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
                             color: 'white',
-                            fontWeight: 700,
-                            backdropFilter: 'blur(10px)'
+                            fontWeight: 900,
+                            fontSize: '1rem',
+                            letterSpacing: '1px',
+                            backdropFilter: 'blur(24px)',
+                            cursor: 'pointer',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                            transition: 'all 0.3s ease'
                         }}
                     >
-                        SKIP AD <SkipForward size={18} />
+                        SKIP AD <SkipForward size={20} fill="white" />
                     </button>
                 ) : (
                     <div style={{
-                        padding: '1rem 2rem',
-                        borderRadius: '12px',
-                        background: 'rgba(0, 0, 0, 0.6)',
+                        padding: '1.2rem 2.5rem',
+                        borderRadius: '18px',
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
                         color: 'white',
-                        fontWeight: 700,
-                        fontSize: '0.9rem'
+                        fontWeight: 800,
+                        fontSize: '1rem',
+                        backdropFilter: 'blur(10px)',
+                        letterSpacing: '0.5px'
                     }}>
-                        Ad ends in {timeLeft}s
+                        Video starts in <span style={{ color: 'var(--accent-primary)', marginLeft: '4px' }}>{timeLeft}s</span>
                     </div>
                 )}
             </div>
 
-            {/* Mute Toggle */}
+            {/* Mute Toggle - Floating Glass */}
             <button 
                 onClick={() => setIsMuted(!isMuted)}
                 style={{
                     position: 'absolute',
-                    bottom: '3rem',
-                    left: '2rem',
-                    background: 'rgba(0,0,0,0.6)',
-                    border: 'none',
+                    bottom: '4rem',
+                    left: '3rem',
+                    background: 'rgba(18, 20, 24, 0.4)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
                     color: 'white',
-                    padding: '0.8rem',
-                    borderRadius: '50%',
-                    cursor: 'pointer'
+                    padding: '1rem',
+                    borderRadius: '20px',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                    transition: 'all 0.2s ease'
                 }}
             >
-                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                {isMuted ? <VolumeX size={26} /> : <Volume2 size={26} />}
             </button>
+
+            <style>{`
+                @keyframes pulse {
+                    0% { transform: scale(1); opacity: 1; }
+                    50% { transform: scale(1.4); opacity: 0.7; }
+                    100% { transform: scale(1); opacity: 1; }
+                }
+            `}</style>
         </div>
     );
 };
