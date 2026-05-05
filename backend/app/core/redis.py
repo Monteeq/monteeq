@@ -37,11 +37,11 @@ class RedisManager:
             )
             self._client = redis.StrictRedis(connection_pool=pool)
             
-            # Simple health check to ensure local Redis is responsive
+            # Simple health check to ensure Redis is responsive
             self._client.ping()
-            logger.info(f"Successfully connected to Local Redis at {REDIS_URL}")
+            logger.info(f"Successfully connected to Redis Cloud at {REDIS_URL[:20]}...")
         except redis.ConnectionError as e:
-            logger.error(f"FATAL: Could not connect to Local Redis at {REDIS_URL}. Error: {e}")
+            logger.error(f"FATAL: Could not connect to Redis Cloud. Error: {e}")
             # We don't raise here to allow the app to start, 
             # but specific features requiring Redis will fail gracefully later.
             self._client = None

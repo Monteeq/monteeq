@@ -12,7 +12,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "2880
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 BASE_URL = os.getenv("BASE_URL")
 RUST_SERVICE_URL = os.getenv("RUST_SERVICE_URL")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "")
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "static")
 
 # Database Configuration
@@ -28,7 +28,7 @@ GCS_BUCKET = os.getenv("GCS_BUCKET", "")
 GCS_PROJECT_ID = os.getenv("GCS_PROJECT_ID", "")
 GCS_CREDENTIALS_PATH = os.getenv("GCS_CREDENTIALS_PATH", "")
 GCS_CREDENTIALS_JSON = os.getenv("GCS_CREDENTIALS_JSON", "")
-PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "sk_test_placeholder")
+PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
 
 # Email / SMTP Configuration
 SMTP_HOST = os.getenv("SMTP_HOST", "")
@@ -38,5 +38,5 @@ SMTP_PASS = os.getenv("SMTP_PASS", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "")
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "Monteeq")
 
-# Redis Configuration (Forced Local)
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+# Redis Configuration (Live Cloud)
+REDIS_URL = os.getenv("REDIS_URL")
