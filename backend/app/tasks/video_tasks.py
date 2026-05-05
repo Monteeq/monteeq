@@ -44,8 +44,8 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
                             logger.debug(f"Task {task_id} status: {current_status} ({status_data.get('progress')}%)")
                             
                             # Update DB status if it changed
-                            if current_status == "completed":
-                                logger.info(f"Transcoding completed for task_id={task_id}")
+                            if current_status and current_status.lower() in ["completed", "uploaded", "success"]:
+                                logger.info(f"Transcoding completed for task_id={task_id} with status={current_status}")
                                 break
                             if current_status == "error":
                                 logger.error(f"Rust processing error for task {task_id}: {status_data.get('message')}")
@@ -128,9 +128,9 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
             video.url_4k = url_4k
             video.duration = duration
             video.failed_at = None
-            # *** BUG FIX: Mark video as approved so it appears in feeds ***
-            video.status = "approved"
-            video.processing_message = "Transcoding complete"
+            # Keep status as pending so it stays in the Admin Review Queue
+            video.status = "pending"
+            video.processing_message = "Ready for review"
 
             if thumbnail_url:
                 video.thumbnail_url = thumbnail_url
@@ -142,9 +142,9 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
                 notify_user_push(
                     db,
                     user_id=video.owner_id,
-                    title="Video Published!",
-                    body=f"Your video '{title}' is ready for the world.",
-                    link=f"/watch/{video_id}",
+                    title="Video Processed!",
+                    body=f"Your video '{title}' has been processed and is now under review.",
+                    link=f"/profile",
                     n_type="status_change"
                 )
             except: pass

@@ -208,7 +208,7 @@ const Performance = () => {
         views: { label: 'Total Views', icon: TrendingUp, color: '#FF3B30' },
         likes: { label: 'Engagement', icon: Heart, color: '#FFD60A' },
         followers: { label: 'Followers', icon: Users, color: '#00E5FF' },
-        earnings: { label: 'Earnings', icon: DollarSign, color: '#34C759' }
+        uploads: { label: 'Total Uploads', icon: Play, color: '#34C759' }
     };
 
     // Vs last period: compare second half vs first half of the selected range
@@ -300,12 +300,12 @@ const Performance = () => {
                     sparkData={performanceData.slice(-7).map(d => ({ value: d.likes }))}
                 />
                 <StatCard 
-                    label="Revenue (₦)" 
-                    value={`₦${Math.round(insightsData?.total_earnings ?? 0).toLocaleString('en-NG')}`}
-                    growth={computeGrowth('earnings')}
-                    icon={DollarSign}
+                    label="Total Uploads" 
+                    value={((insightsData?.home_videos || 0) + (insightsData?.flash_videos || 0)).toLocaleString()} 
+                    growth={computeGrowth('total_videos')}
+                    icon={Play}
                     color="#34C759"
-                    sparkData={performanceData.slice(-7).map(d => ({ value: d.earnings }))}
+                    sparkData={performanceData.slice(-7).map(d => ({ value: d.total_videos || 0 }))}
                 />
             </div>
 

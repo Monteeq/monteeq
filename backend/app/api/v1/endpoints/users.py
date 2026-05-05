@@ -180,8 +180,8 @@ def get_user_insights(
     # Total Likes - Count likes on videos owned by user
     total_likes = db.query(func.count(Like.user_id)).join(Video).filter(Video.owner_id == user_id).scalar() or 0
     
-    # Total Earnings
-    total_earnings = db.query(func.sum(Video.earnings)).filter(Video.owner_id == user_id).scalar() or 0.0
+    # Total Earnings (Disabled)
+    total_earnings = 0.0
     
     # Total Shares
     total_shares = db.query(func.sum(Video.shares)).filter(Video.owner_id == user_id).scalar() or 0
@@ -284,7 +284,7 @@ def get_user_performance(
     daily_stats = {}
     for i in range(days):
         d = (start_date + timedelta(days=i)).isoformat()
-        daily_stats[d] = {"views": 0, "likes": 0, "followers": 0, "earnings": 0.0}
+        daily_stats[d] = {"views": 0, "likes": 0, "followers": 0}
     
     # Aggregate Views
     views_query = db.query(
@@ -299,8 +299,6 @@ def get_user_performance(
         d_str = v.date
         if d_str in daily_stats:
             daily_stats[d_str]["views"] = v.count
-            # Earnings: ₦99 per 1,000 views
-            daily_stats[d_str]["earnings"] = v.count * (99 / 1000)
 
     # Aggregate Likes
     likes_query = db.query(
@@ -337,8 +335,7 @@ def get_user_performance(
             date=d_str,
             views=daily_stats[d_str]["views"],
             likes=daily_stats[d_str]["likes"],
-            followers=daily_stats[d_str]["followers"],
-            earnings=daily_stats[d_str]["earnings"]
+            followers=daily_stats[d_str]["followers"]
         ))
     
     # Serialize Pydantic objects manually for cache

@@ -114,7 +114,27 @@ const NotificationContainer = ({ notifications, removeNotification }) => {
 
 const NotificationItem = ({ notification, onClose }) => {
     const { type, message, progress, status, link } = notification;
+    const [displayProgress, setDisplayProgress] = useState(progress || 0);
     const navigate = useNavigate();
+
+    // Smoothly increment displayProgress to catch up to actual progress
+    useEffect(() => {
+        if (progress === null) return;
+        
+        if (displayProgress < progress) {
+            const timer = setInterval(() => {
+                setDisplayProgress(prev => {
+                    if (prev < progress) return prev + 1;
+                    clearInterval(timer);
+                    return prev;
+                });
+            }, 30); // ~33 increments per second
+            return () => clearInterval(timer);
+        } else if (displayProgress > progress) {
+            // If progress resets (e.g. new phase), jump or catch up fast
+            setDisplayProgress(progress);
+        }
+    }, [progress, displayProgress]);
 
     const getIcon = () => {
         const iconSize = 20;
@@ -123,7 +143,7 @@ const NotificationItem = ({ notification, onClose }) => {
             case 'error': return <AlertCircle size={iconSize} color="var(--accent-primary)" />;
             case 'info': return <Info size={iconSize} color="#2196f3" />;
             case 'loading':
-            case 'processing': return <Loader2 size={iconSize} className="animate-spin" color="var(--accent-primary)" />;
+            case 'processing': return <Loader2 size={iconSize} className="animate-spin" color="var(--accent-primary)" style={{ animation: 'spin 1s linear infinite, pulse-glow 2s ease-in-out infinite' }} />;
             default: return <Bell size={iconSize} />;
         }
     };
@@ -176,21 +196,40 @@ const NotificationItem = ({ notification, onClose }) => {
             </div>
 
             {(type === 'processing' || type === 'loading' || progress !== null) && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {type === 'processing' && message && (
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{message}</span>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--accent-primary)' }}>
-                        <span>{progress !== null ? `${progress}%` : ''}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.4rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                            {type === 'processing' ? (message || 'Optimizing...') : 'Uploading...'}
+                        </span>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--accent-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                            {progress !== null ? `${displayProgress}%` : ''}
+                        </span>
                     </div>
-                    <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
+                    
+                    <div style={{ 
+                        width: '100%', 
+                        height: '6px', 
+                        background: 'rgba(255,255,255,0.05)', 
+                        borderRadius: '10px', 
+                        overflow: 'hidden',
+                        border: '1px solid rgba(255,255,255,0.03)'
+                    }}>
                         <div style={{
-                            width: `${progress || 0}%`,
+                            width: `${displayProgress || 0}%`,
                             height: '100%',
-                            background: 'var(--accent-primary)',
-                            transition: 'width 0.3s ease-out',
-                            boxShadow: '0 0 10px var(--accent-glow)'
-                        }} />
+                            background: 'linear-gradient(90deg, var(--accent-primary), #ff6b6b)',
+                            transition: 'width 0.4s cubic-bezier(0.1, 0.7, 0.1, 1)',
+                            boxShadow: '0 0 15px rgba(255, 62, 62, 0.4)',
+                            position: 'relative'
+                        }}>
+                            <div style={{
+                                position: 'absolute',
+                                top: 0, right: 0, bottom: 0,
+                                width: '30px',
+                                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                                animation: 'shimmer 2s infinite'
+                            }} />
+                        </div>
                     </div>
                 </div>
             )}
@@ -200,6 +239,15 @@ const NotificationItem = ({ notification, onClose }) => {
             )}
 
             <style>{`
+                @keyframes pulse-glow {
+                    0% { filter: drop-shadow(0 0 2px rgba(255, 62, 62, 0.2)); }
+                    50% { filter: drop-shadow(0 0 8px rgba(255, 62, 62, 0.6)); }
+                    100% { filter: drop-shadow(0 0 2px rgba(255, 62, 62, 0.2)); }
+                }
+                @keyframes shimmer {
+                    from { transform: translateX(-100%); }
+                    to { transform: translateX(300%); }
+                }
                 @keyframes slideIn {
                     from { transform: translateX(120%); opacity: 0; }
                     to { transform: translateX(0); opacity: 1; }

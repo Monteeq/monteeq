@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import CommentItem from '../components/CommentItem';
 import { WatchSkeleton } from '../components/Skeleton';
-import MonetizationWidget from '../components/MonetizationWidget';
+
 import SEO from '../components/SEO';
 import AdSenseAd from '../components/ads/AdSenseAd';
 import './WatchV2.css';
@@ -178,7 +178,7 @@ const Watch = () => {
                         ))}
                     </div>
 
-                    <MonetizationWidget video={video} />
+
 
                     {/* Multiplex Ads for Non-Pro Users */}
                     {!user?.is_premium && (

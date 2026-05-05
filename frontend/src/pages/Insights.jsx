@@ -38,7 +38,6 @@ const Insights = () => {
     const statCards = [
         { id: 'views', label: 'Total Views', value: stats?.total_views || 0, icon: TrendingUp, color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.4)' },
         { id: 'likes', label: 'Total Likes', value: stats?.total_likes || 0, icon: Heart, color: '#ec4899', glow: 'rgba(236, 72, 153, 0.4)' },
-        { id: 'earnings', label: 'Estimated Earnings', value: `₦${(stats?.total_earnings || 0).toFixed(2)}`, icon: DollarSign, color: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
         { id: 'shares', label: 'Total Shares', value: stats?.total_shares || 0, icon: Share2, color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
         { id: 'followers', label: 'Followers', value: stats?.followers || 0, icon: Users, color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.4)' },
         { id: 'following', label: 'Following', value: stats?.following || 0, icon: Users, color: '#64748b', glow: 'rgba(100, 116, 139, 0.4)' },

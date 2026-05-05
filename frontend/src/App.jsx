@@ -27,8 +27,6 @@ const ManageContent = React.lazy(() => import('./pages/ManageContent'));
 const Achievements = React.lazy(() => import('./pages/Achievements'));
 const Notifications = React.lazy(() => import('./pages/Notifications'));
 const Insights = React.lazy(() => import('./pages/Insights'));
-const Monetization = React.lazy(() => import('./pages/Monetization'));
-const Transactions = React.lazy(() => import('./pages/Transactions'));
 const Performance = React.lazy(() => import('./pages/Performance'));
 const Onboarding = React.lazy(() => import('./pages/Onboarding'));
 const PartnerV2 = React.lazy(() => import('./pages/PartnerV2'));
@@ -77,7 +75,7 @@ function AppContent() {
   
   // Immersive pages hide everything (Auth, Flash, Onboarding, Payment, 404)
   const isAuthPage = ['/login', '/signup', '/verify', '/forgot-password', '/reset-password'].includes(location.pathname);
-  const isMarketingPage = ['/about', '/partner', '/pro', '/privacy', '/terms'].includes(location.pathname);
+  const isMarketingPage = ['/about', '/partner', '/privacy', '/terms'].includes(location.pathname);
   const isPaymentPage = location.pathname === '/payment';
   
   // Detect if current path is a 404 (not in our defined list)
@@ -87,7 +85,8 @@ function AppContent() {
     '/flash', '/search', '/settings', '/posts', '/upload', '/chat',
     '/manage', '/manage-videos', '/achievements', '/notifications',
     '/insights', '/performance', '/onboarding', '/challenges',
-    '/monetization', '/monetization/transactions', '/admin'
+    '/admin'
+
   ];
   const isDynamicPath = location.pathname.startsWith('/watch/') || location.pathname.startsWith('/profile/');
   const isNotFound = !knownPaths.includes(location.pathname) && !isDynamicPath;
@@ -168,8 +167,6 @@ function AppContent() {
                   <Route path="/verify" element={<ProtectedRoute><Verify /></ProtectedRoute>} />
                   <Route path="/partner" element={<ProtectedRoute><PartnerV2 /></ProtectedRoute>} />
                   <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
-                  <Route path="/monetization" element={<ProtectedRoute><Monetization /></ProtectedRoute>} />
-                  <Route path="/monetization/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
                   <Route path="/pro" element={<JoinPro />} />
                   
                   {/* Admin Routes */}

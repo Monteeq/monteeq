@@ -48,7 +48,7 @@ const JoinPro = () => {
       price: isYearly ? '₦1,900' : '₦2,500',
       features: [
         '4K Cinematic Streams',
-        '0% Platform Commission',
+        'Verified Editor Identity',
         'Access to Gold Challenges',
         'Verified Editor Badge',
         'Priority Rust Engine Transcoding',
@@ -154,13 +154,13 @@ const JoinPro = () => {
             </div>
             <div className={s.benefitCard}>
               <div className={s.benefitIcon}><Star size={24} /></div>
-              <div className={s.benefitLabel}>0% Commission</div>
-              <div className={s.benefitDesc}>You keep 100% of your tips and ad revenue earnings.</div>
+              <div className={s.benefitLabel}>Verified Status</div>
+              <div className={s.benefitDesc}>Your profile features the exclusive Pro Editor badge for professional trust.</div>
             </div>
             <div className={s.benefitCard}>
               <div className={s.benefitIcon}><Flame size={24} /></div>
               <div className={s.benefitLabel}>Gold Challenges</div>
-              <div className={s.benefitDesc}>Exclusive entry to high-stakes tournaments and rewards.</div>
+              <div className={s.benefitDesc}>Exclusive entry to high-stakes tournaments and recognition.</div>
             </div>
             <div className={s.benefitCard}>
               <div className={s.benefitIcon}><ShieldCheck size={24} /></div>
@@ -173,8 +173,8 @@ const JoinPro = () => {
             <button className={s.proCta} style={{ maxWidth: '280px' }} onClick={() => navigate('/upload')}>
               Upload 4K Content
             </button>
-            <button className={s.freeCta} style={{ maxWidth: '280px' }} onClick={() => navigate('/monetization')}>
-              View Earnings
+            <button className={s.freeCta} style={{ maxWidth: '280px' }} onClick={() => navigate('/insights')}>
+              View Insights
             </button>
           </div>
         </div>
@@ -205,7 +205,7 @@ const JoinPro = () => {
             <h1 className={s.title}>Level Up Your Monteeq Game</h1>
             <p className={s.subtitle}>
               Join the elite league of creators with Monteeq Pro. Unlock 4K streaming, 
-              priority transcoding, and zero commission on your earnings.
+              priority transcoding, and professional distribution tools.
             </p>
           </div>
 

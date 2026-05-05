@@ -171,7 +171,7 @@ export default function PaymentCallback() {
                 )}
                 {state === STATES.SUCCESS && !isPro && (
                   <button id="pcb-go-wallet" style={{ ...styles.btn, ...styles.btnPrimary }}
-                    onClick={() => navigate('/monetization')}>
+                    onClick={() => navigate(`/profile/${user?.username}`)}>
                     Go to Wallet <ArrowRight size={16} />
                   </button>
                 )}

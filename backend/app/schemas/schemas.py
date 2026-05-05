@@ -340,6 +340,9 @@ class ChallengeBase(BaseModel):
     brand: Optional[str] = None
     prize: str
     is_open: bool = True
+    is_paid: bool = False
+    is_gold: bool = False
+    entry_fee: float = 0.0
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
 

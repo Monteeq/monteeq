@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Award, Calendar, ChevronRight, Play, CheckCircle, Search, Filter } from 'lucide-react';
+import { Trophy, Users, Award, Calendar, ChevronRight, Play, CheckCircle, Search, Filter, Plus, Crown, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getChallenges, enterChallenge, checkChallengeEntry, getChallengeLeaderboard, getVideos } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -18,7 +18,7 @@ const Challenges = () => {
     const [message, setMessage] = useState(null);
     const [leaderboard, setLeaderboard] = useState({});
 
-    // Upload state
+
     const [uploadFile, setUploadFile] = useState(null);
     const [uploadTitle, setUploadTitle] = useState('');
     const [uploadDescription, setUploadDescription] = useState('');
@@ -144,11 +144,11 @@ const Challenges = () => {
                     <div className="hero-badge" style={{ margin: 0 }}>
                         <Trophy size={14} /> Weekly Competitions
                     </div>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>• Win prizes and recognition</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>• Win elite recognition and spotlights</span>
                 </div>
                 <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1rem' }}>Challenges</h1>
                 <p style={{ color: 'var(--text-secondary)', maxWidth: '600px', lineHeight: '1.6' }}>
-                    Showcase your talent by participating in our themed video challenges. The best edits get selected by our partners and win awesome prizes.
+                    Showcase your talent by participating in our themed video challenges. Compete for elite prizes, massive exposure, and recognition from industry leaders.
                 </p>
             </div>
 
@@ -156,108 +156,138 @@ const Challenges = () => {
                 <button
                     onClick={() => setFilter('all')}
                     className={`glass ${filter === 'all' ? 'active' : ''}`}
-                    style={{ padding: '0.6rem 1.5rem', borderRadius: '50px', border: filter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)', background: filter === 'all' ? 'rgba(255, 62, 62, 0.1)' : '', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ padding: '0.6rem 1.5rem', borderRadius: '50px', border: filter === 'all' ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)', background: filter === 'all' ? 'rgba(255, 62, 62, 0.1)' : '', cursor: 'pointer', whiteSpace: 'nowrap', color: '#ff3e3e' }}
                 >
                     All Challenges
                 </button>
                 <button
                     onClick={() => setFilter('open')}
                     className={`glass ${filter === 'open' ? 'active' : ''}`}
-                    style={{ padding: '0.6rem 1.5rem', borderRadius: '50px', border: filter === 'open' ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)', background: filter === 'open' ? 'rgba(255, 62, 62, 0.1)' : '', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ padding: '0.6rem 1.5rem', borderRadius: '50px', border: filter === 'open' ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)', background: filter === 'open' ? 'rgba(255, 62, 62, 0.1)' : '', cursor: 'pointer', whiteSpace: 'nowrap', color: '#ff3e3e' }}
                 >
                     Open
                 </button>
                 <button
                     onClick={() => setFilter('closed')}
                     className={`glass ${filter === 'closed' ? 'active' : ''}`}
-                    style={{ padding: '0.6rem 1.5rem', borderRadius: '50px', border: filter === 'closed' ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)', background: filter === 'closed' ? 'rgba(255, 62, 62, 0.1)' : '', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    style={{ padding: '0.6rem 1.5rem', borderRadius: '50px', border: filter === 'closed' ? '1px solid var(--accent-primary)' : '1px solid var(--border-glass)', background: filter === 'closed' ? 'rgba(255, 62, 62, 0.1)' : '', cursor: 'pointer', whiteSpace: 'nowrap', color: '#ff3e3e' }}
                 >
                     Ended
                 </button>
             </div>
 
             <div className="challenges-grid">
-                {filteredChallenges.map(challenge => (
-                    <motion.div
-                        key={challenge.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="challenge-card glass"
-                    >
-                        <div className={`challenge-badge ${challenge.is_open ? 'badge-open' : 'badge-closed'}`}>
-                            {challenge.is_open ? 'Open' : 'Closed'}
-                        </div>
-
-                        <div className="challenge-content">
-                            <div className="challenge-prize">
-                                <Award size={18} /> {challenge.prize}
+                {filteredChallenges.length > 0 ? (
+                    filteredChallenges.map(challenge => (
+                        <motion.div
+                            key={challenge.id}
+                            layout
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="challenge-card glass"
+                        >
+                            <div className={`challenge-badge ${challenge.is_open ? 'badge-open' : 'badge-closed'}`}>
+                                {challenge.is_open ? 'Open' : 'Closed'}
                             </div>
-                            <h3 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem' }}>{challenge.title}</h3>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.95rem', lineHeight: '1.6' }}>
-                                {challenge.description}
-                            </p>
 
-                            <div className="challenge-stats">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Users size={16} /> {challenge.entry_count} Entries
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Calendar size={16} /> Ends {new Date(challenge.end_date).toLocaleDateString()}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ padding: '1.5rem', display: 'flex', gap: '1rem' }}>
-                            {challenge.is_open ? (
-                                <button
-                                    className="btn-active"
-                                    onClick={() => handleEnterPress(challenge)}
-                                    disabled={challenge.hasEntered}
-                                    style={{
-                                        flex: 1, padding: '1rem', borderRadius: '12px', background: challenge.hasEntered ? 'rgba(34, 197, 94, 0.1)' : 'var(--accent-primary)',
-                                        color: challenge.hasEntered ? '#22c55e' : 'white', border: 'none', fontWeight: 'bold', cursor: challenge.hasEntered ? 'default' : 'pointer',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
-                                    }}
-                                >
-                                    {challenge.hasEntered ? (
-                                        <><CheckCircle size={20} /> Entered</>
-                                    ) : (
-                                        <>Enter Challenge <ChevronRight size={20} /></>
+                            <div className="challenge-content">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <div className="challenge-prize">
+                                        <Award size={18} /> {challenge.prize || 'Elite Prize'}
+                                    </div>
+                                    {challenge.is_gold && (
+                                        <div style={{
+                                            padding: '4px 10px',
+                                            borderRadius: '4px',
+                                            background: 'linear-gradient(90deg, #ffd700, #b8860b)',
+                                            color: 'black',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 900,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}>
+                                            <Crown size={12} /> GOLD
+                                        </div>
                                     )}
-                                </button>
-                            ) : (
-                                <div style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', textAlign: 'center', fontWeight: 'bold' }}>
-                                    Challenge Ended
+                                </div>
+                                <h3 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '1rem' }}>{challenge.title}</h3>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '0.95rem', lineHeight: '1.6' }}>
+                                    {challenge.description}
+                                </p>
+
+                                <div className="challenge-stats">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Users size={16} /> {challenge.entry_count} Entries
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Calendar size={16} /> Ends {new Date(challenge.end_date).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ padding: '1.5rem', display: 'flex', gap: '1rem' }}>
+                                {challenge.is_open ? (
+                                    <button
+                                        className="btn-active"
+                                        onClick={() => handleEnterPress(challenge)}
+                                        disabled={challenge.hasEntered || (challenge.is_gold && !user?.is_premium)}
+                                        style={{
+                                            flex: 1, padding: '1rem', borderRadius: '12px',
+                                            background: challenge.hasEntered ? 'rgba(34, 197, 94, 0.1)' : (challenge.is_gold && !user?.is_premium ? 'rgba(255,255,255,0.05)' : 'var(--accent-primary)'),
+                                            color: challenge.hasEntered ? '#22c55e' : (challenge.is_gold && !user?.is_premium ? 'var(--text-muted)' : 'white'),
+                                            border: 'none', fontWeight: 'bold',
+                                            cursor: challenge.hasEntered || (challenge.is_gold && !user?.is_premium) ? 'default' : 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
+                                        }}
+                                    >
+                                        {challenge.hasEntered ? (
+                                            <><CheckCircle size={20} /> Entered</>
+                                        ) : (challenge.is_gold && !user?.is_premium) ? (
+                                            <><Lock size={18} /> Pro Only</>
+                                        ) : (
+                                            <>Enter Challenge <ChevronRight size={20} /></>
+                                        )}
+                                    </button>
+                                ) : (
+                                    <div style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', textAlign: 'center', fontWeight: 'bold' }}>
+                                        Challenge Ended
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Leaderboard Section (Simplified) */}
+                            {leaderboard[challenge.id]?.length > 0 && (
+                                <div style={{ padding: '0 1.5rem 2rem 1.5rem' }}>
+                                    <div style={{ height: '1px', background: 'var(--border-glass)', marginBottom: '1.5rem' }} />
+                                    <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <TrendingUp size={14} /> Current Leaderboard
+                                    </h4>
+                                    <div className="leaderboard-container">
+                                        {leaderboard[challenge.id].slice(0, 3).map((entry, idx) => (
+                                            <div key={idx} className="leaderboard-item">
+                                                <span className="leaderboard-rank">{idx + 1}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                                                        <img src={entry.profile_pic || `https://ui-avatars.com/api/?name=${entry.username}&background=random`} alt={entry.username} style={{ width: '100%', height: '100%' }} />
+                                                    </div>
+                                                    <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{entry.username}</span>
+                                                </div>
+                                                <span className="leaderboard-score">{entry.score} Views</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
-                        </div>
-
-                        {/* Leaderboard Section (Simplified) */}
-                        {leaderboard[challenge.id]?.length > 0 && (
-                            <div style={{ padding: '0 1.5rem 2rem 1.5rem' }}>
-                                <div style={{ height: '1px', background: 'var(--border-glass)', marginBottom: '1.5rem' }} />
-                                <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <TrendingUp size={14} /> Current Leaderboard
-                                </h4>
-                                <div className="leaderboard-container">
-                                    {leaderboard[challenge.id].slice(0, 3).map((entry, idx) => (
-                                        <div key={idx} className="leaderboard-item">
-                                            <span className="leaderboard-rank">{idx + 1}</span>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-                                                    <img src={entry.profile_pic || `https://ui-avatars.com/api/?name=${entry.username}&background=random`} alt={entry.username} style={{ width: '100%', height: '100%' }} />
-                                                </div>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{entry.username}</span>
-                                            </div>
-                                            <span className="leaderboard-score">{entry.score} Views</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </motion.div>
-                ))}
+                        </motion.div>
+                    ))
+                ) : (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '5rem 2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '32px', border: '1px dashed var(--border-glass)' }}>
+                        <Trophy size={48} style={{ opacity: 0.1, marginBottom: '1.5rem' }} />
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>No Challenges Found</h3>
+                        <p style={{ color: 'var(--text-secondary)' }}>There are no challenges matching your current filter. Check back soon!</p>
+                    </div>
+                )}
             </div>
 
             {/* Entry Modal */}
@@ -366,6 +396,7 @@ const Challenges = () => {
                     </div>
                 )}
             </AnimatePresence>
+
         </div>
     );
 };

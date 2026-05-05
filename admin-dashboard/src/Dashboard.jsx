@@ -11,7 +11,6 @@ const Dashboard = ({ token, setToken, theme, toggleTheme }) => {
         premium_users: 0, 
         total_views: 0,
         total_revenue: 0,
-        pending_payouts: 0,
         top_signup_countries: []
     });
     const [users, setUsers] = useState([]);
@@ -132,10 +131,7 @@ const Dashboard = ({ token, setToken, theme, toggleTheme }) => {
                              <button onClick={() => navigate('/challenges')} className="btn btn-ghost">
                                 <Trophy size={18} /> Challenges
                             </button>
-                             <button onClick={() => navigate('/payouts')} className="btn btn-ghost" style={{ color: '#fbbf24' }}>
-                                <CreditCard size={18} /> Payouts
-                            </button>
-                             <button onClick={() => navigate('/approvals')} className="btn btn-primary">
+                              <button onClick={() => navigate('/approvals')} className="btn btn-primary">
                                 <Video size={18} /> Review Queue
                             </button>
                             <button onClick={handleLogout} className="btn btn-outline" style={{ padding: '8px' }}>
@@ -184,13 +180,6 @@ const Dashboard = ({ token, setToken, theme, toggleTheme }) => {
                                 label="Platform Views" 
                                 value={stats.total_views.toLocaleString()} 
                                 onClick={() => navigate('/stats/views')}
-                            />
-                            <StatCard 
-                                icon={<CreditCard color="#ef4444" />} 
-                                label="Pending Payouts" 
-                                value={`₦${stats.pending_payouts.toLocaleString()}`} 
-                                color="#ef4444"
-                                onClick={() => navigate('/payouts')}
                             />
                         </div>
 

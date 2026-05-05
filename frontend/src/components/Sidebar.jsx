@@ -61,7 +61,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             <NavGroup label="Grow" show={isOpen} />
             <NavItem to="/insights"     icon={<TrendingUp size={20} />}    label="Insights"        onClick={onClose} accent="#f59e0b" />
             <NavItem to="/achievements" icon={<Trophy size={20} />}        label="Achievements"    onClick={onClose} />
-            <NavItem to="/monetization" icon={<Wallet size={20} />}        label="Monetization"    onClick={onClose} accent="#eab308" />
             <NavItem 
               to="/pro" 
               icon={<Crown size={20} />} 

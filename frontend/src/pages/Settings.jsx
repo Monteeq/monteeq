@@ -49,15 +49,6 @@ const Settings = () => {
         bio: '',
         show_wins: true,
         show_trophies: true,
-        payout_method: 'stripe',
-        notif_new_follower: true,
-        notif_challenge_win: true,
-        notif_comments: true,
-        notif_likes: false,
-        email_weekly: true,
-        email_challenges: true,
-        email_payouts: true,
-        email_marketing: false,
         two_factor_enabled: false,
         interests: '',
         goals: '',
@@ -97,15 +88,6 @@ const Settings = () => {
                 bio: user.bio || '',
                 show_wins: user.show_wins ?? true,
                 show_trophies: user.show_trophies ?? true,
-                payout_method: user.payout_method || 'stripe',
-                notif_new_follower: user.notif_new_follower ?? true,
-                notif_challenge_win: user.notif_challenge_win ?? true,
-                notif_comments: user.notif_comments ?? true,
-                notif_likes: user.notif_likes ?? false,
-                email_weekly: user.email_weekly ?? true,
-                email_challenges: user.email_challenges ?? true,
-                email_payouts: user.email_payouts ?? true,
-                email_marketing: user.email_marketing ?? false,
                 two_factor_enabled: user.two_factor_enabled ?? false,
                 interests: user.interests || '',
                 goals: user.goals || '',
@@ -429,8 +411,6 @@ const Settings = () => {
                 <h2 style={{ padding: '0 1.6rem 1.5rem', fontSize: '1.8rem', fontWeight: 900 }}>Settings</h2>
                 <SidebarItem id="profile" icon={User} label="Profile" />
                 <SidebarItem id="account" icon={AccountIcon} label="Account" />
-                <SidebarItem id="challenges" icon={Award} label="Challenges & Trophies" />
-                <SidebarItem id="payments" icon={CreditCard} label="Payments" />
                 <SidebarItem id="notifications" icon={Bell} label="Notifications" />
                 <SidebarItem id="security" icon={Shield} label="Security" />
             </aside>
@@ -502,15 +482,9 @@ const Settings = () => {
                                 <div>
                                     <h3 className="settings-card-title" style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
                                         <Award size={20} color="var(--accent-primary)" style={{ marginRight: '0.8rem' }} />
-                                        Winnings & Payouts {user?.is_premium && <span className="user-badge-mini" style={{ marginLeft: '1rem' }}>PREMIUM</span>}
+                                        Platform Usage {user?.is_premium && <span className="user-badge-mini" style={{ marginLeft: '1rem' }}>PREMIUM</span>}
                                     </h3>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Manage your challenge earnings and payout methods</p>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.3rem' }}>Current Balance</div>
-                                    <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'white' }}>
-                                        ₦{insights ? insights.total_earnings.toFixed(2) : '0.00'} <span style={{ fontSize: '1rem', opacity: 0.5 }}>NGN</span>
-                                    </div>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Monitor your upload quotas and creative impact</p>
                                 </div>
                             </div>
                             <div className="setting-tile">
@@ -772,7 +746,6 @@ const Settings = () => {
                             </p>
                             <ToggleSwitch name="email_weekly" label="Weekly Performance Summary" checked={formData.email_weekly} onChange={handleFormChange} />
                             <ToggleSwitch name="email_challenges" label="New Trending Challenges" checked={formData.email_challenges} onChange={handleFormChange} />
-                            <ToggleSwitch name="email_payouts" label="Payout & Wallet Alerts" checked={formData.email_payouts} onChange={handleFormChange} />
                             <ToggleSwitch name="email_marketing" label="Monteeq News & Offers" checked={formData.email_marketing} onChange={handleFormChange} />
                         </div>
                     </section>

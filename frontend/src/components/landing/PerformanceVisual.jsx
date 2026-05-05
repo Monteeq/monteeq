@@ -64,7 +64,7 @@ const PerformanceVisual = () => {
                         <div className="proc-inner">MULTI_LAYER</div>
                     </div>
                     <div className="proc-face" style={{ transform: 'rotateY(180deg) translateZ(60px)' }}>
-                        <div className="proc-inner">REVENUE_GEN</div>
+                        <div className="proc-inner">GROWTH_GEN</div>
                     </div>
                     <div className="proc-face" style={{ transform: 'rotateY(270deg) translateZ(60px)' }}>
                         <div className="proc-inner">V4_STABLE</div>
@@ -89,8 +89,8 @@ const PerformanceVisual = () => {
                         backdropFilter: 'blur(10px)'
                     }}
                 >
-                    <div style={{ fontSize: '0.5rem', opacity: 0.6 }}>EARNINGS</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#eb0000' }}>₦ +24,500</div>
+                    <div style={{ fontSize: '0.5rem', opacity: 0.6 }}>AUDIENCE REACH</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#eb0000' }}>+1.2M</div>
                     <div style={{ fontSize: '0.4rem', color: '#fff', opacity: 0.3, marginTop: '4px' }}>PER_100K_ENGAGEMENT</div>
                 </motion.div>
             </div>

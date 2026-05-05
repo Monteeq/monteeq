@@ -100,8 +100,8 @@ const JoinProV2 = () => {
                 </p>
                 <div className="proStatsRow">
                     <div className="proStat">
-                        <span className="proStatLabel">Commission</span>
-                        <span className="proStatValue">0%</span>
+                        <span className="proStatLabel">Challenge Tier</span>
+                        <span className="proStatValue">GOLD</span>
                     </div>
                     <div className="proStat divider" />
                     <div className="proStat">
@@ -169,7 +169,7 @@ const JoinProV2 = () => {
                             <div className="perkIconWrap"><Users size={20} /></div>
                             <div className="perkText">
                                 <h5>VIP Challenge Access</h5>
-                                <p>Enter "Gold-Only" challenges with massive pooled prizes.</p>
+                                <p>Enter "Gold-Only" challenges with exclusive recognition.</p>
                             </div>
                             <button className="perkBtn active">ENTER NOW</button>
                         </div>
@@ -200,7 +200,7 @@ const JoinProV2 = () => {
                         <li className="featureItem"><Check size={18} className="checkIcon" /> 720p Optimized quality</li>
                         <li className="featureItem"><Check size={18} className="checkIcon" /> Standard analytics</li>
                         <li className="featureItem"><Check size={18} className="checkIcon" /> Basic challenges</li>
-                        <li className="featureItem opacity-40"><Lock size={16} /> 10% Platform commission</li>
+                        <li className="featureItem opacity-40"><Lock size={16} /> Restricted File Sizes</li>
                     </ul>
                     <button className="ctaBtn freeCta" disabled>CURRENT STATUS</button>
                 </div>
@@ -214,10 +214,10 @@ const JoinProV2 = () => {
                     </div>
                     <ul className="featureList">
                         <li className="featureItem"><Sparkles size={18} className="sparkIcon" /> <strong>4K Cinematic HD Uploads</strong></li>
-                        <li className="featureItem"><Flame size={18} className="sparkIcon" /> <strong>0% Commission on Earnings</strong></li>
-                        <li className="featureItem"><Award size={18} className="sparkIcon" /> <strong>Gold-Only Prize Pools</strong></li>
+                        <li className="featureItem"><Flame size={18} className="sparkIcon" /> <strong>Unrestricted Upload Limits</strong></li>
+                        <li className="featureItem"><Award size={18} className="sparkIcon" /> <strong>Gold-Only Elite Recognition</strong></li>
                         <li className="featureItem"><Users size={18} className="sparkIcon" /> <strong>Pro Profile Verification</strong></li>
-                        <li className="featureItem"><Rocket size={18} className="sparkIcon" /> <strong>Priority Ad Revenue Payouts</strong></li>
+                        <li className="featureItem"><Rocket size={18} className="sparkIcon" /> <strong>Priority Support Response</strong></li>
                         <li className="featureItem"><LayoutGrid size={18} className="sparkIcon" /> <strong>No Interruptive Ads</strong></li>
                     </ul>
                     <button 
@@ -248,7 +248,7 @@ const JoinProV2 = () => {
                     </h1>
                     <p className="heroSubtitle">
                         Join the elite tier of editors who are maximizing their reach, 
-                        clarity, and revenue on Monteeq.
+                        clarity, and impact on Monteeq.
                     </p>
                 </header>
 
@@ -279,13 +279,13 @@ const JoinProV2 = () => {
                         <section className="benefitsGrid">
                             <div className="benefitItem">
                                 <div className="benefitIcon"><Zap size={24} /></div>
-                                <h3 className="benefitTitle">Pure Revenue</h3>
-                                <p className="benefitDesc">We take 0% commission from your tips. Every kobo you earn stays with you.</p>
+                                <h3 className="benefitTitle">Pure Speed</h3>
+                                <p className="benefitDesc">Your videos are prioritized in our ultra-fast transcoding clusters for instant publishing.</p>
                             </div>
                             <div className="benefitItem">
                                 <div className="benefitIcon"><Target size={24} /></div>
                                 <h3 className="benefitTitle">Gold Access</h3>
-                                <p className="benefitDesc">Gain exclusive entry to high-stakes tournaments with larger prizes.</p>
+                                <p className="benefitDesc">Gain exclusive entry to "Gold" challenges with elite prizes and massive recognition.</p>
                             </div>
                             <div className="benefitItem">
                                 <div className="benefitIcon"><ShieldCheck size={24} /></div>

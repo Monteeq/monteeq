@@ -16,6 +16,9 @@ const AdminChallenges = ({ token, setToken, theme, toggleTheme }) => {
         brand: '',
         prize: '',
         is_open: true,
+        is_paid: false,
+        is_gold: false,
+        entry_fee: 0.0,
         start_date: '',
         end_date: ''
     });
@@ -62,6 +65,9 @@ const AdminChallenges = ({ token, setToken, theme, toggleTheme }) => {
             brand: '',
             prize: '',
             is_open: true,
+            is_paid: false,
+            is_gold: false,
+            entry_fee: 0.0,
             start_date: '',
             end_date: ''
         });
@@ -81,6 +87,9 @@ const AdminChallenges = ({ token, setToken, theme, toggleTheme }) => {
             brand: challenge.brand || '',
             prize: challenge.prize,
             is_open: challenge.is_open,
+            is_paid: challenge.is_paid || false,
+            is_gold: challenge.is_gold || false,
+            entry_fee: challenge.entry_fee || 0.0,
             start_date: challenge.start_date ? challenge.start_date.split('T')[0] : '',
             end_date: challenge.end_date ? challenge.end_date.split('T')[0] : ''
         });
@@ -90,11 +99,16 @@ const AdminChallenges = ({ token, setToken, theme, toggleTheme }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            const finalData = {
+                ...formData,
+                prize: formData.is_paid ? formData.prize : 'Elite Spotlight & Recognition'
+            };
+
             if (editingChallenge) {
-                await updateChallenge(editingChallenge.id, formData, token);
+                await updateChallenge(editingChallenge.id, finalData, token);
                 showNotification('success', "Challenge updated successfully");
             } else {
-                await createChallenge(formData, token);
+                await createChallenge(finalData, token);
                 showNotification('success', "Challenge created successfully");
             }
             setShowModal(false);
@@ -205,7 +219,17 @@ const AdminChallenges = ({ token, setToken, theme, toggleTheme }) => {
                                     <tr key={c.id}>
                                         <td style={{ maxWidth: '300px' }}>
                                             <div>
-                                                <p style={{ fontWeight: 700, fontSize: '1rem' }}>{c.title}</p>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <p style={{ fontWeight: 700, fontSize: '1rem' }}>{c.title}</p>
+                                                    {c.is_gold && (
+                                                        <span style={{ 
+                                                            fontSize: '0.65rem', fontWeight: 900, background: 'linear-gradient(90deg, #ffd700, #b8860b)', 
+                                                            color: 'black', padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '2px'
+                                                        }}>
+                                                            <Trophy size={10} /> GOLD
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                     <Award size={12} /> {c.prize}
                                                 </p>
@@ -232,14 +256,19 @@ const AdminChallenges = ({ token, setToken, theme, toggleTheme }) => {
                                             </div>
                                         </td>
                                         <td>
-                                             <span style={{ 
-                                                fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
-                                                padding: '4px 10px', borderRadius: '6px',
-                                                background: c.is_open ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                                                color: c.is_open ? '#10b981' : '#6b7280'
-                                            }}>
-                                                {c.is_open ? 'Active' : 'Closed'}
-                                            </span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <span style={{ 
+                                                    fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                                    padding: '4px 10px', borderRadius: '6px', width: 'fit-content',
+                                                    background: c.is_open ? 'rgba(16, 185, 129, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                                                    color: c.is_open ? '#10b981' : '#6b7280'
+                                                }}>
+                                                    {c.is_open ? 'Active' : 'Closed'}
+                                                </span>
+                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                                    {c.is_paid ? (c.is_gold ? 'Premium (Gold)' : `Paid (₦${c.entry_fee})`) : 'Free Entry'}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
                                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
@@ -293,10 +322,12 @@ const AdminChallenges = ({ token, setToken, theme, toggleTheme }) => {
                                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Partner Brand</label>
                                     <input type="text" name="brand" value={formData.brand} onChange={handleInputChange} className="input-field" placeholder="Owner of the prize" />
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Prize Pool</label>
-                                    <input type="text" name="prize" value={formData.prize} onChange={handleInputChange} className="input-field" required placeholder="e.g. $5,000 Cash" />
-                                </div>
+                                {formData.is_paid && (
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Prize Pool</label>
+                                        <input type="text" name="prize" value={formData.prize} onChange={handleInputChange} className="input-field" required placeholder="e.g. $5,000 Cash" />
+                                    </div>
+                                )}
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>Start Date</label>
                                     <input type="date" name="start_date" value={formData.start_date} onChange={handleInputChange} className="input-field" required />
@@ -305,6 +336,65 @@ const AdminChallenges = ({ token, setToken, theme, toggleTheme }) => {
                                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>End Date</label>
                                     <input type="date" name="end_date" value={formData.end_date} onChange={handleInputChange} className="input-field" required />
                                 </div>
+
+                                <div style={{ gridColumn: 'span 2', padding: '16px', background: 'var(--bg-app)', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '12px' }}>Challenge Tiering</label>
+                                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setFormData({...formData, is_paid: false, is_gold: false, entry_fee: 0})}
+                                            style={{ 
+                                                flex: 1, padding: '10px', borderRadius: '10px', border: !formData.is_paid ? '2px solid var(--accent)' : '1px solid var(--border-subtle)',
+                                                background: !formData.is_paid ? 'var(--accent-soft)' : 'transparent', color: !formData.is_paid ? 'var(--accent)' : 'var(--text-secondary)',
+                                                fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            FREE
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setFormData({...formData, is_paid: true})}
+                                            style={{ 
+                                                flex: 1, padding: '10px', borderRadius: '10px', border: formData.is_paid ? '2px solid #ffd700' : '1px solid var(--border-subtle)',
+                                                background: formData.is_paid ? 'rgba(255, 215, 0, 0.1)' : 'transparent', color: formData.is_paid ? '#ffd700' : 'var(--text-secondary)',
+                                                fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            PAID
+                                        </button>
+                                    </div>
+
+                                    {formData.is_paid && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', animation: 'fadeIn 0.3s ease' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    id="is_gold" 
+                                                    name="is_gold" 
+                                                    checked={formData.is_gold} 
+                                                    onChange={handleInputChange} 
+                                                    style={{ width: '18px', height: '18px' }} 
+                                                />
+                                                <label htmlFor="is_gold" style={{ fontSize: '0.9rem', fontWeight: 600, color: '#ffd700' }}>Mark as Gold (Pro Only)</label>
+                                            </div>
+                                            {!formData.is_gold && (
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Entry Fee (NGN)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        name="entry_fee" 
+                                                        value={formData.entry_fee} 
+                                                        onChange={handleInputChange} 
+                                                        className="input-field" 
+                                                        style={{ padding: '8px 12px' }}
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px' }}>
                                     <input type="checkbox" id="is_open" name="is_open" checked={formData.is_open} onChange={handleInputChange} style={{ width: '18px', height: '18px' }} />
                                     <label htmlFor="is_open" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>This challenge is currently open for entries</label>

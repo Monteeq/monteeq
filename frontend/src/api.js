@@ -15,14 +15,14 @@ export const API_BASE_URL = API_URL ? `${API_URL}/api/v1` : '/api/v1';
  *   .traceId {string}  Server trace_id (500 only)
  */
 export class ApiError extends Error {
-  constructor({ status, code, message, fields = [], traceId = null }) {
-    super(message);
-    this.name = 'ApiError';
-    this.status   = status;
-    this.code     = code;
-    this.fields   = fields;
-    this.traceId  = traceId;
-  }
+    constructor({ status, code, message, fields = [], traceId = null }) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+        this.code = code;
+        this.fields = fields;
+        this.traceId = traceId;
+    }
 }
 
 // ── Central Fetch Wrapper ────────────────────────────────────────────────────
@@ -36,33 +36,33 @@ export class ApiError extends Error {
  *   const data = await apiFetch('/videos/123', { headers: { Authorization: `Bearer ${token}` } });
  */
 export async function apiFetch(path, options = {}) {
-  const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
-  const response = await fetch(url, options);
+    const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+    const response = await fetch(url, options);
 
-  if (response.ok) {
-    // 204 No Content — return null
-    if (response.status === 204) return null;
-    return response.json();
-  }
+    if (response.ok) {
+        // 204 No Content — return null
+        if (response.status === 204) return null;
+        return response.json();
+    }
 
-  // Parse structured error body
-  let body = {};
-  try { body = await response.json(); } catch (_) { /* ignore parse errors */ }
+    // Parse structured error body
+    let body = {};
+    try { body = await response.json(); } catch (_) { /* ignore parse errors */ }
 
-  const error = new ApiError({
-    status:  response.status,
-    code:    body.error_code || 'HTTP_ERROR',
-    message: body.detail     || `Request failed with status ${response.status}`,
-    fields:  body.fields     || [],
-    traceId: body.trace_id   || null,
-  });
+    const error = new ApiError({
+        status: response.status,
+        code: body.error_code || 'HTTP_ERROR',
+        message: body.detail || `Request failed with status ${response.status}`,
+        fields: body.fields || [],
+        traceId: body.trace_id || null,
+    });
 
-  // Auto-logout on 401
-  if (response.status === 401) {
-    window.dispatchEvent(new CustomEvent('monteeq:session-expired', { detail: error }));
-  }
+    // Auto-logout on 401
+    if (response.status === 401) {
+        window.dispatchEvent(new CustomEvent('monteeq:session-expired', { detail: error }));
+    }
 
-  throw error;
+    throw error;
 }
 
 
@@ -148,7 +148,7 @@ export const postComment = async ({ videoId = null, postId = null, content, pare
     const endpoint = videoId
         ? `${API_BASE_URL}/videos/${videoId}/comments`
         : `${API_BASE_URL}/posts/${postId}/comment`;
-        
+
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -157,12 +157,12 @@ export const postComment = async ({ videoId = null, postId = null, content, pare
         },
         body: JSON.stringify({ content, parent_id })
     });
-    
+
     if (!response.ok) {
         const error = await response.json();
         throw new Error(error.detail || 'Failed to post comment');
     }
-    
+
     return response.json();
 };
 
@@ -171,15 +171,15 @@ export const uploadVideo = async (token, videoData) => {
     formData.append('title', videoData.title);
     formData.append('description', videoData.description || '');
     formData.append('video_type', videoData.type);
-    
+
     if (videoData.file) {
         formData.append('file', videoData.file);
     }
-    
+
     if (videoData.thumbnail) {
         formData.append('thumbnail', videoData.thumbnail);
     }
-    
+
     if (videoData.tags) {
         formData.append('tags', videoData.tags);
     }
@@ -189,12 +189,12 @@ export const uploadVideo = async (token, videoData) => {
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
     });
-    
+
     if (!response.ok) {
         const error = await response.json();
         throw new Error(error.detail || 'Upload failed');
     }
-    
+
     return response.json();
 };
 
@@ -448,12 +448,12 @@ export const sendChatMessage = async (messageData, token) => {
         },
         body: JSON.stringify(messageData)
     });
-    
+
     if (!response.ok) {
         const error = await response.json();
         throw new Error(error.detail || 'Failed to send message');
     }
-    
+
     return response.json();
 };
 
@@ -544,41 +544,14 @@ export const getChallengeLeaderboard = async (challengeId) => {
     return response.json();
 };
 
-export const getCreatorWallet = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/monetization/wallet?t=${Date.now()}`, {
-        headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Cache-Control': 'no-cache'
-        }
-    });
-    return response.json();
-};
-
-export const sendTip = async (userId, amount, token) => {
-    const response = await fetch(`${API_BASE_URL}/monetization/tip/${userId}?amount=${amount}`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    });
-    return response.json();
-};
-
-export const requestPayout = async (amount, bankDetails, token) => {
-    const response = await fetch(`${API_BASE_URL}/monetization/payout/request`, {
+export const createChallenge = async (challengeData, token) => {
+    const response = await fetch(`${API_BASE_URL}/admin/challenges`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ amount, bank_details: JSON.stringify(bankDetails) })
-    });
-    return response.json();
-};
-
-export const getMyPayoutRequests = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/monetization/payout/my-requests`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        body: JSON.stringify(challengeData)
     });
     return response.json();
 };
@@ -595,17 +568,7 @@ export const verifyProSubscription = async (reference, token) => {
     return response.json();
 };
 
-export const verifyDeposit = async (reference, token) => {
-    const response = await fetch(`${API_BASE_URL}/monetization/deposit/verify`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ reference })
-    });
-    return response.json();
-};
+
 
 export const uploadChatAttachment = async (file, token) => {
     const formData = new FormData();

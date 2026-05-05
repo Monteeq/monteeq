@@ -1,15 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getPendingVideos, updateVideoStatus, API_BASE_URL } from './api';
-import Hls from 'hls.js';
 import { ShieldCheck, LogOut, CheckCircle, XCircle, ChevronLeft, Play, X, Info, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from './context/NotificationContext';
+import AdminVideoPlayer from './AdminVideoPlayer';
 
 const VideoApprovals = ({ token, setToken, theme, toggleTheme }) => {
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [previewVideo, setPreviewVideo] = useState(null);
-    const videoRef = useRef(null);
     const navigate = useNavigate();
     const { showNotification } = useNotification();
 
@@ -48,40 +47,7 @@ const VideoApprovals = ({ token, setToken, theme, toggleTheme }) => {
             showNotification('error', 'Failed to update video status');
         }
     };
-    useEffect(() => {
-        if (!previewVideo || !videoRef.current || !previewVideo.video_url) return;
 
-        const video = videoRef.current;
-        let src = previewVideo.video_url;
-        
-        // Route through proxy to bypass GCS CORS for HLS/Stream
-        if (src.startsWith('http')) {
-            src = `${API_BASE_URL}/videos/${previewVideo.id}/stream`;
-        }
-
-        if (Hls.isSupported() && src.endsWith('.m3u8')) {
-            const hls = new Hls({
-                capLevelToPlayerSize: true,
-                autoStartLoad: true,
-            });
-            hls.loadSource(src);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(e => console.log("Autoplay blocked:", e));
-            });
-
-            return () => {
-                hls.destroy();
-            };
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Native Safari support
-            video.src = src;
-            video.play().catch(e => console.log("Autoplay blocked:", e));
-        } else {
-            // Fallback for direct MP4
-            video.src = src;
-        }
-    }, [previewVideo]);
 
 
 
@@ -182,10 +148,15 @@ const VideoApprovals = ({ token, setToken, theme, toggleTheme }) => {
                         </div>
                         <div style={{ background: 'black', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>
                             {previewVideo.video_url ? (
-                                <video 
-                                    ref={videoRef}
-                                    controls 
-                                    style={{ width: '100%', maxHeight: 'calc(100vh - 240px)', display: 'block' }} 
+                                <AdminVideoPlayer 
+                                    src={previewVideo.video_url.startsWith('http') 
+                                        ? `${API_BASE_URL}/videos/${previewVideo.id}/stream${previewVideo.video_url.endsWith('.m3u8') ? '/master.m3u8' : ''}` 
+                                        : previewVideo.video_url
+                                    }
+                                    title={previewVideo.title}
+                                    creator={previewVideo.owner?.username}
+                                    poster={previewVideo.thumbnail_url}
+                                    autoPlay={true}
                                 />
                             ) : (
                                 <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>

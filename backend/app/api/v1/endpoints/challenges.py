@@ -49,6 +49,12 @@ async def enter_challenge(
     if not challenge.is_open:
         raise HTTPException(status_code=400, detail="This challenge is closed for entries")
 
+    if (challenge.is_paid or challenge.is_gold) and not current_user.is_premium:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"This is a { 'Gold' if challenge.is_gold else 'Paid' } Challenge. Upgrade to Monteeq Pro to enter!"
+        )
+
     # Constraint: Free user can only enter ONE challenge total
     if not current_user.is_premium:
         total_entries = db.query(ChallengeEntry).filter(ChallengeEntry.user_id == current_user.id).count()

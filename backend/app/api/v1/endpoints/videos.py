@@ -465,6 +465,16 @@ async def get_processing_status(key: str, db: Session = Depends(get_db)):
             if resp.status_code == 200:
                 data = resp.json()
                 if data:
+                    # If Rust says completed, verify if DB Phase 2 is also done
+                    if data.get("status") == "completed":
+                        video = db.query(Video).filter(Video.processing_key == key).first()
+                        if not video or not video.video_url:
+                            # Still waiting for Phase 2 (metadata/DB update) in Celery
+                            return {
+                                "status": "processing",
+                                "progress": 99,
+                                "message": "Finalizing video details..."
+                            }
                     return data
         except Exception as e:
             logger.warning(f"Failed to reach Rust service for status: {e}")
@@ -472,6 +482,10 @@ async def get_processing_status(key: str, db: Session = Depends(get_db)):
     # 2. Fallback: Get persistent status from Database
     video = db.query(Video).filter(Video.processing_key == key).first()
     if video:
+        # If we have a video URL, transcoding is finished regardless of approval status
+        if video.video_url:
+            return {"status": "completed", "progress": 100, "message": "Success"}
+            
         if video.status == "approved":
             return {"status": "completed", "progress": 100, "message": "Success"}
         if video.status == "failed":

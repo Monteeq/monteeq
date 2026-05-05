@@ -303,11 +303,6 @@ def increment_view(db: Session, user_id: Optional[int] = None, video_id: Optiona
             db.commit()
             db.refresh(target)
             
-            # Monetization Trigger: $0.1 per 1000 views
-            if target.views > 0 and target.views % 1000 == 0:
-                from app.crud.monetization import credit_view_milestone
-                credit_view_milestone(db, target.id)
-                
             return target
     elif post_id:
         target = db.query(Post).filter(Post.id == post_id).first()

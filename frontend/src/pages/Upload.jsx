@@ -16,7 +16,7 @@ const Upload = () => {
 
     // Ad Gate State
     const [isAdGateActive, setIsAdGateActive] = useState(false);
-    const [adTimeLeft, setAdTimeLeft] = useState(30);
+    const [adTimeLeft, setAdTimeLeft] = useState(15);
     const [isAdFinished, setIsAdFinished] = useState(false);
 
     useEffect(() => {
@@ -120,7 +120,7 @@ const Upload = () => {
         // Reset for next potential upload
         if (isAdFinished) {
             setIsAdFinished(false);
-            setAdTimeLeft(30);
+            setAdTimeLeft(15);
         }
 
         setShowModal(false);
@@ -151,7 +151,7 @@ const Upload = () => {
                 xhr.upload.addEventListener('progress', (e) => {
                     if (e.lengthComputable) {
                         const percent = Math.round((e.loaded / e.total) * 100);
-                        updateNotification(notificationId, { progress: percent, status: `Uploading "${title}" (${percent}%)` });
+                        updateNotification(notificationId, { progress: percent, status: `Uploading "${title}"` });
                     }
                 });
 
@@ -234,7 +234,7 @@ const Upload = () => {
                             } else {
                                 updateNotification(notificationId, {
                                     progress: statusData.progress,
-                                    status: 'Processing...',
+                                    status: 'Optimizing Video',
                                     message: statusData.message
                                 });
                             }
@@ -304,7 +304,7 @@ const Upload = () => {
                         }}>
                             <div style={{
                                 height: '100%',
-                                width: `${(adTimeLeft / 30) * 100}%`,
+                                width: `${(adTimeLeft / 15) * 100}%`,
                                 background: 'var(--accent-primary)',
                                 transition: 'width 1s linear'
                             }} />

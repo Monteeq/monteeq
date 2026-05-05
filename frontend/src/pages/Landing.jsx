@@ -64,7 +64,7 @@ const Landing = () => {
                             className="ld-v4-subtitle"
                             variants={fadeInUp}
                         >
-                            Monteeq is a professional distribution platform that monetizes
+                            Monteeq is a professional distribution platform that amplifies
                             your short-form video skills using high-performance engagement algorithms.
                         </motion.p>
                         <motion.div
@@ -75,7 +75,7 @@ const Landing = () => {
                             }}
                         >
                             <Link to="/signup" className="ld-v4-main-btn">
-                                Monetize Your Craft <ArrowRight size={18} />
+                                Showcase Your Craft <ArrowRight size={18} />
                             </Link>
                         </motion.div>
                     </motion.div>
@@ -92,9 +92,9 @@ const Landing = () => {
                         viewport={{ once: true }}
                         variants={fadeInUp}
                     >
-                        <div className="ld-v4-tag">Revenue Reimagined</div>
+                        <div className="ld-v4-tag">Visibility Reimagined</div>
                         <h2>The Science of <span className="ld-v4-outline">Performance.</span></h2>
-                        <p>On Monteeq, your revenue is directly tied to the impact of your work. Our algorithm prioritizes quality over mindless volume.</p>
+                        <p>On Monteeq, your reach is directly tied to the impact of your work. Our algorithm prioritizes quality over mindless volume.</p>
                     </motion.div>
 
                     <motion.div
@@ -111,7 +111,7 @@ const Landing = () => {
                             {[
                                 { icon: <Activity />, title: "High-Yield Multipliers", text: "We apply a 30x weight to shares and 10x to saves. One high-impact edit can outperform thousands of low-engagement views." },
                                 { icon: <Target />, title: "Targeted Discovery", text: "Our Gravity-based discovery system matches your content with niche-specific audiences who care about the craft." },
-                                { icon: <Zap />, title: "Real-Time Monetization", text: "Track your earnings in your performance dashboard. Every engagement is calculated and accounted for instantly." }
+                                { icon: <Zap />, title: "Premium Tools", text: "Access advanced editing suites and workspace management tools designed for professionals." }
                             ].map((item, i) => (
                                 <motion.div key={i} className="ld-v4-perf-card" variants={fadeInUp}>
                                     <div className="ld-v4-perf-icon">{item.icon}</div>
@@ -167,12 +167,12 @@ const Landing = () => {
                     >
                         <motion.div className="ld-v4-challenges-text" variants={fadeInUp}>
                             <div className="ld-v4-tag">Join the Elite</div>
-                            <h2>Global Challenges. <br />Competitive Rewards.</h2>
-                            <p>Compete with the world's best editors in weekly themed challenges. Win cash prizes and permanent spotlight features on the Monteeq discovery feed.</p>
+                            <h2>Global Challenges. <br />Competitive Recognition.</h2>
+                            <p>Compete with the world's best editors in weekly themed challenges. Win exclusive digital trophies and permanent spotlight features on the Monteeq discovery feed.</p>
                             <div className="ld-v4-stat-row">
                                 <div className="ld-v4-stat">
-                                    <span className="ld-v4-stat-num">₦100k+</span>
-                                    <span className="ld-v4-stat-label">Active Prize Pools</span>
+                                    <span className="ld-v4-stat-num">Global</span>
+                                    <span className="ld-v4-stat-label">Active Competitions</span>
                                 </div>
                                 <div className="ld-v4-stat">
                                     <span className="ld-v4-stat-num">Elite</span>
@@ -207,7 +207,7 @@ const Landing = () => {
                         <ul className="ld-v4-list">
                             <li><ShieldCheck size={18} /> <strong>4K Ultra-HD Playback</strong> — Your quality, uncompromised</li>
                             <li><ShieldCheck size={18} /> <strong>Lightning Fast Uploads</strong> — Global CDN distribution</li>
-                            <li><ShieldCheck size={18} /> <strong>Secure Payouts</strong> — Direct to your bank account</li>
+                            <li><ShieldCheck size={18} /> <strong>Verified Status</strong> — Build your professional identity</li>
                         </ul>
                         <Link to="/pro" className="ld-v4-link">View Pro Benefits <ArrowRight size={16} /></Link>
                     </motion.div>
@@ -224,7 +224,7 @@ const Landing = () => {
                         transition={{ duration: 1, ease: "easeOut" }}
                     >
                         <h2>Ready to turn your skills into <br />
-                            <span className="ld-v4-outline">Real Income?</span></h2>
+                            <span className="ld-v4-outline">Global Reach?</span></h2>
                         <Link to="/signup" className="ld-v4-main-btn large">Create Your Account</Link>
                     </motion.div>
                 </div>
