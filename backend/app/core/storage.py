@@ -1,12 +1,10 @@
 import os
-import json
 import logging
 import time
 from typing import Optional
 import shutil
-
-from google.cloud import storage as gcs_storage
-from google.oauth2 import service_account
+import boto3
+from botocore.exceptions import ClientError
 from sqlalchemy.orm import Session
 
 from app.core import config
@@ -21,28 +19,21 @@ class Storage:
         self._mode_cache_time: float = 0
         self._cache_ttl: int = 60  # Cache DB mode for 60 seconds
 
-        self.gcs_client = None
-        self.gcs_bucket = None
-        if config.GCS_BUCKET:
-            self._init_gcs_client()
+        self.s3_client = None
+        if config.AWS_ACCESS_KEY_ID:
+            self._init_s3_client()
 
-    def _init_gcs_client(self):
+    def _init_s3_client(self):
         try:
-            if config.GCS_CREDENTIALS_JSON:
-                creds_dict = json.loads(config.GCS_CREDENTIALS_JSON)
-                credentials = service_account.Credentials.from_service_account_info(creds_dict)
-                self.gcs_client = gcs_storage.Client(credentials=credentials, project=config.GCS_PROJECT_ID)
-            elif config.GCS_CREDENTIALS_PATH and os.path.exists(config.GCS_CREDENTIALS_PATH):
-                self.gcs_client = gcs_storage.Client.from_service_account_json(
-                    config.GCS_CREDENTIALS_PATH,
-                    project=config.GCS_PROJECT_ID
-                )
-            else:
-                self.gcs_client = gcs_storage.Client(project=config.GCS_PROJECT_ID)
-            
-            self.gcs_bucket = self.gcs_client.bucket(config.GCS_BUCKET)
+            self.s3_client = boto3.client(
+                's3',
+                aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
+                region_name=config.AWS_S3_REGION_NAME
+            )
+            logger.info("Successfully initialized AWS S3 client")
         except Exception as e:
-            logger.error(f"Failed to initialize GCS client: {e}", exc_info=True)
+            logger.error(f"Failed to initialize AWS S3 client: {e}", exc_info=True)
 
     @property
     def mode(self) -> str:
@@ -79,7 +70,7 @@ class Storage:
         if current_mode == "local":
             return self._upload_local(local_path, s3_key)
         else:
-            return self._upload_gcs(local_path, s3_key)
+            return self._upload_s3(local_path, s3_key)
 
     def _upload_local(self, local_path: str, s3_key: str) -> str:
         dest_path = os.path.join(config.STATIC_DIR, s3_key)
@@ -88,18 +79,20 @@ class Storage:
         url_key = s3_key.replace(os.sep, "/")
         return f"{config.BASE_URL}/static/{url_key}"
 
-    def _upload_gcs(self, local_path: str, s3_key: str) -> str:
-        if not self.gcs_bucket:
-            raise ValueError("GCS bucket is not initialized.")
+    def _upload_s3(self, local_path: str, s3_key: str) -> str:
+        if not self.s3_client:
+            raise ValueError("AWS S3 client is not initialized.")
         try:
-            blob = self.gcs_bucket.blob(s3_key)
-            # Use 5MB chunks for better stability on large files
-            blob.chunk_size = 5 * 1024 * 1024 
-            # Increase timeout to 10 minutes (600 seconds) for slow networks/large videos
-            blob.upload_from_filename(local_path, timeout=600)
-            return self.get_url(s3_key, mode="gcs")
+            # S3 upload_file handles chunking and multi-part automatically
+            self.s3_client.upload_file(
+                local_path, 
+                config.AWS_STORAGE_BUCKET_NAME, 
+                s3_key,
+                ExtraArgs={'ACL': 'public-read'} # Assuming we want public URLs
+            )
+            return self.get_url(s3_key, mode="s3")
         except Exception as e:
-            logger.error(f"GCS Upload failed for {s3_key}: {e}", exc_info=True)
+            logger.error(f"S3 Upload failed for {s3_key}: {e}", exc_info=True)
             raise
 
     def upload_file_obj(self, file_obj, s3_key: str) -> str:
@@ -112,15 +105,14 @@ class Storage:
             dest_path = os.path.join(config.STATIC_DIR, s3_key)
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             with open(dest_path, "wb") as buffer:
-                import shutil
                 shutil.copyfileobj(file_obj, buffer)
             url_key = s3_key.replace(os.sep, "/")
             return f"{config.BASE_URL}/static/{url_key}"
         else:
-            if not self.gcs_bucket:
-                raise ValueError("GCS bucket is not initialized.")
+            if not self.s3_client:
+                raise ValueError("AWS S3 client is not initialized.")
             try:
-                # Detect content type from the key extension so GCS stores it correctly
+                # Detect content type from the key extension
                 ext = os.path.splitext(s3_key)[1].lower()
                 content_type_map = {
                     ".mp4": "video/mp4",
@@ -135,12 +127,19 @@ class Storage:
                     ".png": "image/png",
                 }
                 content_type = content_type_map.get(ext, "application/octet-stream")
-                blob = self.gcs_bucket.blob(s3_key)
-                blob.chunk_size = 5 * 1024 * 1024 
-                blob.upload_from_file(file_obj, timeout=600, content_type=content_type)
-                return self.get_url(s3_key, mode="gcs")
+                
+                self.s3_client.upload_fileobj(
+                    file_obj,
+                    config.AWS_STORAGE_BUCKET_NAME,
+                    s3_key,
+                    ExtraArgs={
+                        'ACL': 'public-read',
+                        'ContentType': content_type
+                    }
+                )
+                return self.get_url(s3_key, mode="s3")
             except Exception as e:
-                logger.error(f"GCS Object Upload failed for {s3_key}: {e}", exc_info=True)
+                logger.error(f"S3 Object Upload failed for {s3_key}: {e}", exc_info=True)
                 raise
 
     def get_url(self, s3_key: str, mode: Optional[str] = None) -> str:
@@ -153,7 +152,7 @@ class Storage:
         if current_mode == "local":
             return f"{config.BASE_URL}/static/{url_key}"
         else:
-            return f"https://storage.googleapis.com/{config.GCS_BUCKET}/{url_key}"
+            return f"https://{config.AWS_STORAGE_BUCKET_NAME}.s3.{config.AWS_S3_REGION_NAME}.amazonaws.com/{url_key}"
 
     def delete_file(self, s3_key: str) -> None:
         """
@@ -170,14 +169,16 @@ class Storage:
                 except Exception as e:
                     logger.error(f"Failed to delete local file {local_path}: {e}", exc_info=True)
         else:
-            if not self.gcs_bucket:
-                logger.error("Cannot delete from GCS: Bucket not initialized.")
+            if not self.s3_client:
+                logger.error("Cannot delete from S3: Client not initialized.")
                 return
             try:
-                blob = self.gcs_bucket.blob(s3_key)
-                blob.delete()
-                logger.info(f"Deleted GCS object: {s3_key}")
+                self.s3_client.delete_object(
+                    Bucket=config.AWS_STORAGE_BUCKET_NAME,
+                    Key=s3_key
+                )
+                logger.info(f"Deleted S3 object: {s3_key}")
             except Exception as e:
-                logger.error(f"Failed to delete GCS object {s3_key}: {e}", exc_info=True)
+                logger.error(f"Failed to delete S3 object {s3_key}: {e}", exc_info=True)
 
 storage = Storage()
