@@ -933,7 +933,7 @@ h3 {
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar.open ~ .main-stage {
+.sidebar.open~.main-stage {
   margin-left: 260px;
 }
 

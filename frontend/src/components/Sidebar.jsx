@@ -35,23 +35,23 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* ── DISCOVER ────────────────────────────────── */}
         <NavGroup label="Discover" show={isOpen} />
-        <NavItem to="/"         icon={<HomeIcon size={20} />}  label="Home"        onClick={onClose} />
-        <NavItem to="/flash"    icon={<Zap size={20} />}       label="Flash Clips" onClick={onClose} />
-        <NavItem to="/posts"    icon={<Layout size={20} />}    label="Feed"        onClick={onClose} />
-        <NavItem to="/challenges" icon={<Trophy size={20} />}  label="Challenges"  onClick={onClose} accent="var(--accent-primary)" />
+        <NavItem to="/"         icon={<HomeIcon size={24} />}  label="Home"        onClick={onClose} />
+        <NavItem to="/flash"    icon={<Zap size={24} />}       label="Flash Clips" onClick={onClose} />
+        <NavItem to="/posts"    icon={<Layout size={24} />}    label="Feed"        onClick={onClose} />
+        <NavItem to="/challenges" icon={<Trophy size={24} />}  label="Challenges"  onClick={onClose} accent="var(--accent-primary)" />
 
         {/* ── CREATE ──────────────────────────────────── */}
         <NavGroup label="Create" show={isOpen} />
         <NavItem
           to="/upload"
-          icon={<UploadCloud size={20} strokeWidth={2.5} />}
+          icon={<UploadCloud size={24} strokeWidth={2.5} />}
           label="Upload Content"
           onClick={onClose}
           accent="var(--accent-primary)"
           bold
         />
         {token && (
-          <NavItem to="/manage" icon={<Clapperboard size={20} />} label="Manage Content" onClick={onClose} />
+          <NavItem to="/manage" icon={<Clapperboard size={24} />} label="Manage Content" onClick={onClose} />
         )}
 
         {/* ── GROW ─────────────────────────────────────
@@ -59,11 +59,11 @@ const Sidebar = ({ isOpen, onClose }) => {
         {token && (
           <>
             <NavGroup label="Grow" show={isOpen} />
-            <NavItem to="/insights"     icon={<TrendingUp size={20} />}    label="Insights"        onClick={onClose} accent="#f59e0b" />
-            <NavItem to="/achievements" icon={<Trophy size={20} />}        label="Achievements"    onClick={onClose} />
+            <NavItem to="/insights"     icon={<TrendingUp size={24} />}    label="Insights"        onClick={onClose} accent="#f59e0b" />
+            <NavItem to="/achievements" icon={<Trophy size={24} />}        label="Achievements"    onClick={onClose} />
             <NavItem 
               to="/pro" 
-              icon={<Crown size={20} />} 
+              icon={<Crown size={24} />} 
               label="Monteeq Pro" 
               onClick={onClose} 
               accent="#ffd700"
@@ -77,26 +77,21 @@ const Sidebar = ({ isOpen, onClose }) => {
         {token && (
           <>
             <NavGroup label="Social" show={isOpen} />
-            <NavItem to="/chat" icon={<MessageSquare size={20} />} label="Messages" onClick={onClose} />
+            <NavItem to="/chat" icon={<MessageSquare size={24} />} label="Messages" onClick={onClose} />
           </>
         )}
 
         {/* ── MONTEEQ ──────────────────────────────────
             Always visible */}
         <NavGroup label="Monteeq" show={isOpen} />
-        <NavItem to="/partner" icon={<Handshake size={20} />}  label="Partner With Us" onClick={onClose} />
-        <NavItem to="/about"   icon={<Telescope size={20} />}  label="About"           onClick={onClose} accent="#60a5fa" />
+        <NavItem to="/partner" icon={<Handshake size={24} />}  label="Partner With Us" onClick={onClose} />
+        <NavItem to="/about"   icon={<Telescope size={24} />}  label="About"           onClick={onClose} accent="#60a5fa" />
 
       </nav>
 
       {/* ── Bottom: user info or login ─────────────── */}
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {token ? (
-          <div className="user-info">
-            <div className="user-role">{user?.role || 'User'}</div>
-            <div className="user-name">{user?.username}</div>
-          </div>
-        ) : (
+        {token ? null : (
           <NavLink
             to="/login"
             onClick={onClose}
@@ -107,7 +102,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               boxShadow: '0 4px 15px rgba(255,62,62,0.4)',
             }}
           >
-            <LogIn size={20} strokeWidth={2.5} />
+            <LogIn size={24} strokeWidth={2.5} />
             <span>Login</span>
           </NavLink>
         )}
