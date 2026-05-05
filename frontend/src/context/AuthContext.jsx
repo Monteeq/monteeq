@@ -22,7 +22,9 @@ export const AuthProvider = ({ children }) => {
                 return response.data;
             } catch (error) {
                 console.error("Failed to fetch user:", error);
-                if (!authToken) logout();
+                if (!authToken && error.response?.status === 401) {
+                    logout();
+                }
             }
         }
     };

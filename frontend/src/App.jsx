@@ -144,6 +144,7 @@ function AppContent() {
                   <Route path="/about" element={<About />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
+                  <Route path="/partner" element={<PartnerV2 />} />
                   <Route path="/payment" element={<PaymentCallback />} />
                   
                   {/* Protected App Routes */}
@@ -165,9 +166,8 @@ function AppContent() {
                   {/* Protected Context Routings */}
                   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                   <Route path="/verify" element={<ProtectedRoute><Verify /></ProtectedRoute>} />
-                  <Route path="/partner" element={<ProtectedRoute><PartnerV2 /></ProtectedRoute>} />
                   <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
-                  <Route path="/pro" element={<JoinPro />} />
+                  <Route path="/pro" element={<ProtectedRoute><JoinPro /></ProtectedRoute>} />
                   
                   {/* Admin Routes */}
                   <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminPortal /></ProtectedRoute>} />
