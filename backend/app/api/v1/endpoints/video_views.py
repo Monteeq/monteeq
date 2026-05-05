@@ -15,9 +15,7 @@ from app.models.models import Video
 
 router = APIRouter()
 
-# Redis Configuration
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-redis_client = redis.StrictRedis.from_url(REDIS_URL, decode_responses=True)
+from app.core.redis import redis_client
 
 # JWT Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key")

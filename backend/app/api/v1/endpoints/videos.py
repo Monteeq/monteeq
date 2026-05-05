@@ -20,6 +20,7 @@ from app.utils.push import notify_user_push
 from app.core.storage import storage
 from app.core.config import FLASH_QUOTA_LIMIT, HOME_QUOTA_LIMIT
 from app.models.models import Video, User
+from app.core.redis import redis_client
 
 router = APIRouter()
 
@@ -36,15 +37,11 @@ def read_videos(
 ):
     user_id = current_user.id if current_user else None
     
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     cache_key = f"feed_{video_type}_{status}_{skip}_{limit}_{user_id}_{mood}_{feed_mode}"
     
     # Try to get from cache
-    r = None
     try:
-        import redis
-        r = redis.StrictRedis.from_url(redis_url, decode_responses=True)
-        cached = r.get(cache_key)
+        cached = redis_client.get(cache_key)
         if cached:
             import json
             return json.loads(cached)
@@ -54,13 +51,12 @@ def read_videos(
     videos = crud_video.get_videos(db, video_type=video_type, filter_status=status, current_user_id=user_id, skip=skip, limit=limit, mood=mood, feed_mode=feed_mode)
     
     # Try to save to cache
-    if r:
-        try:
-            import json
-            serialized_videos = [schemas.Video.from_orm(v).dict() for v in videos]
-            r.setex(cache_key, 30, json.dumps(serialized_videos)) # Shorter TTL for homepage
-        except Exception:
-            pass
+    try:
+        import json
+        serialized_videos = [schemas.Video.from_orm(v).dict() for v in videos]
+        redis_client.setex(cache_key, 30, json.dumps(serialized_videos)) # Shorter TTL for homepage
+    except Exception:
+        pass
             
     return videos
 
@@ -143,17 +139,14 @@ async def get_search_suggestions(q: Optional[str] = "", db: Session = Depends(ge
 
 @router.get("/trending-suggestions")
 async def get_trending_suggestions(db: Session = Depends(get_db)):
-    import redis
     import json
     
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     try:
-        redis_client = redis.StrictRedis.from_url(redis_url, decode_responses=True)
         cached = redis_client.get("trending_suggestions")
         if cached:
             return json.loads(cached)
     except Exception:
-        redis_client = None
+        pass
 
     # 1. High views (Trending)
     trending_videos = db.query(Video).filter(Video.status == "approved").order_by(Video.views.desc()).limit(5).all()
@@ -185,11 +178,10 @@ async def get_trending_suggestions(db: Session = Depends(get_db)):
             seen.add(val)
             
     result = suggestions[:10]
-    if redis_client:
-        try:
-            redis_client.setex("trending_suggestions", 300, json.dumps(result))
-        except Exception:
-            pass
+    try:
+        redis_client.setex("trending_suggestions", 300, json.dumps(result))
+    except Exception:
+        pass
             
     return result
 

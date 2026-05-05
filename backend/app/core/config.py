@@ -37,3 +37,6 @@ SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "")
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "Monteeq")
+
+# Redis Configuration (Forced Local)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

@@ -1,15 +1,9 @@
 import json
-import redis
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+from app.core.redis import redis_client
 
 class VideoQueue:
     def __init__(self):
-        self.redis = redis.from_url(REDIS_URL)
+        self.redis = redis_client
         self.queue_name = "video_tasks"
 
     def push_task(self, video_id: str, task_id: str, target_format: str = "home"):

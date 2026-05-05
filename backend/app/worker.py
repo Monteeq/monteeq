@@ -1,14 +1,10 @@
-import os
 from celery import Celery
-from dotenv import load_dotenv
-
-load_dotenv()
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+from app.core.config import REDIS_URL
 
 celery_app = Celery(
     "monteeq_worker",
-    broker=redis_url,
-    backend=redis_url,
+    broker=REDIS_URL,
+    backend=REDIS_URL,
     include=["app.tasks.video_tasks", "app.tasks.email_tasks"]
 )
 

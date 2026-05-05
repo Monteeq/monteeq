@@ -20,6 +20,7 @@ from app.core.dependencies import get_current_user, get_current_user_optional
 from app.core import config
 from app.core.storage import storage
 from app.models.models import User, Video, Like, Follow, UserSession
+from app.core.redis import redis_client
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
@@ -161,17 +162,13 @@ def get_user_insights(
 ):
     user_id = current_user.id
     import json
-    import os
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     cache_key = f"user_insights_{user_id}"
     try:
-        import redis
-        r = redis.StrictRedis.from_url(redis_url, decode_responses=True)
-        cached = r.get(cache_key)
+        cached = redis_client.get(cache_key)
         if cached:
             return json.loads(cached)
     except Exception:
-        r = None
+        pass
     from app.models.models import Achievement
     
     # Total Views
@@ -247,9 +244,9 @@ def get_user_insights(
         "achievements": [a.milestone_name for a in existing_achievements],
         "top_countries": top_countries
     }
-    if r:
+    if redis_client:
         try:
-            r.setex(cache_key, 60, json.dumps(result))
+            redis_client.setex(cache_key, 60, json.dumps(result))
         except Exception:
             pass
     return result
@@ -266,17 +263,13 @@ def get_user_performance(
     
     user_id = current_user.id
     import json
-    import os
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     cache_key = f"user_perf_{user_id}_{metric}_{days}"
     try:
-        import redis
-        r = redis.StrictRedis.from_url(redis_url, decode_responses=True)
-        cached = r.get(cache_key)
+        cached = redis_client.get(cache_key)
         if cached:
             return json.loads(cached)
     except Exception:
-        r = None
+        pass
     end_date = datetime.now().date()
     start_date = end_date - timedelta(days=days-1)
     
@@ -341,9 +334,9 @@ def get_user_performance(
     # Serialize Pydantic objects manually for cache
     serialized_data = [p.dict() if hasattr(p, "dict") else p for p in performance_data]
     result_for_cache = {"data": serialized_data, "metric": metric}
-    if r:
+    if redis_client:
         try:
-            r.setex(cache_key, 60, json.dumps(result_for_cache))
+            redis_client.setex(cache_key, 60, json.dumps(result_for_cache))
         except Exception:
             pass
     return {"data": performance_data, "metric": metric}
@@ -420,17 +413,13 @@ def get_growth_intelligence(
     """
     user_id = current_user.id
     import json
-    import os
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     cache_key = f"growth_intel_{user_id}"
     try:
-        import redis
-        r = redis.StrictRedis.from_url(redis_url, decode_responses=True)
-        cached = r.get(cache_key)
+        cached = redis_client.get(cache_key)
         if cached:
             return json.loads(cached)
     except Exception:
-        r = None
+        pass
         
     from datetime import datetime, timedelta
     from app.models.models import View, Like, Follow
@@ -617,9 +606,9 @@ def get_growth_intelligence(
         },
         "insights": insights[:4],  # cap at 4
     }
-    if r:
+    if redis_client:
         try:
-            r.setex(cache_key, 60, json.dumps(result))
+            redis_client.setex(cache_key, 60, json.dumps(result))
         except Exception:
             pass
     return result
