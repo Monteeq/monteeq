@@ -1,126 +1,136 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, DollarSign, Zap, Fingerprint } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, Zap, Fingerprint, TrendingUp, Sparkles, Target, ShieldCheck } from 'lucide-react';
+import HeroAnimated from '../components/landing/HeroAnimated';
+import './Landing.css'; // Reuse landing styles
 import './About.css';
 
-/* ── Content ─────────────────────────────────────────────── */
-const VALUES = [
-  { icon: <TrendingUp size={24} />, title: 'Advanced Insights', desc: 'Track your growth with detailed analytics and engagement metrics. Optimize your reach.' },
-  { icon: <Zap size={24} />, title: 'Insane Speed', desc: 'Fast video processing that instantly renders your highest-quality uploads.' },
-  { icon: <Fingerprint size={24} />, title: 'Pure Independence', desc: 'Build your own personal brand and audience without relying on traditional clients.' },
-];
-
-/* ── Lightweight Intersection Observer ───────────────────── */
-function useReveal() {
-  useEffect(() => {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReduced) {
-      document.querySelectorAll('.ab-r').forEach(el => el.classList.add('ab-in'));
-      return;
-    }
-
-    const els = document.querySelectorAll('.ab-r');
-    const io = new IntersectionObserver(entries => {
-      entries.forEach(e => {
-        if (e.isIntersecting) { 
-          e.target.classList.add('ab-in'); 
-          io.unobserve(e.target); 
-        }
-      });
-    }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
-    
-    els.forEach(el => io.observe(el));
-    return () => io.disconnect();
-  }, []);
-}
-
 const About = () => {
-  useReveal();
+  const fadeInUp = {
+    hidden: { opacity: 0, y: 40 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+  };
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.2 } }
+  };
 
   return (
-    <div className="ab-page">
-      <div className="ab-bg" aria-hidden="true" />
-
-      {/* ═══ HERO & THE STORY ═══ */}
-      <section className="ab-hero">
-        <h1 className="ab-hero-title ab-r">
-          The Story Behind <span className="text-red">Monteeq.</span>
-        </h1>
-
-        <p className="ab-hero-sub ab-r" style={{ maxWidth: '650px' }}>
-          We built Monteeq for one simple reason: we were tired of watching talented editors get exploited.
-        </p>
-
-        <div className="ab-mission-content ab-r" style={{ textAlign: 'left', margin: 0 }}>
-          <p>
-            For years, the story was the same: you spend countless hours mastering CapCut, Premiere, or After Effects. You hunt for clients, deal with endless revisions, and finally hand over a masterpiece for a flat, low rate.
-          </p>
-          <p>
-            Then, you watch that client rack up millions of views and gain all the recognition for your hard work. It felt like a trap. We built Monteeq to break it.
-          </p>
+    <div className="ld-v4-page">
+      {/* ═══ HERO ═══ */}
+      <section className="ld-v4-hero" style={{ minHeight: 'auto', paddingBottom: '100px' }}>
+        <HeroAnimated />
+        <div className="ld-v4-hero-text">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+          >
+            <motion.h1 className="ld-v4-title" variants={{
+              hidden: { y: 100, opacity: 0, skewY: 7 },
+              visible: { y: 0, opacity: 1, skewY: 0, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } }
+            }}>
+              The Story <br />
+              Behind <span className="ld-v4-outline">Monteeq.</span>
+            </motion.h1>
+            <motion.p className="ld-v4-subtitle" variants={fadeInUp}>
+              We built Monteeq because we were tired of watching talented editors get exploited. 
+              Our mission is to give creators the platform they deserve.
+            </motion.p>
+          </motion.div>
         </div>
       </section>
 
-      {/* ═══ MISSION & WHAT WE DO ═══ */}
-      <section className="ab-section ab-bg-alt">
-        <div className="ab-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4rem' }}>
-          
-          <div className="ab-r">
-            <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '2rem', marginBottom: '1rem' }}>Our Mission</h2>
-            <p style={{ color: 'var(--ab-text-muted)', lineHeight: 1.7 }}>
-              To give video editors a platform where their art directly translates to their global influence. No middlemen. No gatekeepers.
+      {/* ═══ THE PROBLEM ═══ */}
+      <section className="ld-v4-performance" style={{ background: '#000' }}>
+        <div className="ld-v4-container">
+          <motion.div 
+            className="ld-v4-perf-header"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeInUp}
+          >
+            <div className="ld-v4-tag">The Catalyst</div>
+            <h2>Breaking the <span className="ld-v4-outline">Trap.</span></h2>
+            <p style={{ maxWidth: '800px', margin: '0 auto' }}>
+              For years, editors spent hours mastering their craft, only for clients to take all the credit and profit. 
+              Monteeq was built to hand that power back to you.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="ab-r">
-            <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '2rem', marginBottom: '1rem' }}>What We Actually Do</h2>
-            <p style={{ color: 'var(--ab-text-muted)', lineHeight: 1.7 }}>
-              Monteeq is incredibly simple. It’s a platform built exclusively for short-form video editors. You upload your edits, and we distribute them to a global audience. You focus on making great content; we focus on making sure your work gets the exposure it deserves.
-            </p>
-          </div>
-
+          <motion.div 
+            className="ld-v4-perf-grid"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+          >
+            {[
+              { icon: <TrendingUp />, title: "Advanced Insights", text: "Track your growth with enterprise-grade analytics and engagement metrics. No more guessing." },
+              { icon: <Zap />, title: "Insane Speed", text: "Global CDN distribution ensures your highest-quality edits render and stream instantly." },
+              { icon: <Fingerprint />, title: "Pure Independence", text: "Build your personal brand and audience without relying on traditional clients or middlemen." }
+            ].map((item, i) => (
+              <motion.div key={i} className="ld-v4-perf-card" variants={fadeInUp}>
+                <div className="ld-v4-perf-icon">{item.icon}</div>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
-      {/* ═══ WHY WE STAND OUT ═══ */}
-      <section className="ab-section">
-        <div className="ab-header ab-r">
-          <h2>Why We Stand Out</h2>
-          <p>Most platforms treat creators as an afterthought. We don't.</p>
-        </div>
-        <div className="ab-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-          {VALUES.map((v, i) => (
-            <div key={i} className="ab-card ab-r">
-              <div className="ab-icon">{v.icon}</div>
-              <h3>{v.title}</h3>
-              <p>{v.desc}</p>
+      {/* ═══ MISSION & VALUES ═══ */}
+      <section className="ld-v4-showcase">
+        <motion.div 
+          className="ld-v4-split"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={staggerContainer}
+        >
+          <motion.div className="ld-v4-split-text" variants={fadeInUp}>
+            <div className="ld-v4-tag">Our Philosophy</div>
+            <h2>Built on <br />Transparency.</h2>
+            <p>Talk is cheap. We back it up with data that you can see, touch, and verify.</p>
+            <ul className="ld-v4-list">
+              <li><Target size={18} /> <strong>No Gatekeepers</strong> — Your reach is earned, not bought.</li>
+              <li><ShieldCheck size={18} /> <strong>Data Sovereignty</strong> — You own your audience and your metrics.</li>
+              <li><Sparkles size={18} /> <strong>Art-First</strong> — Technology that amplifies art, never replaces it.</li>
+            </ul>
+          </motion.div>
+          <motion.div 
+            className="ld-v4-split-visual"
+            variants={{
+              hidden: { opacity: 0, scale: 0.8 },
+              visible: { opacity: 1, scale: 1, transition: { duration: 1 } }
+            }}
+          >
+            <div className="ab-visual-placeholder">
+              {/* Optional: Add a custom animation here */}
+              <div className="ld-v4-perf-icon" style={{ transform: 'scale(3)' }}><Target size={48} /></div>
             </div>
-          ))}
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* ═══ FINAL CTA ═══ */}
+      <section className="ld-v4-final">
+        <div className="ld-v4-final-content">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1 }}
+          >
+            <h2>Ready to start your <br /><span className="ld-v4-outline">Legacy?</span></h2>
+            <Link to="/signup" className="ld-v4-main-btn large">Join Monteeq Today</Link>
+          </motion.div>
         </div>
       </section>
-
-      {/* ═══ TRUST ═══ */}
-      <section className="ab-section ab-bg-alt">
-        <div className="ab-header ab-r" style={{ textAlign: 'center', margin: '0 auto 3rem auto', maxWidth: '800px' }}>
-          <h2>Built on Transparency</h2>
-          <p style={{ marginTop: '1.5rem', lineHeight: '1.8' }}>
-            We know talk is cheap in the creator economy. That’s why we built a transparent dashboard where you watch your view count and your engagement metrics grow in real-time. We don't hide your data. You get full access to the analytics that power your growth, safely and securely.
-          </p>
-        </div>
-      </section>
-
-      {/* ═══ CTA ═══ */}
-      <section className="ab-cta ab-r">
-        <h2 style={{ fontSize: '2.5rem' }}>Ready to change the way you work?</h2>
-        <p style={{ maxWidth: '600px', margin: '0 auto 2.5rem auto' }}>
-          Your talent shouldn't be hidden in someone else's shadow. Stop waiting for permission and start building your own creative legacy.
-        </p>
-        <Link to="/signup" className="ab-btn">
-          Join Monteeq Today <ArrowRight size={18} />
-        </Link>
-      </section>
-
-      {/* ═══ APP FOOTER ═══ */}
     </div>
   );
 };

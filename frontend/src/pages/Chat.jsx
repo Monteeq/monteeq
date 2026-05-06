@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCrypto } from '../hooks/useCrypto';
 import { useGoogleDrive } from '../hooks/useGoogleDrive';
+import { useNotification } from '../context/NotificationContext';
 import { 
     getConversations, 
     getChatMessages, 
@@ -23,6 +24,7 @@ import './Chat.css';
 
 const Chat = () => {
     const { user, token, setUser } = useAuth();
+    const { showNotification } = useNotification();
     const location = useLocation();
     const { 
         generateKeyPair, 
@@ -327,12 +329,12 @@ const Chat = () => {
         try {
             const recipientKeys = await getUserPublicKey(recipient.username, token);
             if (!recipientKeys || !recipientKeys.public_key) {
-                alert(`${recipient.username} hasn't initialized their workspace yet. They need to visit the /chat tab once to generate their keys.`);
+                showNotification('error', `${recipient.username} hasn't initialized their workspace yet. They need to visit the /chat tab once to generate their keys.`);
                 return;
             }
 
             if (!user.public_key) {
-                alert("Workspace key missing. Please refresh or regenerate keys.");
+                showNotification('error', "Workspace key missing. Please refresh or regenerate keys.");
                 return;
             }
 
@@ -358,7 +360,7 @@ const Chat = () => {
             }
         } catch (error) {
             console.error('Failed to send message', error);
-            alert('Transmission failed. Check connection or recipient keys.');
+            showNotification('error', 'Transmission failed. Check connection or recipient keys.');
         }
     };
 

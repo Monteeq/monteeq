@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { login, getMe } from './api';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Loader2 } from 'lucide-react';
 import { useNotification } from './context/NotificationContext';
 
 const Login = ({ setToken }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const { showNotification } = useNotification();
@@ -15,6 +16,7 @@ const Login = ({ setToken }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
         try {
             const data = await login(username, password);
             const user = await getMe(data.access_token);
@@ -22,6 +24,7 @@ const Login = ({ setToken }) => {
             if (user.role !== 'admin') {
                 setError('Access Denied: Admins only.');
                 showNotification('error', 'Access Denied: Admins only.');
+                setLoading(false);
                 return;
             }
 
@@ -33,6 +36,7 @@ const Login = ({ setToken }) => {
             console.error(err);
             setError('Invalid credentials or server error');
             showNotification('error', 'Invalid credentials or server error');
+            setLoading(false);
         }
     };
 
@@ -74,12 +78,22 @@ const Login = ({ setToken }) => {
                     />
                 </div>
 
-                <button type="submit" style={{
-                    padding: '1rem', borderRadius: '0.5rem', border: 'none',
-                    background: '#ef4444', color: 'white', fontWeight: 600,
-                    cursor: 'pointer', marginTop: '1rem', fontSize: '1rem'
-                }}>
-                    Login to Console
+                <button 
+                    type="submit" 
+                    disabled={loading}
+                    style={{
+                        padding: '1rem', borderRadius: '0.5rem', border: 'none',
+                        background: loading ? '#666' : '#ef4444', color: 'white', fontWeight: 600,
+                        cursor: loading ? 'not-allowed' : 'pointer', marginTop: '1rem', fontSize: '1rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                        transition: 'all 0.2s ease'
+                    }}
+                >
+                    {loading ? (
+                        <>Authenticating... <Loader2 size={18} className="animate-spin" /></>
+                    ) : (
+                        'Login to Console'
+                    )}
                 </button>
             </form>
         </div>

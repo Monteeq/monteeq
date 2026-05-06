@@ -585,10 +585,24 @@ export const verifyDeposit = async (reference, token) => {
 export const uploadChatAttachment = async (file, token) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await fetch(`${API_BASE_URL}/chat/upload`, {
+
+    const response = await fetch(`${API_BASE_URL}/chat/attachment`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: {
+            'Authorization': `Bearer ${token}`
+        },
         body: formData
+    });
+    return response.json();
+};
+
+export const submitPartnerBrief = async (briefData) => {
+    const response = await fetch(`${API_BASE_URL}/partners/brief`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(briefData)
     });
     return response.json();
 };

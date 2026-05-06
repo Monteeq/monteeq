@@ -5,6 +5,7 @@ import Dashboard from './Dashboard';
 import VideoApprovals from './VideoApprovals';
 import StatsDetail from './StatsDetail';
 import AdminChallenges from './AdminChallenges';
+import PartnerLeads from './PartnerLeads';
 import ErrorBoundary from './ErrorBoundary';
 import NotFound from './NotFound';
 import { NotificationProvider } from './context/NotificationContext';
@@ -40,6 +41,7 @@ function AppContent() {
         <Route path="/dashboard" element={token ? <Dashboard token={token} setToken={setToken} theme={theme} toggleTheme={toggleTheme} /> : <Navigate to="/" />} />
         <Route path="/approvals" element={token ? <VideoApprovals token={token} setToken={setToken} theme={theme} toggleTheme={toggleTheme} /> : <Navigate to="/" />} />
         <Route path="/challenges" element={token ? <AdminChallenges token={token} setToken={setToken} theme={theme} toggleTheme={toggleTheme} /> : <Navigate to="/" />} />
+        <Route path="/partners" element={token ? <PartnerLeads token={token} /> : <Navigate to="/" />} />
         <Route path="/stats/:metric" element={token ? <StatsDetail token={token} /> : <Navigate to="/" />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

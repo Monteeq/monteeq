@@ -485,3 +485,19 @@ class PasswordReset(BaseModel):
 
 class GoogleLinkRequest(BaseModel):
     id_token: str
+
+class PartnerLeadBase(BaseModel):
+    brand_name: str
+    contact_email: str
+    campaign_type: str
+    details: str
+
+class PartnerLeadCreate(PartnerLeadBase):
+    pass
+
+class PartnerLead(PartnerLeadBase):
+    id: int
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

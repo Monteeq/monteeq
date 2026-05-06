@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Trash2, Film, Zap, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getUserProfile, deleteVideo } from '../api';
+import { useNotification } from '../context/NotificationContext';
 import { ManageSkeleton } from '../components/Skeleton';
 
 const ManageVideos = () => {
     const { user, token } = useAuth();
+    const { showNotification } = useNotification();
     const [videos, setVideos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
@@ -41,9 +43,10 @@ const ManageVideos = () => {
             await deleteVideo(showDeleteConfirm, token);
             setVideos(videos.filter(v => v.id !== showDeleteConfirm));
             setShowDeleteConfirm(null);
+            showNotification('success', 'Video deleted successfully');
         } catch (err) {
             console.error("Error deleting video:", err);
-            alert("Failed to delete video");
+            showNotification('error', "Failed to delete video");
         } finally {
             setIsDeleting(false);
         }

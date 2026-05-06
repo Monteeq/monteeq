@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getStats, getUsers, promoteUser, getStorageMode, updateStorageMode, getAdminConfig } from './api';
-import { Users, Video, ShieldCheck, LogOut, Search, Cloud, Database, ExternalLink, Sun, Moon, MoreHorizontal, ArrowUpRight, Cpu, Trophy, CreditCard, TrendingUp } from 'lucide-react';
+import { Users, Video, ShieldCheck, LogOut, Search, Cloud, Database, ExternalLink, Sun, Moon, MoreHorizontal, ArrowUpRight, Cpu, Trophy, CreditCard, TrendingUp, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from './context/NotificationContext';
 
@@ -128,6 +128,9 @@ const Dashboard = ({ token, setToken, theme, toggleTheme }) => {
                         <div style={{ width: '1px', height: '24px', background: 'var(--border-subtle)' }}></div>
 
                         <nav style={{ display: 'flex', gap: '8px' }}>
+                             <button onClick={() => navigate('/partners')} className="btn btn-ghost">
+                                <Briefcase size={18} /> Partners
+                            </button>
                              <button onClick={() => navigate('/challenges')} className="btn btn-ghost">
                                 <Trophy size={18} /> Challenges
                             </button>

@@ -99,6 +99,21 @@ export const getStats = async (token) => {
     return response.data;
 };
 
+export const getPartnerLeads = async (token) => {
+    const response = await api.get('/partners/admin/leads', {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
+export const updatePartnerLeadStatus = async (leadId, status, token) => {
+    const response = await api.put(`/partners/admin/leads/${leadId}`, null, {
+        params: { status },
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
 export const getUsers = async (token) => {
     const response = await api.get('/admin/users', {
         headers: { Authorization: `Bearer ${token}` }

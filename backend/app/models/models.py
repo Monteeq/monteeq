@@ -461,3 +461,14 @@ class UserRecommendationProfile(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     user = relationship("User")
+
+class PartnerLead(Base):
+    __tablename__ = "partner_leads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    brand_name = Column(String, index=True)
+    contact_email = Column(String, index=True)
+    campaign_type = Column(String)
+    details = Column(Text)
+    status = Column(String, default="new") # "new", "contacted", "closed"
+    created_at = Column(DateTime, default=func.now(), index=True)

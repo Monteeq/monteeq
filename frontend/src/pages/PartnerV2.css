@@ -335,6 +335,112 @@
   margin: 0 0 2rem 0;
 }
 
+/* ── V4 THEME EXTENSIONS ────────────────────────────────────────── */
+.pt-v4-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.pt-v4-option {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.pt-v4-option h4 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.pt-v4-option p {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.pt-v4-form-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+  border-radius: 32px;
+  padding: 3rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.pt-v4-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.pt-v4-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .pt-v4-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.pt-v4-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pt-v4-form-group label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #eb0000;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.pt-v4-form-group input,
+.pt-v4-form-group select,
+.pt-v4-form-group textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.25rem;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.pt-v4-form-group input:focus,
+.pt-v4-form-group select:focus,
+.pt-v4-form-group textarea:focus {
+  border-color: #eb0000;
+  background: rgba(235, 0, 0, 0.05);
+  outline: none;
+}
+
+.pt-v4-success {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.pt-v4-success-icon {
+  width: 80px;
+  height: 80px;
+  background: rgba(235, 0, 0, 0.1);
+  color: #eb0000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 2rem;
+}
+
 /* ── DESKTOP SCALE-UP (min-width logic) ────────────────────────────── */
 @media (min-width: 768px) {
   .pt-hero {
