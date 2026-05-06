@@ -25,11 +25,19 @@ class Storage:
 
     def _init_s3_client(self):
         try:
+            from botocore.config import Config
+            
+            s3_opts = {'region_name': config.AWS_S3_REGION_NAME}
+            if config.AWS_S3_USE_ACCELERATE:
+                s3_opts['use_accelerate_endpoint'] = True
+                logger.info("Enabling S3 Transfer Acceleration")
+            
+            s3_config = Config(s3=s3_opts)
             self.s3_client = boto3.client(
                 's3',
                 aws_access_key_id=config.AWS_ACCESS_KEY_ID,
                 aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
-                region_name=config.AWS_S3_REGION_NAME
+                config=s3_config
             )
             logger.info("Successfully initialized AWS S3 client")
         except Exception as e:
@@ -87,8 +95,7 @@ class Storage:
             self.s3_client.upload_file(
                 local_path, 
                 config.AWS_STORAGE_BUCKET_NAME, 
-                s3_key,
-                ExtraArgs={'ACL': 'public-read'} # Assuming we want public URLs
+                s3_key
             )
             return self.get_url(s3_key, mode="s3")
         except Exception as e:
@@ -128,14 +135,22 @@ class Storage:
                 }
                 content_type = content_type_map.get(ext, "application/octet-stream")
                 
+                from boto3.s3.transfer import TransferConfig
+                config_s3 = TransferConfig(
+                    multipart_threshold=1024 * 25, # 25MB
+                    max_concurrency=10,
+                    multipart_chunksize=1024 * 25, # 25MB
+                    use_threads=True
+                )
+                
                 self.s3_client.upload_fileobj(
                     file_obj,
                     config.AWS_STORAGE_BUCKET_NAME,
                     s3_key,
                     ExtraArgs={
-                        'ACL': 'public-read',
                         'ContentType': content_type
-                    }
+                    },
+                    Config=config_s3
                 )
                 return self.get_url(s3_key, mode="s3")
             except Exception as e:
@@ -145,6 +160,7 @@ class Storage:
     def get_url(self, s3_key: str, mode: Optional[str] = None) -> str:
         """
         Returns the public URL for a given key.
+        Uses CloudFront if configured, otherwise S3.
         """
         current_mode = mode or self.mode
         url_key = s3_key.replace(os.sep, "/")
@@ -152,6 +168,11 @@ class Storage:
         if current_mode == "local":
             return f"{config.BASE_URL}/static/{url_key}"
         else:
+            # If CloudFront is configured, use it for super-fast global delivery
+            if config.AWS_CLOUDFRONT_DOMAIN:
+                return f"https://{config.AWS_CLOUDFRONT_DOMAIN}/{url_key}"
+            
+            # Fallback to direct S3
             return f"https://{config.AWS_STORAGE_BUCKET_NAME}.s3.{config.AWS_S3_REGION_NAME}.amazonaws.com/{url_key}"
 
     def delete_file(self, s3_key: str) -> None:
@@ -180,5 +201,44 @@ class Storage:
                 logger.info(f"Deleted S3 object: {s3_key}")
             except Exception as e:
                 logger.error(f"Failed to delete S3 object {s3_key}: {e}", exc_info=True)
+    def delete_prefix(self, prefix: str) -> None:
+        """
+        Deletes all objects with the given prefix (folder deletion).
+        """
+        current_mode = self.mode
+        
+        if current_mode == "local":
+            local_dir = os.path.join(config.STATIC_DIR, prefix.replace("/", os.sep))
+            if os.path.exists(local_dir) and os.path.isdir(local_dir):
+                try:
+                    shutil.rmtree(local_dir)
+                    logger.info(f"Deleted local directory: {local_dir}")
+                except Exception as e:
+                    logger.error(f"Failed to delete local directory {local_dir}: {e}", exc_info=True)
+        else:
+            if not self.s3_client:
+                logger.error("Cannot delete from S3: Client not initialized.")
+                return
+            try:
+                # Paginate through objects with prefix and delete them
+                paginator = self.s3_client.get_paginator('list_objects_v2')
+                pages = paginator.paginate(Bucket=config.AWS_STORAGE_BUCKET_NAME, Prefix=prefix)
+
+                delete_us = dict(Objects=[])
+                for item in pages.search('Contents'):
+                    if item:
+                        delete_us['Objects'].append(dict(Key=item['Key']))
+
+                        # S3 delete_objects has a limit of 1000 per call
+                        if len(delete_us['Objects']) >= 1000:
+                            self.s3_client.delete_objects(Bucket=config.AWS_STORAGE_BUCKET_NAME, Delete=delete_us)
+                            delete_us = dict(Objects=[])
+
+                if len(delete_us['Objects']):
+                    self.s3_client.delete_objects(Bucket=config.AWS_STORAGE_BUCKET_NAME, Delete=delete_us)
+                
+                logger.info(f"Deleted S3 prefix: {prefix}")
+            except Exception as e:
+                logger.error(f"Failed to delete S3 prefix {prefix}: {e}", exc_info=True)
 
 storage = Storage()

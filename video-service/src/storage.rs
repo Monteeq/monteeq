@@ -1,7 +1,6 @@
-use google_cloud_storage::client::{Client, ClientConfig};
-use google_cloud_storage::http::objects::upload::{Media, UploadObjectRequest, UploadType};
-use google_cloud_storage::http::objects::get::GetObjectRequest;
-use google_cloud_storage::http::objects::download::Range;
+use aws_config::meta::region::RegionProviderChain;
+use aws_sdk_s3::Client;
+use aws_sdk_s3::primitives::ByteStream;
 use anyhow::{Result, anyhow};
 use std::path::Path;
 use tokio::fs;
@@ -11,24 +10,52 @@ pub struct StorageManager {
     bucket: String,
 }
 
+use aws_config::Region;
+
 impl StorageManager {
     pub async fn new() -> Result<Self> {
-        let config = ClientConfig::default().with_auth().await?;
-        let client = Client::new(config);
-        let bucket = std::env::var("GCS_BUCKET").map_err(|_| anyhow!("GCS_BUCKET not set"))?;
+        let region_name = std::env::var("AWS_S3_REGION_NAME").ok();
+        let aws_region = std::env::var("AWS_REGION").ok();
+        
+        let region_provider = RegionProviderChain::first_try(region_name.map(Region::new))
+            .or_else(aws_region.map(Region::new))
+            .or_default_provider()
+            .or_else(Region::new("eu-west-1"));
+
+        let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+            .region(region_provider)
+            .load()
+            .await;
+        
+        // Build S3 config with optional Transfer Acceleration
+        let use_accelerate = std::env::var("AWS_S3_USE_ACCELERATE")
+            .map(|v| v.to_lowercase() == "true")
+            .unwrap_or(false);
+            
+        let mut s3_config_builder = aws_sdk_s3::config::Builder::from(&config);
+        if use_accelerate {
+            println!("Rust: Enabling S3 Transfer Acceleration");
+            s3_config_builder = s3_config_builder.accelerate(true);
+        }
+        let s3_config = s3_config_builder.build();
+            
+        let client = Client::from_conf(s3_config);
+        
+        let bucket = std::env::var("AWS_STORAGE_BUCKET_NAME")
+            .map_err(|_| anyhow!("AWS_STORAGE_BUCKET_NAME not set"))?;
         
         Ok(Self { client, bucket })
     }
 
-    /// Recursively upload HLS directory to GCS
-    pub async fn upload_hls_dir(&self, local_dir: &str, gcs_prefix: &str) -> Result<()> {
+    /// Recursively upload HLS directory to S3
+    pub async fn upload_hls_dir(&self, local_dir: &str, s3_prefix: &str) -> Result<()> {
         let mut entries = fs::read_dir(local_dir).await?;
 
         while let Some(entry) = entries.next_entry().await? {
             let path = entry.path();
             if path.is_file() {
                 let filename = path.file_name().unwrap().to_str().unwrap();
-                let key = format!("{}/{}", gcs_prefix, filename);
+                let key = format!("{}/{}", s3_prefix, filename);
                 self.upload_file(&path, &key).await?;
             }
         }
@@ -37,7 +64,6 @@ impl StorageManager {
 
     pub async fn upload_file(&self, local_path: &Path, key: &str) -> Result<()> {
         let data = fs::read(local_path).await?;
-        let content_length = data.len() as u64;
         let mime_type = match local_path.extension().and_then(|s| s.to_str()) {
             Some("m3u8") => "application/x-mpegURL",
             Some("ts") => "video/MP2T",
@@ -45,25 +71,15 @@ impl StorageManager {
             _ => "application/octet-stream",
         };
 
-        // In google-cloud-storage 0.14, we use UploadType::Simple with Media
-        // Media has name, content_type, and content_length fields
-        let upload_type = UploadType::Simple(Media {
-            name: key.to_string().into(),
-            content_type: mime_type.to_string().into(),
-            content_length: Some(content_length),
-        });
-
-        let request = UploadObjectRequest {
-            bucket: self.bucket.clone(),
-            ..Default::default()
-        };
+        let body = ByteStream::from(data);
 
         self.client
-            .upload_object(
-                &request,
-                data,
-                &upload_type,
-            )
+            .put_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .body(body)
+            .content_type(mime_type)
+            .send()
             .await
             .map_err(|e| anyhow!("Upload failed: {}", e))?;
 
@@ -71,14 +87,21 @@ impl StorageManager {
     }
 
     pub async fn download_file(&self, key: &str, local_path: &Path) -> Result<()> {
-        let request = GetObjectRequest {
-            bucket: self.bucket.clone(),
-            object: key.to_string(),
-            ..Default::default()
-        };
+        println!("Attempting to download from S3: bucket={}, key={}", self.bucket, key);
+        let res = self.client
+            .get_object()
+            .bucket(&self.bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| {
+                let service_err = e.into_service_error();
+                anyhow!("S3 Download Error [Bucket: {}, Key: {}]: {}", self.bucket, key, service_err)
+            })?;
 
-        let data = self.client.download_object(&request, &Range::default()).await
-            .map_err(|e| anyhow!("Download failed from GCS: {}", e))?;
+        let data = res.body.collect().await
+            .map_err(|e| anyhow!("Failed to collect body: {}", e))?
+            .into_bytes();
 
         fs::write(local_path, data).await?;
         Ok(())

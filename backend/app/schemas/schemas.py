@@ -11,6 +11,21 @@ class UserBase(BaseModel):
     referral_source: Optional[str] = None
     goals: Optional[str] = None
     country: Optional[str] = None
+    
+    @field_validator('profile_pic', mode='before')
+    @classmethod
+    def resolve_user_cdn_url(cls, v):
+        if not v or not isinstance(v, str):
+            return v
+        if "amazonaws.com" in v or "monteeq.s3" in v:
+            try:
+                from app.core.storage import storage
+                parts = v.split(".com/")
+                if len(parts) > 1:
+                    return storage.get_url(parts[1])
+            except Exception:
+                return v
+        return v
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -193,6 +208,21 @@ class Video(VideoBase):
     def ensure_int(cls, v):
         return v if v is not None else 0
 
+    @field_validator('video_url', 'thumbnail_url', 'url_480p', 'url_720p', 'url_1080p', 'url_2k', 'url_4k', mode='before')
+    @classmethod
+    def resolve_cdn_url(cls, v):
+        if not v or not isinstance(v, str):
+            return v
+        if "amazonaws.com" in v or "monteeq.s3" in v:
+            try:
+                from app.core.storage import storage
+                parts = v.split(".com/")
+                if len(parts) > 1:
+                    return storage.get_url(parts[1])
+            except Exception:
+                return v
+        return v
+
     model_config = ConfigDict(from_attributes=True)
 
 class PostBase(BaseModel):
@@ -220,6 +250,21 @@ class Post(PostBase):
     @classmethod
     def ensure_int_post(cls, v):
         return v if v is not None else 0
+
+    @field_validator('image_url', mode='before')
+    @classmethod
+    def resolve_post_cdn_url(cls, v):
+        if not v or not isinstance(v, str):
+            return v
+        if "amazonaws.com" in v or "monteeq.s3" in v:
+            try:
+                from app.core.storage import storage
+                parts = v.split(".com/")
+                if len(parts) > 1:
+                    return storage.get_url(parts[1])
+            except Exception:
+                return v
+        return v
 
     model_config = ConfigDict(from_attributes=True)
 

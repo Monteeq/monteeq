@@ -59,7 +59,7 @@ const Dashboard = ({ token, setToken, theme, toggleTheme }) => {
         try {
             await updateStorageMode(newMode, token);
             setStorageMode(newMode);
-            showNotification('success', `Storage provider switched to ${newMode === 's3' ? 'Backblaze' : 'Supabase'}`);
+            showNotification('success', `Storage provider switched to ${newMode === 's3' ? 'AWS S3' : 'Supabase'}`);
         } catch (err) {
             console.error("Failed to update storage mode", err);
             showNotification('error', "Failed to update storage provider");

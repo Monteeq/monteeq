@@ -84,6 +84,15 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
                     else:
                         owner.home_uploads = max(0, (owner.home_uploads or 1) - 1)
                 db.commit()
+            
+            # Cleanup cloud storage on failure
+            try:
+                logger.info(f"Cleaning up storage after failure for task {task_id}")
+                storage.delete_file(source_key)
+                storage.delete_prefix(f"videos/{task_id}/")
+            except Exception as cleanup_err:
+                logger.warning(f"Storage cleanup failed: {cleanup_err}")
+                
             # Only retry if we haven't hit the max — avoid infinite retry loops
             if self.request.retries < self.max_retries:
                 raise self.retry(exc=e, countdown=60)
@@ -91,11 +100,10 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
 
         # Phase 2: Post-processing (Updating DB URLs)
         # Note: Rust service now handles the upload of HLS files to GCS.
-        logger.info(f"Phase 2: Updating DB with GCS URLs for video_id={video_id}")
+        logger.info(f"Phase 2: Updating DB with S3 URLs for video_id={video_id}")
         
-        gcs_base = f"https://storage.googleapis.com/{config.GCS_BUCKET}/videos/{task_id}"
-        
-        video_url = f"{gcs_base}/master.m3u8"
+        # Use storage abstraction to generate correct URLs (S3 or Local)
+        video_url = storage.get_url(f"videos/{task_id}/master.m3u8")
         
         if video_type == "flash":
             url_480p = None
@@ -104,15 +112,13 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
             url_2k = None
             url_4k = None
         else:
-            url_480p = f"{gcs_base}/480p.m3u8"
-            url_720p = f"{gcs_base}/720p.m3u8"
-            url_1080p = f"{gcs_base}/1080p.m3u8"
-            url_2k = f"{gcs_base}/2k.m3u8"
-            url_4k = f"{gcs_base}/4k.m3u8"
-        # In Rust, thumb_key = format!("thumbnails/{}.jpg", video_id);
-        # Since we send source_key as video_id, it would be thumbnails/uploads/...
-        # I will fix Rust to use task_id for thumbnails too.
-        thumbnail_url = f"https://storage.googleapis.com/{config.GCS_BUCKET}/thumbnails/{task_id}.jpg"
+            url_480p = storage.get_url(f"videos/{task_id}/480p.m3u8")
+            url_720p = storage.get_url(f"videos/{task_id}/720p.m3u8")
+            url_1080p = storage.get_url(f"videos/{task_id}/1080p.m3u8")
+            url_2k = storage.get_url(f"videos/{task_id}/2k.m3u8")
+            url_4k = storage.get_url(f"videos/{task_id}/4k.m3u8")
+            
+        thumbnail_url = storage.get_url(f"thumbnails/{task_id}.jpg")
 
         # Duration is not available from the Rust service response yet;
         # keep as 0 — can be backfilled later via a separate metadata job.
@@ -132,7 +138,8 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
             video.status = "pending"
             video.processing_message = "Ready for review"
 
-            if thumbnail_url:
+            # Only set thumbnail if a custom one wasn't provided during upload
+            if not thumbnail_provided and thumbnail_url:
                 video.thumbnail_url = thumbnail_url
 
             db.commit()
@@ -156,6 +163,13 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
             except Exception as e:
                 logger.error(f"Failed to queue admin alert: {e}")
             
+            # Phase 3: Cleanup
+            try:
+                logger.info(f"Phase 3: Deleting raw source file {source_key}")
+                storage.delete_file(source_key)
+            except Exception as e:
+                logger.warning(f"Failed to delete source file {source_key}: {e}")
+                
             return {"status": "success", "video_id": video_id}
 
     except Exception as e:
@@ -171,8 +185,16 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
                      link="/upload",
                      n_type="status_change"
                  )
+                 
+                 # Cleanup cloud storage on failure
+                 logger.info(f"Cleaning up storage after phase 2 failure for task {task_id}")
+                 storage.delete_file(source_key)
+                 storage.delete_prefix(f"videos/{task_id}/")
+                 # If the video had a custom thumbnail, we don't delete it yet 
+                 # because the user might want to retry with it, but usually 
+                 # we only delete generated content.
         except: pass
-        
+    
         print(f"Error in post-processing: {e}")
         raise e
     finally:

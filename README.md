@@ -23,7 +23,7 @@
   <li><b>Creator Analytics</b>: Advanced performance tracking with monthly growth insights and interactive charts.</li>
   <li><b>Social Interactions</b>: Threaded comment system, likes, reposts, and real-time notifications.</li>
   <li><b>Achievement System</b>: Milestone tracking for creators to reward engagement.</li>
-  <li><b>S3-Compatible Storage</b>: Seamlessly integrated with Backblaze B2 for scalable media hosting.</li>
+  <li><b>AWS S3 Storage</b>: Seamlessly integrated with AWS S3 for scalable media hosting.</li>
   <li><b>Secure Authentication</b>: Google OAuth2 integration and JWT-based session management.</li>
 </ul>
 
@@ -49,7 +49,7 @@
   </tr>
   <tr>
     <td><b>Infrastructure</b></td>
-    <td>Docker, Docker Compose, Backblaze B2 (S3-API)</td>
+    <td>AWS S3</td>
   </tr>
 </table>
 
@@ -83,8 +83,8 @@ graph TD
     Backend -->|Query/Update| Postgres[(PostgreSQL)]
     Backend -->|Enqueue Processing| VideoWorker[Rust Video Service]
     VideoWorker -->|Transcode| FFmpeg[FFmpeg Engine]
-    FFmpeg -->|Store Fragments| B2[Backblaze B2 Storage]
-    B2 -->|CDN Delivery| User
+    FFmpeg -->|Store Fragments| S3[AWS S3 Storage]
+    S3 -->|CDN Delivery| User
 ```
 
 <hr/>

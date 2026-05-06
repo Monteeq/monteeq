@@ -159,6 +159,35 @@ class Video(Base):
     def owner_username(self):
         return self.owner.username if self.owner else "Unknown"
 
+    def _resolve_url(self, url: str) -> str:
+        """Helper to convert stored S3 URLs to current CDN/CloudFront URLs."""
+        if not url:
+            return url
+        # If it's already a full URL that doesn't match our current domain, we extract the path
+        if "amazonaws.com" in url or "monteeq.s3" in url:
+            from app.core.storage import storage
+            # Extract the key part (everything after the bucket domain)
+            parts = url.split(".com/")
+            if len(parts) > 1:
+                return storage.get_url(parts[1])
+        return url
+
+    @property
+    def dynamic_video_url(self):
+        return self._resolve_url(self.video_url)
+
+    @property
+    def dynamic_thumbnail_url(self):
+        return self._resolve_url(self.thumbnail_url)
+
+    @property
+    def dynamic_url_720p(self):
+        return self._resolve_url(self.url_720p)
+
+    @property
+    def dynamic_url_1080p(self):
+        return self._resolve_url(self.url_1080p)
+
 class View(Base):
     __tablename__ = "views"
 

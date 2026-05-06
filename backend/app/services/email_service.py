@@ -12,7 +12,7 @@ from app.core import config
 from app.core.config import SMTP_FROM, SMTP_FROM_NAME
 
 logger = logging.getLogger(__name__)
-BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+BREVO_API_KEY = config.BREVO_API_KEY
 
 def send_verification_email(to_email: str, code: str) -> bool:
     """
@@ -58,7 +58,8 @@ def send_verification_email(to_email: str, code: str) -> bool:
             logger.info(f"SMTP: Email sent to {to_email}")
             return True
         except Exception as e:
-            logger.error(f"SMTP Failed: {e}")
+            logger.error(f"SMTP Failed for {to_email}: {e}")
+            print(f"[DEBUG] SMTP Error: {e}")
             # Fall through to Brevo if SMTP fails
 
     # --- Fallback to Brevo API ---
@@ -81,8 +82,12 @@ def send_verification_email(to_email: str, code: str) -> bool:
             if resp.status_code in (200, 201, 202):
                 logger.info(f"Brevo: Email sent to {to_email}")
                 return True
+            else:
+                logger.error(f"Brevo API Refused Email to {to_email}: {resp.status_code} - {resp.text}")
+                print(f"[DEBUG] Brevo API Error: {resp.status_code} - {resp.text}")
         except Exception as e:
-            logger.error(f"Brevo Failed: {e}")
+            logger.error(f"Brevo HTTP Request Failed: {e}")
+            print(f"[DEBUG] Brevo Request Error: {e}")
 
     # --- Absolute Fallback (Print to Console) ---
     logger.warning(f"NO EMAIL SERVICE ACTIVE. Code for {to_email}: {code}")

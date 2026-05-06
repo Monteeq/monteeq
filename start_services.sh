@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Monteeq Platform Native Service Launcher
-# Use this to run the platform without Docker.
 
 # Ensure we are in the project root
 PROJECT_ROOT=$(pwd)
@@ -24,8 +23,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000 > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 
 # 3. Start Celery Worker
-echo "👷 Starting Celery Worker..."
-celery -A app.worker.celery_app worker --loglevel=info > "$LOG_DIR/celery.log" 2>&1 &
+echo "👷 Starting Celery Worker (Concurrency 1)..."
+celery -A app.worker.celery_app worker --loglevel=info --concurrency=1 > "$LOG_DIR/celery.log" 2>&1 &
 CELERY_PID=$!
 
 # 4. Start Frontend

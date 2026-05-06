@@ -130,14 +130,14 @@ async def upload_avatar(
     
     avatar_url = None
 
-    # Create a temporary local path to save the uploaded file before offloading to S3/B2
+    # Create a temporary local path to save the uploaded file before offloading to S3
     import tempfile
     with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp:
         shutil.copyfileobj(file.file, tmp)
         tmp_path = tmp.name
 
     try:
-        # Storage Abstraction (Local or S3/B2)
+        # Storage Abstraction (Local or S3)
         s3_key = f"profiles/{uuid4()}.{file_ext}"
         avatar_url = storage.upload_file(tmp_path, s3_key)
     finally:

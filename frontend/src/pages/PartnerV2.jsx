@@ -71,7 +71,7 @@ const PartnerV2 = () => {
             </motion.h1>
             <motion.p className="ld-v4-subtitle" variants={fadeInUp}>
               Turn your raw assets into engaging, shareable videos that drive real growth 
-              natively across Nigeria's fastest growing creator network.
+              across our global network of elite creators.
             </motion.p>
             <motion.div className="ld-v4-cta-wrap" variants={fadeInUp}>
               <button className="ld-v4-main-btn" onClick={scrollToContact}>
@@ -106,7 +106,7 @@ const PartnerV2 = () => {
           >
             {[
               { icon: <Network />, title: "Content Bridge", text: "The bridge between your brand and a network of world-class video editors." },
-              { icon: <Users />, title: "Viral Community", text: "Short-form, high-impact content that thrives on social media native to Nigeria." },
+              { icon: <Users />, title: "Viral Community", text: "Short-form, high-impact content that thrives on a global scale." },
               { icon: <TrendingUp />, title: "Engagement Growth", text: "Drive real interaction, shares, and measurable follower growth through creative art." }
             ].map((item, i) => (
               <motion.div key={i} className="ld-v4-perf-card" variants={fadeInUp}>
@@ -196,7 +196,7 @@ const PartnerV2 = () => {
                     <input 
                       name="brand_name"
                       type="text" 
-                      placeholder="e.g. Indomie Nigeria" 
+                      placeholder="e.g. Global Tech Inc." 
                       required 
                       disabled={isLoading} 
                       value={formData.brand_name}

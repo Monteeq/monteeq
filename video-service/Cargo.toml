@@ -19,7 +19,8 @@ dotenvy = "0.15"
 sysinfo = "0.29"
 async-trait = "0.1"
 
-google-cloud-storage = "0.14"
-google-cloud-auth = "0.13"
+aws-config = "1.0"
+aws-sdk-s3 = "1.0"
+aws-credential-types = "1.0"
 [profile.release]
 opt-level = 3

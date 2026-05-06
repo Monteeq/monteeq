@@ -39,12 +39,12 @@ impl WorkerPool {
                     tokio::spawn(async move {
                         let _permit = permit; // Hold permit until done
                         let task_id = task.task_id.clone();
-                        let gcs_key = task.video_id.clone(); 
+                        let s3_key = task.video_id.clone(); 
                         let tier = task.tier.clone();
                         let target_format = task.target_format.clone();
                         let skip_thumbnail = task.skip_thumbnail;
 
-                        // Phase 0: Download from GCS
+                        // Phase 0: Download from S3
                         let storage = match crate::storage::StorageManager::new().await {
                             Ok(s) => s,
                             Err(e) => {
@@ -62,8 +62,8 @@ impl WorkerPool {
                         };
                         let temp_path = temp_file.path().to_str().unwrap().to_string();
 
-                        println!("Downloading {} from GCS to {}", gcs_key, temp_path);
-                        if let Err(e) = storage.download_file(&gcs_key, temp_file.path()).await {
+                        println!("Downloading {} from S3 to {}", s3_key, temp_path);
+                        if let Err(e) = storage.download_file(&s3_key, temp_file.path()).await {
                             eprintln!("Download failed for task {}: {}", task_id, e);
                             smap.insert(task_id.clone(), TaskStatus {
                                 progress: 0,

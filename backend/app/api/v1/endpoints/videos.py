@@ -217,11 +217,12 @@ def delete_video_files(video: Video):
         s3_key = None
         if current_mode == "local" and url.startswith(f"{config.BASE_URL}/static/"):
             s3_key = url.replace(f"{config.BASE_URL}/static/", "")
-        elif current_mode == "gcs" and "storage.googleapis.com" in url:
-            # Format: https://storage.googleapis.com/[bucket]/[key]
-            parts = url.split(f"/{config.GCS_BUCKET}/")
-            if len(parts) > 1:
-                s3_key = parts[1]
+        elif current_mode == "s3" and "amazonaws.com" in url:
+            # Format: https://[bucket].s3.[region].amazonaws.com/[key]
+            import re
+            match = re.search(r"\.amazonaws\.com/(.+)$", url)
+            if match:
+                s3_key = match.group(1)
         
         if s3_key:
             storage.delete_file(s3_key)
@@ -327,15 +328,24 @@ async def upload_video(
 
     import uuid
     import time
+    import re
+    import unicodedata
     task_id = str(uuid.uuid4())
-    safe_filename = file.filename.replace(" ", "_")
+    
+    # Aggressively slugify filename
+    filename_base, filename_ext = os.path.splitext(file.filename)
+    safe_name = unicodedata.normalize('NFKD', filename_base).encode('ascii', 'ignore').decode('ascii')
+    safe_name = re.sub(r'[^\w\s-]', '', safe_name).strip().lower()
+    safe_name = re.sub(r'[-\s]+', '_', safe_name)
+    safe_filename = f"{safe_name}{filename_ext}"
+    
     source_key = f"uploads/{task_id}/{safe_filename}"
     
-    logger.info(f"Streaming uploaded file directly to GCS: {source_key}")
+    logger.info(f"Streaming uploaded file directly to storage: {source_key}")
     try:
         storage.upload_file_obj(file.file, source_key)
     except Exception as e:
-        logger.error(f"Failed to upload video file to GCS: {str(e)}")
+        logger.error(f"Failed to upload video file to storage: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to upload video file to storage")
 
     # Initial DB record
@@ -357,7 +367,7 @@ async def upload_video(
         try:
             video_create_data.thumbnail_url = storage.upload_file_obj(thumbnail.file, thumb_key)
         except Exception as e:
-            logger.error(f"Failed to upload thumbnail to GCS: {str(e)}")
+            logger.error(f"Failed to upload thumbnail to storage: {str(e)}")
 
     # Update quota
     if video_type == "flash":

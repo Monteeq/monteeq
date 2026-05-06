@@ -17,9 +17,6 @@
     "build:video": "cd video-service && cargo build --release",
     "build:all": "npm run build:frontend && npm run build:admin && npm run build:video",
     "build": "npm run build:all",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f",
     "clean": "rm -rf frontend/dist admin-dashboard/dist video-service/target backend/__pycache__",
     "preview": "npm run preview --prefix frontend"
   },
