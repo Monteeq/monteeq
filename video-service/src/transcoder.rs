@@ -275,7 +275,14 @@ async fn get_video_height(input: &str) -> Result<i32> {
 async fn generate_thumbnail(video_path: &str) -> Result<()> {
     let thumb_path = format!("{}.jpg", video_path);
     let status = Command::new("ffmpeg")
-        .args(&["-i", video_path, "-ss", "00:00:01", "-vframes", "1", "-q:v", "2", "-y", &thumb_path])
+        .args(&[
+            "-ss", "00:00:01", 
+            "-i", video_path, 
+            "-frames:v", "1", 
+            "-update", "1", 
+            "-q:v", "2", 
+            "-y", &thumb_path
+        ])
         .status().await?;
     if !status.success() {
         return Err(anyhow!("Thumbnail generation failed"));
