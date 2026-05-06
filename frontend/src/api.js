@@ -568,6 +568,18 @@ export const verifyProSubscription = async (reference, token) => {
     return response.json();
 };
 
+export const verifyDeposit = async (reference, token) => {
+    const response = await fetch(`${API_BASE_URL}/monetization/deposit/verify`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ reference })
+    });
+    return response.json();
+};
+
 
 
 export const uploadChatAttachment = async (file, token) => {
