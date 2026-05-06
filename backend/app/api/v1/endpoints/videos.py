@@ -250,6 +250,29 @@ def delete_video(
     
     return {"status": "success", "message": "Video deleted successfully"}
 
+@router.patch("/{video_id}", response_model=schemas.Video)
+def update_video_metadata(
+    video_id: int,
+    video_in: schemas.VideoBase,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    if video.owner_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    video.title = video_in.title
+    video.description = video_in.description
+    video.tags = video_in.tags
+    video.video_type = video_in.video_type
+    
+    db.commit()
+    db.refresh(video)
+    return video
+
 @router.put("/{video_id}/status")
 def update_video_status(
     video_id: int,

@@ -45,10 +45,16 @@ const Sidebar = ({ isOpen, onClose }) => {
         <NavItem
           to="/upload"
           icon={<UploadCloud size={24} strokeWidth={2.5} />}
-          label="Upload Content"
+          label="Upload Video"
           onClick={onClose}
           accent="var(--accent-primary)"
           bold
+        />
+        <NavItem
+          to="/create-post"
+          icon={<Layout size={24} />}
+          label="Create Post"
+          onClick={onClose}
         />
         {token && (
           <NavItem to="/manage" icon={<Clapperboard size={24} />} label="Manage Content" onClick={onClose} />

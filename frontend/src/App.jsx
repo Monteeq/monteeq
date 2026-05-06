@@ -12,6 +12,7 @@ const Flash = React.lazy(() => import('./pages/Flash'));
 const Posts = React.lazy(() => import('./pages/Posts'));
 const Upload = React.lazy(() => import('./pages/Upload'));
 const Chat = React.lazy(() => import('./pages/Chat'));
+const CreatePost = React.lazy(() => import('./pages/CreatePost'));
 
 const Login = React.lazy(() => import('./pages/Login'));
 const Signup = React.lazy(() => import('./pages/Signup'));
@@ -82,7 +83,7 @@ function AppContent() {
   const knownPaths = [
     '/', '/login', '/signup', '/verify', '/forgot-password', '/reset-password',
     '/about', '/partner', '/pro', '/privacy', '/terms', '/payment',
-    '/flash', '/search', '/settings', '/posts', '/upload', '/chat',
+    '/flash', '/search', '/settings', '/posts', '/create-post', '/upload', '/chat',
     '/manage', '/manage-videos', '/achievements', '/notifications',
     '/insights', '/performance', '/onboarding', '/challenges',
     '/admin'
@@ -154,6 +155,7 @@ function AppContent() {
                   <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/posts" element={<ProtectedRoute><Posts /></ProtectedRoute>} />
+                  <Route path="/create-post" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
                   <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
                   <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
                   <Route path="/manage" element={<ProtectedRoute><ManageContent /></ProtectedRoute>} />

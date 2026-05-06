@@ -82,21 +82,18 @@ async def create_post(
 ):
     image_url = None
     if image:
-        import os
-        import shutil
+        from app.core.storage import storage
+        import time
         
         file_ext = image.filename.split(".")[-1]
-        local_filename = f"{uuid4()}.{file_ext}"
+        timestamp = int(time.time())
+        s3_key = f"posts/{current_user.id}_{timestamp}.{file_ext}"
         
-        # Local Storage for post images
-        posts_dir = os.path.join(config.STATIC_DIR, "posts")
-        os.makedirs(posts_dir, exist_ok=True)
-        local_path = os.path.join(posts_dir, local_filename)
-        
-        with open(local_path, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-            
-        image_url = f"{config.BASE_URL}/static/posts/{local_filename}"
+        try:
+            image_url = storage.upload_file_obj(image.file, s3_key)
+        except Exception as e:
+            print(f"Failed to upload post image to S3: {e}")
+            raise HTTPException(status_code=500, detail="Failed to upload image to cloud storage")
     
     post_in = schemas.PostCreate(content=content, image_url=image_url, tags=tags)
     return crud_video.create_post(db, post=post_in, user_id=current_user.id)

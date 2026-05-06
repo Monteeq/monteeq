@@ -19,4 +19,4 @@ qrcode
 Pillow
 celery
 redis
-google-cloud-storage
+boto3
