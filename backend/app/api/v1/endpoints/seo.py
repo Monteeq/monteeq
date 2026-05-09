@@ -39,7 +39,6 @@ async def get_video_sitemap(db: Session = Depends(get_db)):
     """Generates a specialized Video XML sitemap for Google Video Indexing."""
     ET.register_namespace('video', 'http://www.google.com/schemas/sitemap-video/1.1')
     urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
-    urlset.set("xmlns:video", "http://www.google.com/schemas/sitemap-video/1.1")
     
     videos = db.query(Video).filter(Video.status == "approved").all()
     video_ns = "{http://www.google.com/schemas/sitemap-video/1.1}"
