@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   useWindowDimensions, 
-  TouchableOpacity 
+  TouchableOpacity,
+  ScrollView,
+  Platform
 } from 'react-native';
-import PagerView from 'react-native-pager-view';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '@/constants/colors';
@@ -38,20 +39,41 @@ const SLIDES = [
 export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
   const { width, height } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const handleScroll = (event: any) => {
+    const x = event.nativeEvent.contentOffset.x;
+    const index = Math.round(x / width);
+    if (index !== activeIndex) {
+      setActiveIndex(index);
+    }
+  };
+
+  const handleNext = () => {
+    if (activeIndex < SLIDES.length - 1) {
+      scrollRef.current?.scrollTo({ x: (activeIndex + 1) * width, animated: true });
+    } else {
+      onFinish();
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <PagerView 
-        style={styles.pager} 
-        initialPage={0}
-        onPageSelected={(e) => setActiveIndex(e.nativeEvent.position)}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        style={styles.pager}
       >
         {SLIDES.map((slide) => (
-          <View key={slide.id} style={styles.slide}>
+          <View key={slide.id} style={[styles.slide, { width, height }]}>
             <OnboardingVideo uri={slide.video} />
             
             <LinearGradient
-              colors={['transparent', 'rgba(8, 8, 13, 0.8)', COLORS.BG_PRIMARY]}
+              colors={['transparent', 'rgba(0, 0, 0, 0.4)', COLORS.BG_PRIMARY]}
               style={styles.gradient}
             />
 
@@ -61,7 +83,7 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
             </View>
           </View>
         ))}
-      </PagerView>
+      </ScrollView>
 
       <View style={styles.footer}>
         <View style={styles.pagination}>
@@ -77,8 +99,8 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
         </View>
 
         <MonteeqButton 
-          label={activeIndex === SLIDES.length - 1 ? "Get Started" : "Next"}
-          onPress={onFinish}
+          label={activeIndex === SLIDES.length - 1 ? "GET STARTED" : "NEXT"}
+          onPress={handleNext}
           style={styles.button}
         />
       </View>
@@ -119,25 +141,28 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '60%',
+    height: '70%',
   },
   content: {
     position: 'absolute',
-    bottom: 180,
+    bottom: 220,
     paddingHorizontal: SPACING.xl,
     width: '100%',
   },
   title: {
-    ...TYPOGRAPHY.display,
-    color: COLORS.TEXT_PRIMARY,
+    fontFamily: 'Outfit_800ExtraBold',
+    fontSize: 42,
+    color: COLORS.WHITE,
     textAlign: 'center',
     marginBottom: SPACING.md,
+    lineHeight: 48,
   },
   subtitle: {
     ...TYPOGRAPHY.body,
     color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
     paddingHorizontal: SPACING.lg,
+    lineHeight: 24,
   },
   footer: {
     position: 'absolute',
@@ -149,17 +174,17 @@ const styles = StyleSheet.create({
   },
   pagination: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: SPACING.xl,
+    gap: 10,
+    marginBottom: 40,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.BG_ELEVATED,
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   activeDot: {
-    backgroundColor: COLORS.GOLD,
+    backgroundColor: COLORS.ACCENT,
     width: 24,
   },
   button: {
