@@ -30,6 +30,14 @@ export default defineConfig(({ mode }) => {
         '/api/rust/': {
           target: env.VITE_RUST_API_URL || 'http://localhost:8081',
           changeOrigin: true
+        },
+        '/sitemap.xml': {
+          target: env.VITE_API_URL || 'http://localhost:8000',
+          changeOrigin: true
+        },
+        '/video-sitemap.xml': {
+          target: env.VITE_API_URL || 'http://localhost:8000',
+          changeOrigin: true
         }
       }
     }

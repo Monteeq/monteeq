@@ -37,24 +37,27 @@ async def get_sitemap(db: Session = Depends(get_db)):
 @router.get("/video-sitemap.xml")
 async def get_video_sitemap(db: Session = Depends(get_db)):
     """Generates a specialized Video XML sitemap for Google Video Indexing."""
+    ET.register_namespace('video', 'http://www.google.com/schemas/sitemap-video/1.1')
     urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
     urlset.set("xmlns:video", "http://www.google.com/schemas/sitemap-video/1.1")
     
     videos = db.query(Video).filter(Video.status == "approved").all()
+    video_ns = "{http://www.google.com/schemas/sitemap-video/1.1}"
+    
     for video in videos:
         url_el = ET.SubElement(urlset, "url")
         ET.SubElement(url_el, "loc").text = f"{BASE_URL}/watch/{video.id}"
         
-        video_el = ET.SubElement(url_el, "video:video")
-        ET.SubElement(video_el, "video:thumbnail_loc").text = video.thumbnail_url
-        ET.SubElement(video_el, "video:title").text = video.title
-        ET.SubElement(video_el, "video:description").text = video.description or f"Watch {video.title} on Monteeq."
-        ET.SubElement(video_el, "video:content_loc").text = video.video_url
-        ET.SubElement(video_el, "video:player_loc").text = f"{BASE_URL}/watch/{video.id}"
-        ET.SubElement(video_el, "video:duration").text = str(video.duration or 60)
-        ET.SubElement(video_el, "video:publication_date").text = video.created_at.isoformat()
-        ET.SubElement(video_el, "video:family_friendly").text = "yes"
-        ET.SubElement(video_el, "video:live").text = "no"
+        video_el = ET.SubElement(url_el, f"{video_ns}video")
+        ET.SubElement(video_el, f"{video_ns}thumbnail_loc").text = video.thumbnail_url
+        ET.SubElement(video_el, f"{video_ns}title").text = video.title
+        ET.SubElement(video_el, f"{video_ns}description").text = video.description or f"Watch {video.title} on Monteeq."
+        ET.SubElement(video_el, f"{video_ns}content_loc").text = video.video_url
+        ET.SubElement(video_el, f"{video_ns}player_loc").text = f"{BASE_URL}/watch/{video.id}"
+        ET.SubElement(video_el, f"{video_ns}duration").text = str(video.duration or 60)
+        ET.SubElement(video_el, f"{video_ns}publication_date").text = video.created_at.isoformat()
+        ET.SubElement(video_el, f"{video_ns}family_friendly").text = "yes"
+        ET.SubElement(video_el, f"{video_ns}live").text = "no"
 
     xml_data = b'<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(urlset, encoding="utf-8", method="xml")
     return Response(content=xml_data, media_type="application/xml")
