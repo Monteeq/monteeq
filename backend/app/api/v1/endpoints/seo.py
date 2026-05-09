@@ -37,8 +37,10 @@ async def get_sitemap(db: Session = Depends(get_db)):
 @router.get("/video-sitemap.xml")
 async def get_video_sitemap(db: Session = Depends(get_db)):
     """Generates a specialized Video XML sitemap for Google Video Indexing."""
-    ET.register_namespace('video', 'http://www.google.com/schemas/sitemap-video/1.1')
-    urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
+    urlset = ET.Element("urlset", {
+        "xmlns": "http://www.sitemaps.org/schemas/sitemap/0.9",
+        "xmlns:video": "http://www.google.com/schemas/sitemap-video/1.1"
+    })
     
     videos = db.query(Video).filter(Video.status == "approved").all()
     video_ns = "{http://www.google.com/schemas/sitemap-video/1.1}"
@@ -58,8 +60,8 @@ async def get_video_sitemap(db: Session = Depends(get_db)):
         ET.SubElement(video_el, f"{video_ns}content_loc").text = video.dynamic_video_url
         ET.SubElement(video_el, f"{video_ns}duration").text = str(video.duration or 60)
         
-        # W3C Format: YYYY-MM-DDThh:mm:ss+TZD
-        pub_date = video.created_at.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+        # W3C Format: YYYY-MM-DD (Simplest version)
+        pub_date = video.created_at.strftime("%Y-%m-%d")
         ET.SubElement(video_el, f"{video_ns}publication_date").text = pub_date
         
         ET.SubElement(video_el, f"{video_ns}family_friendly").text = "yes"
