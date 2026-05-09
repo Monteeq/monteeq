@@ -33,7 +33,7 @@ class RedisManager:
                 socket_timeout=5,
                 socket_connect_timeout=5,
                 retry_on_timeout=True,
-                max_connections=10
+                max_connections=2
             )
             self._client = redis.StrictRedis(connection_pool=pool)
             

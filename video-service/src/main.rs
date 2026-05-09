@@ -42,12 +42,24 @@ async fn main() {
     dotenv().ok();
     let status_map = Arc::new(dashmap::DashMap::new());
 
-    // Redis Setup
+    // Redis Setup - Highly optimized for limited connections
     let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
-    let config = RedisConfig::from_url(&redis_url).unwrap();
-    let client = RedisClient::new(config, None, None, None);
+    let mut config = RedisConfig::from_url(&redis_url).unwrap();
+    
+    // Disable any features that might open extra connections
+    config.fail_fast = true;
+    
+    let perf = PerformanceConfig {
+        // Ensure we only use 1 connection and set a 5s timeout
+        default_command_timeout_ms: 5000,
+        ..Default::default()
+    };
+    
+    let policy = ReconnectPolicy::default();
+    let client = RedisClient::new(config, Some(perf), Some(policy), None);
+    
     client.connect();
-    client.wait_for_connect().await.unwrap();
+    client.wait_for_connect().await.expect("Failed to connect to Redis Cloud");
 
     let scheduler = WeightedScheduler::new(client);
     let worker_pool = WorkerPool::new(scheduler.clone(), status_map.clone());

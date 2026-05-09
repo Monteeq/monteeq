@@ -13,7 +13,7 @@ tempfile = "3.8"
 uuid = { version = "1.4", features = ["v4"] }
 anyhow = "1.0"
 dashmap = "5.5"
-fred = { version = "7.0", features = ["subscriber-client"] }
+fred = { version = "7.0", features = ["subscriber-client", "enable-rustls"] }
 tokio-stream = "0.1"
 dotenvy = "0.15"
 sysinfo = "0.29"
