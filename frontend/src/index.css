@@ -114,6 +114,25 @@ video {
   box-shadow: var(--inner-glow);
 }
 
+.pulse-soft {
+  animation: pulse-soft 2s infinite;
+}
+
+@keyframes pulse-soft {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @media (max-width: 900px) {
   :root {
     --section-gap: 2rem;
@@ -2948,8 +2967,8 @@ button,
 }
 
 .cancel-btn {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
@@ -2975,24 +2994,30 @@ button,
 }
 
 .close-btn {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
   cursor: pointer;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   transition: var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
   transform: rotate(90deg) scale(1.1);
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  background: rgba(255, 80, 80, 0.15);
+  color: #ff5050;
+  border-color: rgba(255, 80, 80, 0.3);
+}
+
+.close-btn svg {
+  width: 22px !important;
+  height: 22px !important;
 }
 
 .login-prompt {
@@ -3050,6 +3075,13 @@ button,
     to {
       transform: translateY(0);
     }
+  }
+}
+
+/* Tablet: drawer from the right, wider panel */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .comments-drawer {
+    max-width: 380px;
   }
 }
 

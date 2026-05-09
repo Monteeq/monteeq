@@ -46,7 +46,7 @@ const Onboarding = () => {
 
             if (response.ok) {
                 await refreshUser();
-                navigate('/');
+                navigate('/home');
             }
         } catch (err) {
             console.error("Onboarding failed", err);

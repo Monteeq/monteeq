@@ -4,14 +4,7 @@
   background: var(--bg-deep);
   overflow: hidden;
   position: relative;
-  display: flex; /* Support for sidebar on desktop */
-}
-
-/* Wrapper for Sidebar and Main Content */
-.desktopLayout {
-  display: flex;
-  width: 100%;
-  height: 100%;
+  display: flex; 
 }
 
 .mainContent {
@@ -20,6 +13,7 @@
   position: relative;
   display: flex;
   justify-content: center;
+  align-items: center; /* Center the feed vertically too */
 }
 
 .feed {
@@ -31,9 +25,7 @@
   scroll-behavior: smooth;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  /* Programmatic swipe handler takes over on touch; let browser handle y-pan only */
   touch-action: pan-y;
-  /* Prevent momentum scroll from bleeding past the feed edges */
   overscroll-behavior-y: contain;
 }
 
@@ -50,25 +42,22 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  padding: 0;
 }
 
-/* Responsive constraints on feed */
-@media (min-width: 768px) {
-  .feed {
-    max-width: 500px; /* Constrained vertical feed on tablets */
-  }
-}
-
+/* Desktop constraints */
 @media (min-width: 1024px) {
   .feed {
-    max-width: 450px; /* Precise portrait ratio on desktop */
-    height: 100%;
-    border-radius: 0; /* Removing radius for a edge-to-edge feel if required, or keep it if it fits the premium look */
-    margin-right: 40px; /* Gap for side actions if they overflow */
+    width: auto;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
   
   .cardContainer {
-    padding: 0;
+    width: 100vw; 
+    max-width: 1000px;
   }
 }
 
@@ -78,172 +67,50 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 56px;
+  padding-top: env(safe-area-inset-top, 8px);
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 24px;
-  padding: 0 20px;
+  gap: 8px;
+  padding-left: 16px;
+  padding-right: 16px;
   z-index: 100;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
-  transition: all 0.3s var(--transition-smooth);
+  background: linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 70%, transparent 100%);
 }
 
 .navItem {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--text-dim);
-  font-size: 0.95rem;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s var(--transition-smooth);
-  padding: 6px 12px;
+  transition: color 0.2s ease;
+  padding: 8px 16px;
   border-radius: 20px;
 }
 
 .navItem.active {
-  color: var(--accent-primary);
-  text-shadow: 0 0 10px var(--accent-primary-glow);
-}
-
-/* Mood Selector - Responsive visibility */
-.moodSelector {
-  position: absolute;
-  top: 100px;
-  left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  z-index: 90;
-}
-
-@media (min-width: 1024px) {
-  .moodSelector {
-    left: calc(50% - 350px); /* Positioned relative to centered feed */
-  }
-}
-
-.moodPill {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  background: rgba(18, 20, 24, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 30px;
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.moodActive {
-  background: var(--accent-primary);
-  color: var(--bg-deep) !important;
-  box-shadow: 0 0 20px var(--accent-primary-glow);
-}
-
-/* Speed Indicator Overlay */
-.speedOverlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(8px);
-  padding: 30px 40px;
-  border-radius: 24px;
-  border: 1px solid var(--accent-primary);
-  color: var(--accent-primary);
-  opacity: 0;
-  scale: 0.8;
-  z-index: 1000;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.speedVisible {
-  opacity: 1;
-  scale: 1;
-}
-
-/* Mood Hint Toast */
-.moodHint {
-  position: absolute;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-panel);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--accent-primary);
-  padding: 12px 24px;
-  border-radius: 40px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  z-index: 200;
   color: #fff;
-  opacity: 0;
-  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-weight: 700;
 }
 
-.moodHintVisible {
-  opacity: 1;
-  top: 100px;
-}
-
-/* Performance Overlay - Optional debug info */
-.perfOverlay {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  background: rgba(0,0,0,0.5);
-  padding: 4px 8px;
-  border-radius: 4px;
-  color: rgba(255,255,255,0.4);
-  font-size: 0.65rem;
-  font-family: monospace;
-  pointer-events: none;
-  z-index: 50;
-}
-
-@media (max-width: 1024px) {
-  .sidebar {
-    display: none;
-  }
-}
-
-@media (max-width: 600px) {
-  .topNav {
-    padding: 0 10px;
-    gap: 12px;
-  }
-  .navItem span {
-    display: none; /* Icon only on small mobile */
-  }
-}
-
-/* Floating Navigation Controls */
+/* Floating Navigation Controls — desktop only */
 .navControls {
   position: absolute;
   right: 40px;
   bottom: 120px;
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 16px;
   z-index: 150;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 1025px) {
   .navControls {
-    right: 20px;
-    bottom: 200px;
+    display: flex;
   }
 }
 
@@ -253,31 +120,70 @@
   border-radius: 50%;
   background: rgba(18, 20, 24, 0.4);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
 }
 
 .navBtn:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: var(--accent-primary);
   color: var(--accent-primary);
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 229, 255, 0.2);
 }
 
-.navBtn:active {
-  transform: scale(0.9);
+.offlineBanner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(255,80,80,0.92);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  animation: slideDown 0.3s ease;
 }
 
-@media (max-width: 600px) {
-  .navControls {
-    display: none;
-  }
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/* Mood suggestion hint */
+.moodHint {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(18, 20, 24, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 30px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  white-space: nowrap;
+}
+
+.moodHintVisible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
 }

@@ -167,9 +167,7 @@ const AdminChallenges = ({ token, setToken, theme, toggleTheme }) => {
                              <button onClick={() => navigate('/dashboard')} className="btn btn-ghost">
                                 Dashboard
                             </button>
-                             <button onClick={() => navigate('/approvals')} className="btn btn-ghost">
-                                Review Queue
-                            </button>
+
                              <button className="btn btn-primary" onClick={openCreateModal}>
                                 <Plus size={18} /> New Challenge
                             </button>

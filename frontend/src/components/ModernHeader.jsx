@@ -100,7 +100,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                 <button className={s.menuBtn} onClick={onMenuToggle}>
                     <Menu size={24} />
                 </button>
-                <div className={s.logo} onClick={() => navigate('/')}>
+                <div className={s.logo} onClick={() => navigate('/home')}>
                     <img src={logo} alt="Monteeq" className={s.logoImg} />
                     <span className={s.brandName}>MONTEEQ</span>
                 </div>

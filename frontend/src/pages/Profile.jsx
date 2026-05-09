@@ -134,7 +134,7 @@ const Profile = () => {
     if (!profile) return (
         <div className={styles.emptyState}>
             <h2>User not found</h2>
-            <button className={styles.btnSecondary} onClick={() => navigate('/')}>Return Home</button>
+            <button className={styles.btnSecondary} onClick={() => navigate('/home')}>Return Home</button>
         </div>
     );
 

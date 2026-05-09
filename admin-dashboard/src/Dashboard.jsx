@@ -134,9 +134,7 @@ const Dashboard = ({ token, setToken, theme, toggleTheme }) => {
                              <button onClick={() => navigate('/challenges')} className="btn btn-ghost">
                                 <Trophy size={18} /> Challenges
                             </button>
-                              <button onClick={() => navigate('/approvals')} className="btn btn-primary">
-                                <Video size={18} /> Review Queue
-                            </button>
+
                             <button onClick={handleLogout} className="btn btn-outline" style={{ padding: '8px' }}>
                                 <LogOut size={18} />
                             </button>

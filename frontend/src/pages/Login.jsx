@@ -23,7 +23,7 @@ const Login = () => {
         setIsLoading(true);
         try {
             await login({ username, password });
-            navigate('/');
+            navigate('/home');
         } catch (err) {
             setError(err.response?.data?.detail || 'Invalid username or password');
         } finally {
@@ -151,7 +151,7 @@ const Login = () => {
                                                 onSuccess={res => {
                                                     setIsLoading(true);
                                                     googleLogin(res.credential)
-                                                        .then(() => navigate('/'))
+                                                        .then(() => navigate('/home'))
                                                         .catch(err => {
                                                             setError(err.response?.data?.detail || 'Google Login Failed');
                                                             setIsLoading(false);

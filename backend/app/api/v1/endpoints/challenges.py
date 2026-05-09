@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -14,6 +15,8 @@ from app.core.storage import storage
 from app.crud import video as crud_video
 from app.tasks.video_tasks import process_video_task
 from app.services.challenge_service import resolve_expired_challenges
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -73,11 +76,17 @@ async def enter_challenge(
     if existing_entry:
         raise HTTPException(status_code=400, detail="You have already entered this challenge")
 
-    # Handle Video Upload (Reusing logic from videos.py)
-    temp_dir = tempfile.mkdtemp()
-    temp_file_path = os.path.join(temp_dir, file.filename)
-    with open(temp_file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Handle Video Upload
+    import uuid
+    task_id = str(uuid.uuid4())
+    source_key = f"raw/{task_id}_{file.filename}"
+    
+    try:
+        # Upload to storage (S3/GCS/Local)
+        storage.upload_file_obj(file.file, source_key)
+    except Exception as e:
+        logger.error(f"Failed to upload challenge video to storage: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload video to storage")
 
     # Initial DB record for Video
     video_create_data = schemas.VideoCreate(
@@ -87,7 +96,7 @@ async def enter_challenge(
         video_type="home", # Challenges use home-style videos
         video_url="", 
         thumbnail_url="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=60",
-        processing_key=os.path.basename(temp_dir)
+        processing_key=task_id
     )
     
     # Update quota if applicable
@@ -112,12 +121,12 @@ async def enter_challenge(
 
     # Start background processing
     process_video_task.delay(
-        temp_file_path,
+        source_key,
         "home",
         title,
         db_video.id,
         False, # No custom thumbnail provided
-        db_video.processing_key
+        task_id
     )
 
     return db_entry

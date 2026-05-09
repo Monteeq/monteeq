@@ -77,7 +77,7 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose }) => {
     const handleEdit = async (commentId, content) => {
         try {
             await updateComment({ videoId, postId, commentId, content }, token);
-            
+
             // Recursive update to handle top-level and nested replies
             const updateList = (list) => list.map(c => {
                 if (c.id === commentId) return { ...c, content };
@@ -93,7 +93,7 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose }) => {
     const handleDelete = async (commentId) => {
         try {
             await deleteComment({ videoId, postId, commentId }, token);
-            
+
             // Recursive delete to handle top-level and nested replies
             const filterList = (list) => list.filter(c => c.id !== commentId).map(c => {
                 if (c.replies) return { ...c, replies: filterList(c.replies) };
@@ -111,7 +111,7 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose }) => {
                 <div className="comments-header">
                     <h3>{totalCount} Comments</h3>
                     <button className="close-btn" onClick={onClose}>
-                        <X size={28} />
+                        <X size={22} />
                     </button>
                 </div>
 

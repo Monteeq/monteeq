@@ -1,21 +1,44 @@
 /**
  * DesktopSidebar.jsx
  * Category-focused sidebar with Home navigation and branding.
+ * Categories are now fetched dynamically from the backend.
  */
 import React from 'react';
-import { Film, Trophy, Gamepad2, Crosshair, Sparkles, Hash, Home, Flame, Star, Users } from 'lucide-react';
+import { Film, Trophy, Gamepad2, Crosshair, Sparkles, Hash, Home, Flame, Star, Users, Music, Smile, Dumbbell, UtensilsCrossed, Shirt, Palette, Footprints, Car, Trees, Cpu, Zap, GraduationCap, Swords } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const DesktopSidebar = ({ activeCategory, onSelectCategory, feedType, setFeedType }) => {
+// Map category names or icon_hint values to lucide icons
+const ICON_MAP = {
+    football: Trophy,
+    anime: Sparkles,
+    gaming: Gamepad2,
+    amv: Film,
+    music: Music,
+    comedy: Smile,
+    fitness: Dumbbell,
+    cooking: UtensilsCrossed,
+    fashion: Shirt,
+    art: Palette,
+    dance: Footprints,
+    basketball: Trophy,
+    boxing: Swords,
+    cars: Car,
+    nature: Trees,
+    tech: Cpu,
+    motivation: Zap,
+    education: GraduationCap,
+    tactical: Crosshair,
+};
+
+const getIconForCategory = (cat) => {
+    // Try icon_hint first, then name, fallback to Hash
+    if (cat.icon_hint && ICON_MAP[cat.icon_hint]) return ICON_MAP[cat.icon_hint];
+    if (ICON_MAP[cat.name]) return ICON_MAP[cat.name];
+    return Hash;
+};
+
+const DesktopSidebar = ({ activeCategory, onSelectCategory, feedType, setFeedType, categories = [] }) => {
     const navigate = useNavigate();
-    
-    const categories = [
-        { id: 'amv', label: 'AMV', icon: Film },
-        { id: 'football', label: 'Football Edit', icon: Trophy },
-        { id: 'gaming', label: 'Gaming', icon: Gamepad2 },
-        { id: 'tactical', label: 'Tactical', icon: Crosshair },
-        { id: 'anime', label: 'Anime', icon: Sparkles },
-    ];
 
     const NavItem = ({ icon: Icon, label, onClick, active, isHome = false }) => (
         <div 
@@ -99,23 +122,27 @@ const DesktopSidebar = ({ activeCategory, onSelectCategory, feedType, setFeedTyp
                 <NavItem icon={Users} label="Following" onClick={() => setFeedType('following')} active={feedType === 'following'} />
             </nav>
 
-            {/* Categories Section */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 10px', color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', fontWeight: '900', letterSpacing: '1px' }}>
-                <Hash size={12} />
-                <span>CATEGORIES</span>
-            </div>
+            {/* Dynamic Categories Section */}
+            {categories.length > 0 && (
+                <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 10px', color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', fontWeight: '900', letterSpacing: '1px' }}>
+                        <Hash size={12} />
+                        <span>CATEGORIES</span>
+                    </div>
 
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {categories.map(cat => (
-                    <NavItem 
-                        key={cat.id} 
-                        icon={cat.icon} 
-                        label={cat.label} 
-                        onClick={() => onSelectCategory(cat.id)}
-                        active={activeCategory === cat.id} 
-                    />
-                ))}
-            </nav>
+                    <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {categories.map(cat => (
+                            <NavItem 
+                                key={cat.id} 
+                                icon={getIconForCategory(cat)} 
+                                label={cat.display_name} 
+                                onClick={() => onSelectCategory(cat.name)}
+                                active={activeCategory === cat.name} 
+                            />
+                        ))}
+                    </nav>
+                </>
+            )}
             </div>
 
             {/* Premium Footer Info */}

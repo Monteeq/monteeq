@@ -222,6 +222,48 @@
   transition: background 0.8s ease;
 }
 
+/* Error Overlay */
+.videoErrorOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  z-index: 100;
+  text-align: center;
+  padding: 2rem;
+}
+
+.videoErrorOverlay p {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.retryBtn {
+  background: #ff3b30;
+  border: none;
+  padding: 0.8rem 2rem;
+  border-radius: 12px;
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.retryBtn:hover {
+  transform: scale(1.05);
+}
+
+/* Theater Mode Styling */
+.v2Wrapper.theater {
+  border-radius: 0;
+  max-height: 80vh;
+}
+
 /* Mobile Optimizations */
 @media (max-width: 768px) {
   .v2Wrapper {

@@ -128,19 +128,8 @@ export const promoteUser = async (userId, isPremium, token) => {
     return response.data;
 };
 
-export const getPendingVideos = async (token) => {
-    const response = await api.get('/videos/?status=pending', {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-    return response.data;
-};
 
-export const updateVideoStatus = async (videoId, status, token) => {
-    const response = await api.put(`/videos/${videoId}/status?status=${status}`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-    });
-    return response.data;
-};
+
 export const getStorageMode = async (token) => {
     const response = await api.get('/admin/settings/storage-mode', {
         headers: { Authorization: `Bearer ${token}` }

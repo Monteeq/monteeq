@@ -32,8 +32,8 @@ const Upload = () => {
     const navigate = useNavigate();
     const { showNotification } = useNotification();
 
-    // Workflow State: 'select' | 'details' | 'success'
-    const [step, setStep] = useState('select');
+    // Workflow State: 'type' | 'select' | 'details' | 'success'
+    const [step, setStep] = useState('type');
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [processingStatus, setProcessingStatus] = useState(null); // 'uploading' | 'processing' | 'done'
@@ -205,9 +205,9 @@ const Upload = () => {
             fontFamily: "'Inter', sans-serif"
         }}>
             {/* Header */}
-            <div style={{
+            <div className="studio-header" style={{
                 maxWidth: '1200px',
-                margin: '0 auto 2rem',
+                margin: '0 auto',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between'
@@ -225,9 +225,9 @@ const Upload = () => {
                     }}>
                         <Sparkles size={20} color="white" />
                     </div>
-                    <div>
-                        <h1 style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.5px' }}>Monteeq Studio</h1>
-                        <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>CONTENT PUBLISHING ENGINE</p>
+                    <div className="title-container">
+                        <h1 style={{ fontWeight: 900, letterSpacing: '-0.5px' }}>Monteeq Studio</h1>
+                        <p style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>CONTENT PUBLISHING ENGINE</p>
                     </div>
                 </div>
 
@@ -246,12 +246,84 @@ const Upload = () => {
                         gap: '0.5rem'
                     }}
                 >
-                    <Layout size={18} /> Manage Content
+                    <Layout size={18} /> <span className="manage-btn-text">Manage Content</span>
                 </button>
             </div>
 
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                {step === 'select' ? (
+                {step === 'type' ? (
+                    /* STEP 0: CHOOSE TYPE */
+                    <div className="glass-morphism" style={{
+                        padding: 'clamp(3rem, 10vw, 6rem) 1.5rem',
+                        borderRadius: 'clamp(24px, 5vw, 40px)',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '3rem',
+                        background: 'radial-gradient(circle at center, rgba(255,62,62,0.05) 0%, transparent 70%)'
+                    }}>
+                        <div>
+                            <h2 style={{ fontSize: 'clamp(1.5rem, 5vw, 2.5rem)', fontWeight: 900, marginBottom: '0.5rem' }}>What do you want to create?</h2>
+                            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'clamp(0.9rem, 2vw, 1.1rem)' }}>Select the type of content you want to publish</p>
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
+                            <div 
+                                onClick={() => setStep('select')}
+                                className="type-card"
+                                style={{
+                                    flex: '1 1 250px',
+                                    maxWidth: '350px',
+                                    padding: '3rem 2rem',
+                                    borderRadius: '24px',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: '1.5rem'
+                                }}
+                            >
+                                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,62,62,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(255,62,62,0.2)' }}>
+                                    <Video size={40} color="var(--accent-primary)" />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Video</h3>
+                                    <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)' }}>Upload a Home Video or Flash Clip</p>
+                                </div>
+                            </div>
+                            
+                            <div 
+                                onClick={() => navigate('/create-post')}
+                                className="type-card"
+                                style={{
+                                    flex: '1 1 250px',
+                                    maxWidth: '350px',
+                                    padding: '3rem 2rem',
+                                    borderRadius: '24px',
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: '1.5rem'
+                                }}
+                            >
+                                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Layout size={40} color="white" />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Post</h3>
+                                    <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.5)' }}>Share your thoughts and ideas</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : step === 'select' ? (
                     /* STEP 1: SELECT FILE */
                     <div className="glass-morphism" style={{
                         padding: 'clamp(3rem, 10vw, 6rem) 1.5rem',
@@ -329,6 +401,7 @@ const Upload = () => {
                                         <Type style={{ position: 'absolute', left: '1.2rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3 }} size={18} />
                                         <input
                                             type="text"
+                                            className="studio-input"
                                             value={title}
                                             onChange={(e) => setTitle(e.target.value)}
                                             style={{
@@ -352,6 +425,7 @@ const Upload = () => {
                                     <div style={{ position: 'relative' }}>
                                         <AlignLeft style={{ position: 'absolute', left: '1.2rem', top: '1.5rem', opacity: 0.3 }} size={18} />
                                         <textarea
+                                            className="studio-input"
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
                                             style={{
@@ -378,6 +452,7 @@ const Upload = () => {
                                             <Tag style={{ position: 'absolute', left: '1.2rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.3 }} size={18} />
                                             <input
                                                 type="text"
+                                                className="studio-input"
                                                 value={tags}
                                                 onChange={(e) => setTags(e.target.value)}
                                                 style={{
@@ -526,22 +601,22 @@ const Upload = () => {
 
                                     <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '0.8rem' }}>
-                                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: progress > 0 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div className={processingStatus === 'uploading' ? 'active-pulse' : ''} style={{ width: '20px', height: '20px', borderRadius: '50%', background: progress > 0 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>
                                                 {progress === 100 ? <CheckCircle2 size={12} /> : <div style={{ fontSize: '10px' }}>1</div>}
                                             </div>
-                                            <span style={{ opacity: progress > 0 ? 1 : 0.4 }}>Upload to Monteeq Cloud</span>
+                                            <span style={{ opacity: progress > 0 ? 1 : 0.4, transition: 'all 0.3s ease' }}>Upload to Monteeq Cloud</span>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '0.8rem' }}>
-                                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: processingStatus === 'processing' || processingStatus === 'done' ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div className={processingStatus === 'processing' ? 'active-pulse' : ''} style={{ width: '20px', height: '20px', borderRadius: '50%', background: processingStatus === 'processing' || processingStatus === 'done' ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>
                                                 {processingStatus === 'done' ? <CheckCircle2 size={12} /> : <div style={{ fontSize: '10px' }}>2</div>}
                                             </div>
-                                            <span style={{ opacity: processingStatus === 'processing' || processingStatus === 'done' ? 1 : 0.4 }}>Edge Transcoding (HD/4K)</span>
+                                            <span style={{ opacity: processingStatus === 'processing' || processingStatus === 'done' ? 1 : 0.4, transition: 'all 0.3s ease' }}>Edge Transcoding (HD/4K)</span>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '0.8rem' }}>
-                                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: processingStatus === 'done' ? '#4ade80' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: processingStatus === 'done' ? '#4ade80' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease' }}>
                                                 {processingStatus === 'done' ? <CheckCircle2 size={12} /> : <div style={{ fontSize: '10px' }}>3</div>}
                                             </div>
-                                            <span style={{ opacity: processingStatus === 'done' ? 1 : 0.4 }}>Publish & Distribution</span>
+                                            <span style={{ opacity: processingStatus === 'done' ? 1 : 0.4, transition: 'all 0.3s ease' }}>Publish & Distribution</span>
                                         </div>
                                     </div>
                                 </div>
@@ -576,17 +651,15 @@ const Upload = () => {
                                         <button
                                             disabled={!title || uploading}
                                             onClick={startUpload}
+                                            className="publish-btn"
                                             style={{
                                                 width: '100%',
                                                 padding: '1.5rem',
                                                 borderRadius: '20px',
-                                                background: uploading ? 'rgba(255,255,255,0.1)' : 'white',
-                                                color: 'black',
                                                 fontWeight: 900,
                                                 fontSize: '1.1rem',
                                                 border: 'none',
                                                 cursor: uploading ? 'default' : 'pointer',
-                                                transition: 'all 0.3s ease',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
@@ -653,23 +726,80 @@ const Upload = () => {
                 __html: `
                 .studio-upload-page {
                     animation: fadeIn 0.5s ease-out;
+                    padding: 1rem;
+                }
+                .studio-header {
+                    margin-bottom: 1.5rem;
                 }
                 .studio-grid {
-                    grid-template-columns: 1fr 400px;
+                    grid-template-columns: 1fr;
                 }
-                @media (max-width: 1024px) {
+                
+                /* Mobile-First Adjustments */
+                .manage-btn-text { display: none; }
+                .title-container h1 { font-size: 1.2rem !important; }
+                .title-container p { font-size: 0.7rem !important; }
+                
+                .glass-morphism {
+                    background: rgba(255, 255, 255, 0.03);
+                    backdrop-filter: blur(24px);
+                    -webkit-backdrop-filter: blur(24px);
+                }
+                
+                .studio-input {
+                    transition: all 0.3s ease;
+                }
+                .studio-input:focus {
+                    outline: none;
+                    border-color: var(--accent-primary) !important;
+                    box-shadow: 0 0 15px rgba(255, 62, 62, 0.2);
+                    background: rgba(255,255,255,0.06) !important;
+                }
+                
+                .publish-btn {
+                    transition: all 0.3s ease;
+                    background: linear-gradient(135deg, var(--accent-primary), hsl(345, 100%, 60%)) !important;
+                    color: white !important;
+                }
+                .publish-btn:hover:not(:disabled) {
+                    transform: scale(1.02);
+                    box-shadow: 0 0 30px rgba(255, 62, 62, 0.4) !important;
+                }
+                .publish-btn:active:not(:disabled) {
+                    transform: scale(0.98);
+                }
+                .publish-btn:disabled {
+                    background: rgba(255,255,255,0.1) !important;
+                    color: rgba(255,255,255,0.4) !important;
+                    box-shadow: none !important;
+                }
+                
+                .type-card {
+                    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+                }
+                .type-card:hover {
+                    transform: translateY(-5px);
+                    background: rgba(255,255,255,0.06) !important;
+                    border-color: rgba(255,255,255,0.2) !important;
+                }
+
+                @media (min-width: 768px) {
+                    .studio-upload-page { padding: 2rem; }
+                    .manage-btn-text { display: inline; }
+                    .title-container h1 { font-size: 1.5rem !important; }
+                    .title-container p { font-size: 0.8rem !important; }
+                    .studio-header { margin-bottom: 2rem; }
+                }
+
+                @media (min-width: 1024px) {
                     .studio-grid {
-                        grid-template-columns: 1fr;
+                        grid-template-columns: 1fr 400px;
                     }
                 }
+
                 @keyframes fadeIn {
                     from { opacity: 0; transform: translateY(10px); }
                     to { opacity: 1; transform: translateY(0); }
-                }
-                .glass-morphism {
-                    background: rgba(255, 255, 255, 0.03);
-                    backdrop-filter: blur(20px);
-                    -webkit-backdrop-filter: blur(20px);
                 }
                 .spin {
                     animation: spin 1s linear infinite;
@@ -685,13 +815,15 @@ const Upload = () => {
                     0%, 100% { transform: scale(1); opacity: 1; }
                     50% { transform: scale(1.1); opacity: 0.8; }
                 }
-                .hover-scale {
-                    transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+                .active-pulse {
+                    animation: activePulse 1.5s ease-in-out infinite;
                 }
-                .hover-scale:hover {
-                    transform: scale(1.02);
+                @keyframes activePulse {
+                    0% { box-shadow: 0 0 0 0 rgba(255, 62, 62, 0.4); }
+                    70% { box-shadow: 0 0 0 10px rgba(255, 62, 62, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(255, 62, 62, 0); }
                 }
-            `}} />
+                `}} />
         </div>
     );
 };

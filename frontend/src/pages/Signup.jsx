@@ -143,7 +143,7 @@ const Signup = () => {
             if (!response.ok) throw new Error(data.detail || 'Verification failed');
 
             await login({ username, password });
-            navigate('/');
+            navigate('/home');
         } catch (err) {
             setError(err.message || 'Verification failed');
         } finally {
@@ -302,7 +302,7 @@ const Signup = () => {
                                         onSuccess={res => {
                                             setIsLoading(true);
                                             googleLogin(res.credential)
-                                                .then(() => navigate('/'))
+                                                .then(() => navigate('/home'))
                                                 .catch(err => {
                                                     setError(err.response?.data?.detail || 'Google Signup Failed');
                                                     setIsLoading(false);

@@ -71,7 +71,7 @@ const AdminPortal = () => {
                                 Access Denied. Your account (<strong>@{user.username}</strong>) does not have the required administrative privileges to access this portal.
                             </p>
                             <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button className="glass" onClick={() => navigate('/')} style={{ flex: 1, padding: '1rem', borderRadius: '12px', cursor: 'pointer', color: 'white' }}>
+                                <button className="glass" onClick={() => navigate('/home')} style={{ flex: 1, padding: '1rem', borderRadius: '12px', cursor: 'pointer', color: 'white' }}>
                                     Back to Home
                                 </button>
                                 <button className="hero-btn" onClick={() => navigate('/login')} style={{ flex: 1 }}>
@@ -101,7 +101,7 @@ const AdminPortal = () => {
                                 Launch Admin Console <ExternalLink size={18} />
                             </button>
                             
-                            <button className="auth-link" onClick={() => navigate('/')} style={{ background: 'none', border: 'none', marginTop: '1.5rem', opacity: 0.6 }}>
+                            <button className="auth-link" onClick={() => navigate('/home')} style={{ background: 'none', border: 'none', marginTop: '1.5rem', opacity: 0.6 }}>
                                 Stay on Main Site
                             </button>
                         </>

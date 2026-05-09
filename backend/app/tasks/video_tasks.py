@@ -73,30 +73,33 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
 
         except Exception as e:
             print(f"Error in background processing phase: {e}")
-            video = db.query(Video).filter(Video.id == video_id).first()
-            if video:
-                video.status = "failed"
-                video.failed_at = func.now()
-                owner = db.query(User).filter(User.id == video.owner_id).first()
-                if owner:
-                    if video.video_type == "flash":
-                        owner.flash_uploads = max(0, (owner.flash_uploads or 1) - 1)
-                    else:
-                        owner.home_uploads = max(0, (owner.home_uploads or 1) - 1)
-                db.commit()
             
-            # Cleanup cloud storage on failure
-            try:
-                logger.info(f"Cleaning up storage after failure for task {task_id}")
-                storage.delete_file(source_key)
-                storage.delete_prefix(f"videos/{task_id}/")
-            except Exception as cleanup_err:
-                logger.warning(f"Storage cleanup failed: {cleanup_err}")
+            # Only fail permanently if we've exhausted retries
+            if self.request.retries >= self.max_retries:
+                video = db.query(Video).filter(Video.id == video_id).first()
+                if video:
+                    video.status = "failed"
+                    video.failed_at = func.now()
+                    owner = db.query(User).filter(User.id == video.owner_id).first()
+                    if owner:
+                        if video.video_type == "flash":
+                            owner.flash_uploads = max(0, (owner.flash_uploads or 1) - 1)
+                        else:
+                            owner.home_uploads = max(0, (owner.home_uploads or 1) - 1)
+                    db.commit()
                 
-            # Only retry if we haven't hit the max — avoid infinite retry loops
-            if self.request.retries < self.max_retries:
+                # Cleanup cloud storage on final failure
+                try:
+                    logger.info(f"Cleaning up storage after final failure for task {task_id}")
+                    storage.delete_file(source_key)
+                    storage.delete_prefix(f"videos/{task_id}/")
+                except Exception as cleanup_err:
+                    logger.warning(f"Storage cleanup failed: {cleanup_err}")
+                
+                raise e
+            else:
+                logger.warning(f"Task {task_id} failed, retrying... ({self.request.retries}/{self.max_retries})")
                 raise self.retry(exc=e, countdown=60)
-            raise e
 
         # Phase 2: Post-processing (Updating DB URLs)
         # Note: Rust service now handles the upload of HLS files to GCS.
@@ -134,9 +137,9 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
             video.url_4k = url_4k
             video.duration = duration
             video.failed_at = None
-            # Keep status as pending so it stays in the Admin Review Queue
-            video.status = "pending"
-            video.processing_message = "Ready for review"
+            # Auto-approve: no admin review needed
+            video.status = "approved"
+            video.processing_message = "Live"
 
             # Only set thumbnail if a custom one wasn't provided during upload
             if not thumbnail_provided and thumbnail_url:
@@ -149,19 +152,14 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
                 notify_user_push(
                     db,
                     user_id=video.owner_id,
-                    title="Video Processed!",
-                    body=f"Your video '{title}' has been processed and is now under review.",
+                    title="Video Live! 🚀",
+                    body=f"Your video '{title}' has been processed and is now live!",
                     link=f"/profile",
                     n_type="status_change"
                 )
             except: pass
             
-            # Notify admins of the newly processed video
-            try:
-                from app.tasks.email_tasks import queue_new_video_admin_alert
-                queue_new_video_admin_alert.delay(video_id)
-            except Exception as e:
-                logger.error(f"Failed to queue admin alert: {e}")
+
             
             # Phase 3: Cleanup
             try:
@@ -173,10 +171,20 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
             return {"status": "success", "video_id": video_id}
 
     except Exception as e:
-        # Notify user of failure
+        # Notify user of failure and set status
         try:
              video = db.query(Video).filter(Video.id == video_id).first()
              if video:
+                 video.status = "failed"
+                 video.failed_at = func.now()
+                 owner = db.query(User).filter(User.id == video.owner_id).first()
+                 if owner:
+                     if video.video_type == "flash":
+                         owner.flash_uploads = max(0, (owner.flash_uploads or 1) - 1)
+                     else:
+                         owner.home_uploads = max(0, (owner.home_uploads or 1) - 1)
+                 db.commit()
+
                  notify_user_push(
                      db, 
                      user_id=video.owner_id, 
@@ -190,11 +198,8 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
                  logger.info(f"Cleaning up storage after phase 2 failure for task {task_id}")
                  storage.delete_file(source_key)
                  storage.delete_prefix(f"videos/{task_id}/")
-                 # If the video had a custom thumbnail, we don't delete it yet 
-                 # because the user might want to retry with it, but usually 
-                 # we only delete generated content.
         except: pass
-    
+
         print(f"Error in post-processing: {e}")
         raise e
     finally:

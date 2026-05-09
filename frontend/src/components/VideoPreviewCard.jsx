@@ -110,7 +110,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                     )}
 
                     {/* Duration Badge */}
-                    {video.status === 'approved' && video.duration > 0 && (
+                    {video.duration > 0 && (
                         <div className="vc-duration">
                             {formatDuration(video.duration)}
                         </div>

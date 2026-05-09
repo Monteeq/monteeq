@@ -258,7 +258,7 @@ const ManageContent = () => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '4px' }}>
                                         <h3 style={{ fontSize: '1rem' }}>{video.title}</h3>
                                         {video.status === 'failed' && <span style={{ background: '#ff3e3e', color: 'white', padding: '2px 8px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700 }}>FAILED</span>}
-                                        {video.status === 'pending' && <span style={{ background: '#f59e0b', color: 'black', padding: '2px 8px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700 }}>PROCESSING</span>}
+                                        {video.status === 'pending' && <span className="pulse-soft" style={{ background: '#f59e0b', color: 'black', padding: '2px 8px', borderRadius: '99px', fontSize: '0.7rem', fontWeight: 700 }}>PROCESSING</span>}
                                     </div>
                                     <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                         <span>{video.views} views</span>

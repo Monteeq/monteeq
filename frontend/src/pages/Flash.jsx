@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { likeVideo } from '../api';
+import { likeVideo, shareVideo, getCategories, getCategoryVideos } from '../api';
 import FlashCard from '../components/FlashCard';
 import AmbientBackdrop from '../components/AmbientBackdrop';
 import DesktopSidebar from '../components/DesktopSidebar';
@@ -53,21 +53,24 @@ const Flash = () => {
     // ── Adaptive engine state ─────────────────────────────────────────────────
     const [tier, setTier] = useState(adaptiveEngine.getTier());
     const [layerResponse, setLayerResponse] = useState({ tier: 0 });
-    const [is2x, setIs2x] = useState(false);
     const [scrollVelocity, setScrollVelocity] = useState(0);
 
     // ── Navigation / filtering state ──────────────────────────────────────────
     const [feedType, setFeedType] = useState('foryou');
     const [activeCategory, setActiveCategory] = useState('');
+    const [categories, setCategories] = useState([]);
 
-    /**
-     * Selecting a feed type (For You / Trending / Following) clears any active
-     * category filter so the recommendation engine runs unconstrained.
-     */
     const handleFeedTypeChange = (type) => {
         setFeedType(type);
         setActiveCategory('');
     };
+
+    // Fetch dynamic categories on mount
+    useEffect(() => {
+        getCategories().then(cats => {
+            if (Array.isArray(cats)) setCategories(cats);
+        }).catch(() => {});
+    }, []);
 
     // ── Layout ────────────────────────────────────────────────────────────────
     const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
@@ -79,20 +82,24 @@ const Flash = () => {
     const layerResponseRef = useRef(layerResponse);
     layerResponseRef.current = layerResponse;
 
+    // Stable refs for values used inside keydown handler (avoids re-registering listeners)
+    const mutedRef = useRef(muted);
+    mutedRef.current = muted;
+    const activeVideoIdRef = useRef(activeVideoId);
+    activeVideoIdRef.current = activeVideoId;
+    const activeCommentVideoIdRef = useRef(activeCommentVideoId);
+    activeCommentVideoIdRef.current = activeCommentVideoId;
+
     // Touch swipe tracking
     const touchStartY = useRef(null);
     const touchStartX = useRef(null);
-    const SWIPE_THRESHOLD = 40; // min px vertical movement to count as a swipe
+    const SWIPE_THRESHOLD = 40; 
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Initialise token in trackingManager whenever it changes
     // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
         trackingManager.setToken(token || null);
     }, [token]);
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Adaptive engine + resize + online/offline watcher
     // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
         const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
@@ -102,23 +109,70 @@ const Flash = () => {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
         adaptiveEngine.startMonitoring(newTier => setTier(newTier));
+
+        const handleKeyDown = (e) => {
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+            switch (e.key.toLowerCase()) {
+                case 'arrowup':
+                case 'w':
+                    e.preventDefault();
+                    scrollPrev();
+                    break;
+                case 'arrowdown':
+                case 's':
+                    e.preventDefault();
+                    scrollNext();
+                    break;
+                case ' ':
+                case 'k': {
+                    e.preventDefault();
+                    const vid = activeVideoIdRef.current;
+                    const activeCard = document.querySelector(`.${s.cardContainer}[data-id="${vid}"]`);
+                    if (activeCard) {
+                        const wrapper = activeCard.querySelector('[class*="videoWrapper"]');
+                        if (wrapper) wrapper.click();
+                    }
+                    break;
+                }
+                case 'm':
+                    e.preventDefault();
+                    setMuted(prev => !prev);
+                    break;
+                case 'l':
+                    e.preventDefault();
+                    if (activeVideoIdRef.current) handleLike(activeVideoIdRef.current);
+                    break;
+                case 'c':
+                    e.preventDefault();
+                    if (activeCommentVideoIdRef.current) {
+                        setActiveCommentVideoId(null);
+                    } else if (activeVideoIdRef.current) {
+                        setActiveCommentVideoId(activeVideoIdRef.current);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
         return () => {
             window.removeEventListener('resize', handleResize);
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
+            window.removeEventListener('keydown', handleKeyDown);
             adaptiveEngine.stopMonitoring();
         };
-    }, []);
+    }, []); // Stable — uses refs for mutable values
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // feedManager: configure + register prefetch callback
     // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
         feedManager.configure({ token, videoType: 'flash', mood: activeCategory });
     }, [token, activeCategory, feedType]);
 
     useEffect(() => {
-        // When feedManager pre-fetches more clips in the background, append them
         const unsubscribe = feedManager.onPrefetch(newVideos => {
             setClips(prev => {
                 const fresh = dedupeById(prev, formatClips(newVideos, layerResponseRef.current));
@@ -131,10 +185,29 @@ const Flash = () => {
     }, []);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Initial fetch — stale-while-revalidate for instant cold load
-    // ─────────────────────────────────────────────────────────────────────────
     const fetchInitialFeed = useCallback(async () => {
         setLoading(true);
+
+        // If a category is active, use semantic category endpoint
+        if (activeCategory) {
+            try {
+                const raw = await getCategoryVideos(activeCategory, 'flash', 30);
+                if (Array.isArray(raw) && raw.length > 0) {
+                    const formatted = formatClips(raw, layerResponseRef.current);
+                    setClips(formatted);
+                    setActiveVideoId(formatted[0].id);
+                } else {
+                    setClips([]);
+                }
+            } catch (err) {
+                console.error('[Flash] Category fetch failed:', err.message);
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
+        // Normal feed flow
         feedManager.configure({ 
             token, 
             videoType: 'flash', 
@@ -142,7 +215,6 @@ const Flash = () => {
             feedType 
         });
 
-        // Show stale cache immediately, then silently update with fresh data
         const stale = feedManager.fetchWithStaleWhileRevalidate((freshVideos) => {
             const formatted = formatClips(freshVideos, layerResponseRef.current);
             setClips(formatted);
@@ -150,13 +222,11 @@ const Flash = () => {
         });
 
         if (stale && stale.length > 0) {
-            // Instant render from cache — hide the loading skeleton immediately
             const formatted = formatClips(stale, layerResponseRef.current);
             setClips(formatted);
             setActiveVideoId(formatted[0].id);
             setLoading(false);
         } else {
-            // No cache — wait for real data
             try {
                 const raw = await feedManager.fetchFeed(15, activeCategory);
                 if (Array.isArray(raw) && raw.length > 0) {
@@ -172,14 +242,12 @@ const Flash = () => {
         }
 
         feedManager.resetConsumption();
-    }, [activeCategory, feedType, token]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [activeCategory, feedType, token]);
 
     useEffect(() => {
         fetchInitialFeed();
-    }, [feedType, activeCategory]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [feedType, activeCategory]); 
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Scroll velocity — used for render-buffer tuning
     // ─────────────────────────────────────────────────────────────────────────
     const handleScroll = (e) => {
         const now = Date.now();
@@ -190,9 +258,6 @@ const Flash = () => {
         lastScrollTime.current = now;
     };
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Swipe navigation — programmatically snap to next/prev card
-    // CSS snap alone is unreliable on low-end mobile; this guarantees it.
     // ─────────────────────────────────────────────────────────────────────────
     const handleTouchStart = (e) => {
         touchStartY.current = e.touches[0].clientY;
@@ -205,7 +270,6 @@ const Flash = () => {
         const deltaY = touchStartY.current - e.changedTouches[0].clientY;
         const deltaX = touchStartX.current - e.changedTouches[0].clientX;
 
-        // Ignore if horizontal swipe is dominant (could be category scroller etc.)
         if (Math.abs(deltaX) > Math.abs(deltaY)) {
             touchStartY.current = null;
             return;
@@ -222,8 +286,8 @@ const Flash = () => {
         const cardHeight = container.clientHeight;
         const currentIndex = Math.round(container.scrollTop / cardHeight);
         const targetIndex = deltaY > 0
-            ? Math.min(currentIndex + 1, clips.length - 1)  // swipe up → next
-            : Math.max(currentIndex - 1, 0);                // swipe down → prev
+            ? Math.min(currentIndex + 1, clips.length - 1)  
+            : Math.max(currentIndex - 1, 0);                
 
         container.scrollTo({
             top: targetIndex * cardHeight,
@@ -234,8 +298,6 @@ const Flash = () => {
     };
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Intersection observer — advances active video, tracks skip, triggers prefetch
-    // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
         if (loading || clips.length === 0) return;
 
@@ -245,19 +307,14 @@ const Flash = () => {
 
                 const id = parseInt(entry.target.getAttribute('data-id'), 10);
                 if (activeVideoId !== id) {
-                    // Adaptive layer: record skip for category-mood adaptation
                     setLayerResponse(adaptiveDiscovery.recordSkip(id, activeCategory));
-                    // Legacy metrics (kept for existing analytics pipeline)
                     metricsManager.trackSkip(id);
-                    // Advance active video
                     setActiveVideoId(id);
                 }
 
-                // Calculate remaining videos from this clip onward
                 const currentIndex = clips.findIndex(c => c.id === id);
                 const remaining = clips.length - currentIndex;
 
-                // Tell feedManager: auto-prefetches when remaining ≤ 7
                 feedManager.recordConsumption(remaining);
             });
         };
@@ -272,11 +329,8 @@ const Flash = () => {
     }, [loading, clips, activeVideoId, activeCategory]);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Derived state
-    // ─────────────────────────────────────────────────────────────────────────
     const visibleClips = useMemo(() => {
         const activeIndex = clips.findIndex(c => c.id === activeVideoId);
-        // Render fewer neighbours at high scroll velocity to avoid jank
         const buffer = scrollVelocity > 1.5 ? 3 : 1;
         return clips.map((clip, index) => ({
             ...clip,
@@ -287,14 +341,11 @@ const Flash = () => {
     const activeClip = useMemo(() => clips.find(c => c.id === activeVideoId), [clips, activeVideoId]);
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Handlers
-    // ─────────────────────────────────────────────────────────────────────────
     const handleLike = async (id) => {
         if (!token) {
             showNotification('Please log in to like videos', 'info');
             return;
         }
-        // Optimistic UI update
         setClips(prev => prev.map(c =>
             c.id === id
                 ? { ...c, liked: !c.liked, likes_count: c.liked ? c.likes_count - 1 : c.likes_count + 1 }
@@ -303,7 +354,6 @@ const Flash = () => {
         try {
             await likeVideo(id, token);
         } catch {
-            // Revert on failure
             setClips(prev => prev.map(c =>
                 c.id === id
                     ? { ...c, liked: !c.liked, likes_count: c.liked ? c.likes_count - 1 : c.likes_count + 1 }
@@ -313,40 +363,43 @@ const Flash = () => {
         }
     };
 
+    const handleShare = async (id) => {
+        const url = `${window.location.origin}/watch/${id}`;
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: 'Check this out on Monteeq', url });
+            } else {
+                await navigator.clipboard.writeText(url);
+                showNotification('Link copied to clipboard!', 'success');
+            }
+            shareVideo(id).catch(() => {});
+        } catch {}
+    };
+
     const scrollNext = () => containerRef.current?.scrollBy({ top: containerRef.current.clientHeight, behavior: 'smooth' });
     const scrollPrev = () => containerRef.current?.scrollBy({ top: -containerRef.current.clientHeight, behavior: 'smooth' });
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Render
-    // ─────────────────────────────────────────────────────────────────────────
     if (loading) return (
         <div className={s.container}>
-            {isDesktop && <DesktopSidebar activeCategory={activeCategory} onSelectCategory={setActiveCategory} feedType={feedType} setFeedType={handleFeedTypeChange} />}
+            {isDesktop && <DesktopSidebar activeCategory={activeCategory} onSelectCategory={setActiveCategory} feedType={feedType} setFeedType={handleFeedTypeChange} categories={categories} />}
             <div className={s.mainContent}><div className={s.feed}><FlashSkeleton /></div></div>
         </div>
     );
 
     return (
         <div className={s.container}>
-            {isDesktop && <DesktopSidebar activeCategory={activeCategory} onSelectCategory={setActiveCategory} feedType={feedType} setFeedType={handleFeedTypeChange} />}
+            {isDesktop && <DesktopSidebar activeCategory={activeCategory} onSelectCategory={setActiveCategory} feedType={feedType} setFeedType={handleFeedTypeChange} categories={categories} />}
 
             <div className={s.mainContent}>
                 <AmbientBackdrop videoThumbnail={activeClip?.thumbnail_url} tier={tier} />
 
-                {/* Offline banner — slides in from top when disconnected */}
                 {isOffline && (
-                    <div style={{
-                        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100,
-                        background: 'rgba(255,80,80,0.92)', backdropFilter: 'blur(8px)',
-                        color: '#fff', textAlign: 'center', padding: '0.5rem 1rem',
-                        fontSize: '0.82rem', fontWeight: 600, letterSpacing: '0.02em',
-                        animation: 'slideDown 0.3s ease',
-                    }}>
+                    <div className={s.offlineBanner}>
                         📡 You're offline — showing cached feed
                     </div>
                 )}
 
-                {/* Mood-switch hint toast */}
                 <div
                     className={`${s.moodHint} ${layerResponse.shouldSuggestMoodSwitch ? s.moodHintVisible : ''}`}
                     onClick={() => setActiveCategory(layerResponse.suggestedMood)}
@@ -355,7 +408,6 @@ const Flash = () => {
                     <span>Switching to {layerResponse.suggestedMood?.toUpperCase()}? ⚡</span>
                 </div>
 
-                {/* Top Nav — mobile only */}
                 {!isDesktop && (
                     <div className={s.topNav}>
                         <div className={`${s.navItem} ${feedType === 'foryou' ? s.active : ''}`} onClick={() => handleFeedTypeChange('foryou')}>
@@ -370,7 +422,6 @@ const Flash = () => {
                     </div>
                 )}
 
-                {/* Feed */}
                 <div
                     className={s.feed}
                     ref={containerRef}
@@ -396,10 +447,10 @@ const Flash = () => {
                                     isActive={activeVideoId === clip.id}
                                     onLike={handleLike}
                                     onComment={id => setActiveCommentVideoId(id)}
+                                    onShare={handleShare}
                                     muted={muted}
                                     toggleMute={() => setMuted(m => !m)}
                                     shouldRender={clip.shouldRender}
-                                    onSpeedChange={state => setIs2x(state)}
                                 />
                             </div>
                             {(index + 1) % 5 === 0 && !user?.is_premium && (
@@ -410,7 +461,6 @@ const Flash = () => {
                         </React.Fragment>
                     ))}
 
-                    {/* Loading-more indicator (shown when feedManager is prefetching) */}
                     {loadingMore && (
                         <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem', opacity: 0.5 }}>
                             <Zap size={24} className="animate-spin" />
@@ -418,21 +468,12 @@ const Flash = () => {
                     )}
                 </div>
 
-                {/* Floating nav controls */}
                 <div className={s.navControls}>
                     <button className={s.navBtn} onClick={scrollPrev}><ChevronUp size={28} /></button>
                     <button className={s.navBtn} onClick={scrollNext}><ChevronDown size={28} /></button>
-                    <div className={s.perfOverlay}>TIER: {tier}</div>
                 </div>
             </div>
 
-            {/* 2× speed overlay */}
-            <div className={`${s.speedOverlay} ${is2x ? s.speedVisible : ''}`}>
-                <Zap size={32} fill="var(--accent-primary)" />
-                <span>2X PLAYBACK</span>
-            </div>
-
-            {/* Comments drawer */}
             {activeCommentVideoId && (
                 <CommentsDrawer
                     videoId={activeCommentVideoId}

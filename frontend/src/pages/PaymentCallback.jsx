@@ -182,7 +182,7 @@ export default function PaymentCallback() {
                   </button>
                 )}
                 <button id="pcb-home" style={{ ...styles.btn, ...styles.btnGhost }}
-                  onClick={() => navigate('/')}>
+                  onClick={() => navigate('/home')}>
                   Back to Home
                 </button>
               </div>

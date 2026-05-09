@@ -25,7 +25,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy import desc, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.db.session import SessionLocal
 from app.models.models import (
@@ -208,8 +208,8 @@ def update_user_profile_background(
 # ─── Query helpers ────────────────────────────────────────────────────────────
 
 def _base_query(db: Session, video_type: str):
-    """Return a base query filtered to the given video_type and approved status."""
-    return db.query(Video).filter(
+    """Return a base query filtered to the given video_type, excluding failed videos."""
+    return db.query(Video).options(joinedload(Video.owner)).filter(
         Video.video_type == video_type,
         Video.status == "approved",
     )
@@ -319,6 +319,7 @@ def _trending_videos(
 
     base_query = (
         db.query(Video)
+        .options(joinedload(Video.owner))
         .join(trending_sub, Video.id == trending_sub.c.video_id)
         .filter(Video.video_type == video_type, Video.status == "approved")
         .order_by(desc(trending_sub.c.avg_completion))
@@ -439,14 +440,20 @@ def build_feed(
     history = _read_history(profile)
     prefer_short = get_skip_streak(user_id) >= 3
 
+    personal, trending, explore = [], [], []
+
     if feed_type == "trending":
-        feed = _trending_videos(db, video_type, history, limit)
+        trending = _trending_videos(db, video_type, history, limit)
+        feed = trending
     elif feed_type == "following":
         # For Following, we still use strict 'seen' list for now as variety is secondary to content
         seen_ids = [int(k) for k in history.keys()]
-        feed = _following_videos(db, user_id, video_type, seen_ids, limit)
-        if not feed:
-            feed = _trending_videos(db, video_type, history, limit)
+        personal = _following_videos(db, user_id, video_type, seen_ids, limit)
+        if not personal:
+            trending = _trending_videos(db, video_type, history, limit)
+            feed = trending
+        else:
+            feed = personal
     else:  # foryou
         n_personal = max(1, round(limit * FEED_SPLIT["personal"]))
         n_trending = max(1, round(limit * FEED_SPLIT["trending"]))

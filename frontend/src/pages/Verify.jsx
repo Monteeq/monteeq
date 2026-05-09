@@ -23,7 +23,7 @@ const Verify = () => {
         }
         // If already verified, redirect to home
         if (!loading && user?.is_verified) {
-            navigate('/');
+            navigate('/home');
         }
     }, [user, loading, navigate]);
 
@@ -48,7 +48,7 @@ const Verify = () => {
             if (updatedUser && !updatedUser.is_onboarded) {
                 navigate('/onboarding');
             } else {
-                navigate('/');
+                navigate('/home');
             }
         } catch (err) {
             setError(err.message || 'Verification failed');

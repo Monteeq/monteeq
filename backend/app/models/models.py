@@ -501,3 +501,22 @@ class PartnerLead(Base):
     details = Column(Text)
     status = Column(String, default="new") # "new", "contacted", "closed"
     created_at = Column(DateTime, default=func.now(), index=True)
+
+
+class DiscoveredCategory(Base):
+    """
+    Auto-discovered categories from video hashtags.
+    Only tags that pass the "meaningful" vetting filter and are approved
+    will be surfaced to users.
+    """
+    __tablename__ = "discovered_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)          # Lowercase canonical tag (e.g. "football")
+    display_name = Column(String)                            # Human-readable (e.g. "Football")
+    count = Column(Integer, default=0)                       # Number of approved videos using this tag
+    is_approved = Column(Boolean, default=False, index=True) # Only approved categories are shown
+    related_tags = Column(Text, default="")                  # Comma-separated similar tags for semantic matching
+    icon_hint = Column(String, nullable=True)                # Optional icon name hint (e.g. "trophy", "gamepad")
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

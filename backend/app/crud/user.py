@@ -159,8 +159,11 @@ def get_user_profile(db: Session, username: str, current_user_id: int = None):
     if current_user_id:
         is_following = db.query(Follow).filter(Follow.follower_id == current_user_id, Follow.followed_id == user_id).first() is not None
 
-    # Videos - Fetch all statuses (Pending, Approved, Failed) for user's own view
-    all_videos = db.query(Video).filter(Video.owner_id == user_id).all()
+    # Videos - Fetch only live (approved) videos for public, but all statuses for the owner
+    if current_user_id == user_id:
+        all_videos = db.query(Video).filter(Video.owner_id == user_id).all()
+    else:
+        all_videos = db.query(Video).filter(Video.owner_id == user_id, Video.status == "approved").all()
     videos = [v for v in all_videos if v.video_type == "home"]
     flash_videos = [v for v in all_videos if v.video_type == "flash"]
 

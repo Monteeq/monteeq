@@ -45,10 +45,7 @@ const MonetizationWidget = ({ video }) => {
             showNotification('info', "Please login to send tips.");
             return;
         }
-        if (video.status !== 'approved') {
-            showNotification('warning', "Monetization suspended", { message: "Tips will be enabled once the video is approved." });
-            return;
-        }
+
         setTipping(true);
         try {
             const res = await sendTip(video.owner_id || video.owner?.id, tipAmount, token);

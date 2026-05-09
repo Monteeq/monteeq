@@ -66,7 +66,7 @@ const CreatePost = () => {
 
             if (response.ok) {
                 showNotification('success', 'Post published successfully!');
-                navigate('/'); // Redirect to feed
+                navigate('/home'); // Redirect to feed
             } else {
                 const error = await response.json();
                 showNotification('error', error.detail || "Failed to publish post.");

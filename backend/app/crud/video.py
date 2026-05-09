@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc, text, or_
 from app.models.models import Video, Like, Comment, View, User, Post, SponsoredAd
 from app.schemas import schemas
@@ -7,7 +7,7 @@ from typing import Optional
 
 def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str = "approved", current_user_id: Optional[int] = None, skip: int = 0, limit: int = 100, mood: Optional[str] = None, feed_mode: Optional[str] = None):
     from app.models.models import Follow
-    query = db.query(Video)
+    query = db.query(Video).options(joinedload(Video.owner))
     from datetime import timedelta
     twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
     
@@ -20,8 +20,8 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
             query = query.filter(
                 or_(
                     Video.status == "approved",
-                    (Video.status == "failed") & (Video.failed_at >= twenty_four_hours_ago) & (Video.owner_id == current_user_id),
-                    (Video.status == "pending") & (Video.owner_id == current_user_id)
+                    (Video.status == "pending") & (Video.owner_id == current_user_id),
+                    (Video.status == "failed") & (Video.failed_at >= twenty_four_hours_ago) & (Video.owner_id == current_user_id)
                 )
             )
         else:
@@ -90,8 +90,18 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
     return videos
 
 def search_videos(db: Session, query_str: str, status: str = "approved", current_user_id: int = None):
-    query = db.query(Video)
-    if status:
+    query = db.query(Video).options(joinedload(Video.owner))
+    if status == "approved" and current_user_id:
+        from datetime import timedelta
+        twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
+        query = query.filter(
+            or_(
+                Video.status == "approved",
+                (Video.status == "pending") & (Video.owner_id == current_user_id),
+                (Video.status == "failed") & (Video.failed_at >= twenty_four_hours_ago) & (Video.owner_id == current_user_id)
+            )
+        )
+    elif status:
         query = query.filter(Video.status == status)
     
     if query_str:
@@ -155,7 +165,7 @@ def search_posts(db: Session, query_str: str, current_user_id: int = None):
     return posts
 
 def get_video(db: Session, video_id: int, current_user_id: int = None):
-    video = db.query(Video).filter(Video.id == video_id).first()
+    video = db.query(Video).options(joinedload(Video.owner)).filter(Video.id == video_id).first()
     if not video:
         return None
     
@@ -198,11 +208,7 @@ def toggle_like(db: Session, user_id: int, video_id: Optional[int] = None, post_
     else:
         return False
 
-    # Status Check: Only approved videos can be liked
-    if video_id:
-        target_video = db.query(Video).filter(Video.id == video_id).first()
-        if not target_video or target_video.status != "approved":
-            return False
+
 
     existing = query.first()
     if existing:
@@ -296,8 +302,6 @@ def increment_view(db: Session, user_id: Optional[int] = None, video_id: Optiona
     if video_id:
         target = db.query(Video).filter(Video.id == video_id).first()
         if target:
-            if target.status != "approved":
-                return target # Still return video so player doesn't crash, but don't increment views
 
             target.views = (target.views or 0) + 1
             db.commit()
@@ -334,11 +338,7 @@ def get_ads(db: Session):
     return db.query(SponsoredAd).filter(SponsoredAd.is_active == True).all()
 
 def create_comment(db: Session, comment: schemas.CommentBase, user_id: int, video_id: Optional[int] = None, post_id: Optional[int] = None):
-    # Status Check: Only approved videos can be commented on
-    if video_id:
-        v = db.query(Video).filter(Video.id == video_id).first()
-        if not v or v.status != "approved":
-            return None
+
 
     comment_data = comment.model_dump()
     db_comment = Comment(**comment_data, video_id=video_id, post_id=post_id, owner_id=user_id)

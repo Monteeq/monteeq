@@ -35,7 +35,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* ── DISCOVER ────────────────────────────────── */}
         <NavGroup label="Discover" show={isOpen} />
-        <NavItem to="/"         icon={<HomeIcon size={24} />}  label="Home"        onClick={onClose} />
+        <NavItem to="/home"     icon={<HomeIcon size={24} />}  label="Home"        onClick={onClose} />
         <NavItem to="/flash"    icon={<Zap size={24} />}       label="Flash Clips" onClick={onClose} />
         <NavItem to="/posts"    icon={<Layout size={24} />}    label="Feed"        onClick={onClose} />
         <NavItem to="/challenges" icon={<Trophy size={24} />}  label="Challenges"  onClick={onClose} accent="var(--accent-primary)" />
@@ -45,16 +45,10 @@ const Sidebar = ({ isOpen, onClose }) => {
         <NavItem
           to="/upload"
           icon={<UploadCloud size={24} strokeWidth={2.5} />}
-          label="Upload Video"
+          label="Create"
           onClick={onClose}
           accent="var(--accent-primary)"
           bold
-        />
-        <NavItem
-          to="/create-post"
-          icon={<Layout size={24} />}
-          label="Create Post"
-          onClick={onClose}
         />
         {token && (
           <NavItem to="/manage" icon={<Clapperboard size={24} />} label="Manage Content" onClick={onClose} />

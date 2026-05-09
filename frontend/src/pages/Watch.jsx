@@ -71,6 +71,7 @@ const Watch = () => {
     const [newComment, setNewComment] = useState("");
     const [loading, setLoading] = useState(true);
     const [isCinematic, setIsCinematic] = useState(false);
+    const [isTheaterMode, setIsTheaterMode] = useState(false);
     const [showDownloadModal, setShowDownloadModal] = useState(false);
 
     useEffect(() => {
@@ -137,6 +138,10 @@ const Watch = () => {
                         creator={video.owner?.username}
                         poster={video.thumbnail_url}
                         autoPlay={true}
+                        isTheaterMode={isTheaterMode}
+                        isCinematic={isCinematic}
+                        toggleTheaterMode={() => setIsTheaterMode(!isTheaterMode)}
+                        toggleCinematic={() => setIsCinematic(!isCinematic)}
                     />
                 </div>
 

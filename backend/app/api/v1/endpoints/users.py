@@ -513,7 +513,7 @@ def get_growth_intelligence(
     # 3. Retention: returning / total unique
     retention = min(100, int((returning_count / total_unique * 100) if total_unique > 0 else 0))
 
-    # 4. Frequency: total approved videos (20 = 100)
+    # 4. Frequency: total videos (20 = 100)
     frequency = min(100, int(total_videos / 20 * 100))
 
     # Composite (weighted average)

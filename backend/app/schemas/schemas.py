@@ -546,3 +546,15 @@ class PartnerLead(PartnerLeadBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DiscoveredCategoryOut(BaseModel):
+    id: int
+    name: str
+    display_name: str
+    count: int
+    is_approved: bool
+    related_tags: Optional[str] = ""
+    icon_hint: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)

@@ -618,3 +618,19 @@ export const linkGoogleAccount = async (idToken, token) => {
     });
     return response.json();
 };
+
+// ── Categories ───────────────────────────────────────────────────────────────
+
+export const getCategories = async () => {
+    const response = await fetch(`${API_BASE_URL}/categories/`);
+    if (!response.ok) return [];
+    return response.json();
+};
+
+export const getCategoryVideos = async (categoryName, videoType = 'flash', limit = 30) => {
+    const response = await fetch(
+        `${API_BASE_URL}/categories/${encodeURIComponent(categoryName)}/videos?video_type=${videoType}&limit=${limit}`
+    );
+    if (!response.ok) return [];
+    return response.json();
+};

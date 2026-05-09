@@ -55,11 +55,11 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { token, loading, user } = useAuth();
-  if (loading) return null; // Can replace with a spinner if needed
+  if (loading) return null; 
   if (!token) return <Navigate to="/login" replace />;
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/home" replace />;
   }
   return children;
 };
@@ -71,17 +71,17 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const isFlashPage = location.pathname === '/flash';
+  const isHomePage = location.pathname === '/home';
   const isOnboardingPage = location.pathname === '/onboarding';
   const isLandingPage = location.pathname === '/' && !token;
   
-  // Immersive pages hide everything (Auth, Flash, Onboarding, Payment, 404)
+  // Immersive pages hide everything
   const isAuthPage = ['/login', '/signup', '/verify', '/forgot-password', '/reset-password'].includes(location.pathname);
   const isMarketingPage = ['/about', '/partner', '/privacy', '/terms'].includes(location.pathname);
   const isPaymentPage = location.pathname === '/payment';
   
-  // Detect if current path is a 404 (not in our defined list)
   const knownPaths = [
-    '/', '/login', '/signup', '/verify', '/forgot-password', '/reset-password',
+    '/', '/home', '/login', '/signup', '/verify', '/forgot-password', '/reset-password',
     '/about', '/partner', '/pro', '/privacy', '/terms', '/payment',
     '/flash', '/search', '/settings', '/posts', '/create-post', '/upload', '/chat',
     '/manage', '/manage-videos', '/achievements', '/notifications',
@@ -95,7 +95,6 @@ function AppContent() {
   const isImmersive = isAuthPage || isFlashPage || isPaymentPage || isNotFound;
   const hideSidebar = isLandingPage || isImmersive || isMarketingPage;
   const hideHeader = isImmersive || isLandingPage;
-  const hideNavigation = hideHeader; 
 
   // Auto-logout when backend returns 401
   React.useEffect(() => {
@@ -137,11 +136,15 @@ function AppContent() {
               <React.Suspense fallback={<PageSkeleton />}>
                 <Routes>
                   {/* Public Routes */}
-                  <Route path="/" element={token ? <Home /> : <Landing />} />
-                  <Route path="/login" element={token ? <Navigate to="/" replace /> : <Login />} />
-                  <Route path="/signup" element={token ? <Navigate to="/" replace /> : <Signup />} />
-                  <Route path="/forgot-password" element={token ? <Navigate to="/" replace /> : <ForgotPassword />} />
-                  <Route path="/reset-password" element={token ? <Navigate to="/" replace /> : <ResetPassword />} />
+                  <Route path="/" element={token ? <Navigate to="/home" replace /> : <Landing />} />
+                  <Route path="/home" element={<Home />} />
+                  <Route path="/flash" element={<Flash />} />
+                  <Route path="/watch/:id" element={<Watch />} />
+
+                  <Route path="/login" element={token ? <Navigate to="/home" replace /> : <Login />} />
+                  <Route path="/signup" element={token ? <Navigate to="/home" replace /> : <Signup />} />
+                  <Route path="/forgot-password" element={token ? <Navigate to="/home" replace /> : <ForgotPassword />} />
+                  <Route path="/reset-password" element={token ? <Navigate to="/home" replace /> : <ResetPassword />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
@@ -149,8 +152,6 @@ function AppContent() {
                   <Route path="/payment" element={<PaymentCallback />} />
                   
                   {/* Protected App Routes */}
-                  <Route path="/flash" element={<ProtectedRoute><Flash /></ProtectedRoute>} />
-                  <Route path="/watch/:id" element={<ProtectedRoute><Watch /></ProtectedRoute>} />
                   <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
                   <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

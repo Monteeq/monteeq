@@ -385,7 +385,7 @@ const Performance = () => {
                             {contentBreakdownData.length === 0 ? (
                                 <div style={{ height: '300px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '0.5rem' }}>
                                     <Play size={32} strokeWidth={1} />
-                                    <p style={{ fontSize: '0.9rem' }}>No approved videos yet</p>
+                                    <p style={{ fontSize: '0.9rem' }}>No videos yet</p>
                                 </div>
                             ) : (
                                 <div style={{ height: '300px' }}>

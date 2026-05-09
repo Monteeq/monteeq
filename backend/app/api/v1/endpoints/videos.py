@@ -273,59 +273,7 @@ def update_video_metadata(
     db.refresh(video)
     return video
 
-@router.put("/{video_id}/status")
-def update_video_status(
-    video_id: int,
-    status: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to update video status")
-        
-    video = db.query(Video).filter(Video.id == video_id).first()
-    if not video:
-        raise HTTPException(status_code=404, detail="Video not found")
-        
-    if status not in ["approved", "rejected", "pending"]:
-         raise HTTPException(status_code=400, detail="Invalid status")
-         
-    video.status = status
-    db.commit()
-    
-    # Post-status update actions
-    if status == "approved":
-        from app.crud import achievement as crud_achievement
-        # Check how many approved videos the owner has
-        approved_count = db.query(func.count(Video.id)).filter(
-            Video.owner_id == video.owner_id, 
-            Video.status == "approved"
-        ).scalar()
-        
-        if approved_count == 1:
-            crud_achievement.create_achievement(db, user_id=video.owner_id, milestone_name="FIRST_UPLOAD")
 
-        # Notify user of approval
-        notify_user_push(
-            db, 
-            video.owner_id, 
-            "Video Approved! 🚀", 
-            f"Great news! Your video '{video.title}' has been approved and is now live.", 
-            link=f"/watch/{video_id}",
-            n_type="status_change"
-        )
-    elif status == "rejected":
-        # Notify user of rejection
-        notify_user_push(
-            db, 
-            video.owner_id, 
-            "Video Status Update", 
-            f"Your video '{video.title}' did not pass our community guidelines at this time.", 
-            link="/manage-content",
-            n_type="status_change"
-        )
-
-    return {"status": "success", "video_status": video.status}
 
 
 @router.post("/upload", response_model=schemas.Video)
@@ -442,13 +390,7 @@ async def reupload_video(
     if video.status != "failed":
         raise HTTPException(status_code=400, detail="Only failed videos can be reuploaded")
 
-    # check quota
-    if not current_user.is_premium:
-        if video.video_type == "flash" and current_user.flash_uploads >= FLASH_QUOTA_LIMIT:
-            raise HTTPException(status_code=403, detail=f"Flash quota exceeded ({FLASH_QUOTA_LIMIT} max)")
-        if video.video_type == "home" and current_user.home_uploads >= HOME_QUOTA_LIMIT:
-            raise HTTPException(status_code=403, detail=f"Home quota exceeded ({HOME_QUOTA_LIMIT} max)")
-            
+
     import uuid
     task_id = str(uuid.uuid4())
     safe_filename = file.filename.replace(" ", "_")
@@ -459,11 +401,7 @@ async def reupload_video(
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to reupload video file to storage")
         
-    if video.video_type == "flash":
-        current_user.flash_uploads = (current_user.flash_uploads or 0) + 1
-    else:
-        current_user.home_uploads = (current_user.home_uploads or 0) + 1
-        
+
     video.processing_key = task_id
     video.status = "pending"
     video.failed_at = None
