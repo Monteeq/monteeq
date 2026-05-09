@@ -44,6 +44,10 @@ async def get_video_sitemap(db: Session = Depends(get_db)):
     video_ns = "{http://www.google.com/schemas/sitemap-video/1.1}"
     
     for video in videos:
+        # Skip videos without necessary data
+        if not video.created_at or not video.video_url:
+            continue
+            
         url_el = ET.SubElement(urlset, "url")
         ET.SubElement(url_el, "loc").text = f"{BASE_URL}/watch/{video.id}"
         
@@ -53,7 +57,11 @@ async def get_video_sitemap(db: Session = Depends(get_db)):
         ET.SubElement(video_el, f"{video_ns}description").text = video.description or f"Watch {video.title} on Monteeq."
         ET.SubElement(video_el, f"{video_ns}content_loc").text = video.dynamic_video_url
         ET.SubElement(video_el, f"{video_ns}duration").text = str(video.duration or 60)
-        ET.SubElement(video_el, f"{video_ns}publication_date").text = video.created_at.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+        
+        # W3C Format: YYYY-MM-DDThh:mm:ss+TZD
+        pub_date = video.created_at.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+        ET.SubElement(video_el, f"{video_ns}publication_date").text = pub_date
+        
         ET.SubElement(video_el, f"{video_ns}family_friendly").text = "yes"
         ET.SubElement(video_el, f"{video_ns}live").text = "no"
 
