@@ -53,7 +53,7 @@ async def get_video_sitemap(db: Session = Depends(get_db)):
         ET.SubElement(video_el, f"{video_ns}description").text = video.description or f"Watch {video.title} on Monteeq."
         ET.SubElement(video_el, f"{video_ns}content_loc").text = video.dynamic_video_url
         ET.SubElement(video_el, f"{video_ns}duration").text = str(video.duration or 60)
-        ET.SubElement(video_el, f"{video_ns}publication_date").text = video.created_at.isoformat()
+        ET.SubElement(video_el, f"{video_ns}publication_date").text = video.created_at.strftime("%Y-%m-%dT%H:%M:%S+00:00")
         ET.SubElement(video_el, f"{video_ns}family_friendly").text = "yes"
         ET.SubElement(video_el, f"{video_ns}live").text = "no"
 
