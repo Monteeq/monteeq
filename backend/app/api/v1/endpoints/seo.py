@@ -15,7 +15,7 @@ async def get_sitemap(db: Session = Depends(get_db)):
     urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
     
     # Static Pages
-    pages = ["", "/explore", "/challenges", "/about"]
+    pages = ["", "/explore", "/challenges", "/about", "/partner"]
     for page in pages:
         url_el = ET.SubElement(urlset, "url")
         ET.SubElement(url_el, "loc").text = f"{BASE_URL}{page}"
