@@ -169,7 +169,7 @@ function AppContent() {
                   {/* Protected Context Routings */}
                   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                   <Route path="/verify" element={<ProtectedRoute><Verify /></ProtectedRoute>} />
-                  <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
+                  <Route path="/challenges" element={<Challenges />} />
                   <Route path="/pro" element={<ProtectedRoute><JoinPro /></ProtectedRoute>} />
                   
                   {/* Admin Routes */}

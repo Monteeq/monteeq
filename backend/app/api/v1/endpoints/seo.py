@@ -14,8 +14,8 @@ async def get_sitemap(db: Session = Depends(get_db)):
     """Generates a standard XML sitemap for general pages."""
     urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
     
-    # Static Pages
-    pages = ["", "/explore", "/challenges", "/about", "/partner"]
+    # Static Public Pages
+    pages = ["", "/home", "/flash", "/about", "/partner", "/privacy", "/terms", "/login", "/signup", "/challenges"]
     for page in pages:
         url_el = ET.SubElement(urlset, "url")
         ET.SubElement(url_el, "loc").text = f"{BASE_URL}{page}"
