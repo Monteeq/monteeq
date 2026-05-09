@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Square, Monitor, Settings, RotateCcw, RotateCw, AlertCircle } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Square, Monitor, Settings, RotateCcw, RotateCw, AlertCircle, Loader2 } from 'lucide-react';
 import './VideoPlayerV2.css';
 import { initView, sendHeartbeat } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -41,6 +41,7 @@ const VideoPlayerV2 = ({
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [error, setError] = useState(null);
+  const [isBuffering, setIsBuffering] = useState(false);
   
   const isPremium = user?.is_premium;
   const [isPreRollActive, setIsPreRollActive] = useState(false);
@@ -286,11 +287,20 @@ const VideoPlayerV2 = ({
           setIsMuted(e.target.muted);
         }}
         onLoadedMetadata={(e) => setDuration(e.target.duration)}
+        onWaiting={() => setIsBuffering(true)}
+        onPlaying={() => setIsBuffering(false)}
+        onCanPlay={() => setIsBuffering(false)}
         onError={() => setError("Error loading video. Please try again.")}
         onClick={togglePlay}
         playsInline
         itemProp="contentUrl"
       />
+
+      {isBuffering && (
+        <div className="bufferingOverlayV2">
+          <Loader2 className="spinnerV2" size={48} />
+        </div>
+      )}
 
       {error && (
         <div className="videoErrorOverlay">

@@ -200,3 +200,26 @@
 .osdActive {
   animation: osdFade 0.8s ease-out forwards;
 }
+
+.bufferingOverlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1.5rem;
+  border-radius: 50%;
+  backdrop-filter: blur(4px);
+}
+
+.spinner {
+  color: var(--accent-primary, #cdff00);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

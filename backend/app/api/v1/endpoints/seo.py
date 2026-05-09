@@ -31,7 +31,7 @@ async def get_sitemap(db: Session = Depends(get_db)):
         ET.SubElement(url_el, "changefreq").text = "weekly"
         ET.SubElement(url_el, "priority").text = "0.6"
 
-    xml_data = ET.tostring(urlset, encoding="utf-8", method="xml")
+    xml_data = b'<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(urlset, encoding="utf-8", method="xml")
     return Response(content=xml_data, media_type="application/xml")
 
 @router.get("/video-sitemap.xml")
@@ -56,5 +56,5 @@ async def get_video_sitemap(db: Session = Depends(get_db)):
         ET.SubElement(video_el, "video:family_friendly").text = "yes"
         ET.SubElement(video_el, "video:live").text = "no"
 
-    xml_data = ET.tostring(urlset, encoding="utf-8", method="xml")
+    xml_data = b'<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(urlset, encoding="utf-8", method="xml")
     return Response(content=xml_data, media_type="application/xml")

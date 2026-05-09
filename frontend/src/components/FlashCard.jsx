@@ -26,6 +26,7 @@ const FlashCard = ({
     const [hookProgress, setHookProgress] = useState(0);
     const [isEngaged, setIsEngaged] = useState(false);
     const [showHaptic, setShowHaptic] = useState(false);
+    const [isBuffering, setIsBuffering] = useState(false);
 
     // Interaction Tracking
     const entryTime = useRef(0);
@@ -123,11 +124,20 @@ const FlashCard = ({
                     autoPlay
                     muted={muted}
                     onTimeUpdate={handleTimeUpdate}
-                    onPlay={() => setPlaying(true)}
+                    onWaiting={() => setIsBuffering(true)}
+                    onPlaying={() => setIsBuffering(false)}
+                    onCanPlay={() => setIsBuffering(false)}
+                    onPlay={() => { setPlaying(true); setIsBuffering(false); }}
                     onPause={() => setPlaying(false)}
                     onEnded={() => { if (isActive) trackingManager.markReplayed(video.id); }}
                     className={s.video}
                 />
+
+                {isBuffering && (
+                    <div className={s.bufferingOverlay}>
+                        <Loader2 className={s.spinner} size={48} />
+                    </div>
+                )}
 
                 <div className={`${s.hapticFlash} ${showHaptic ? s.flashActive : ''}`} />
 

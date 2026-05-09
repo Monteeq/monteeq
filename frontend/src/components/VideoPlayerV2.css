@@ -273,3 +273,27 @@
     padding: 2rem 1rem 1rem;
   }
 }
+
+.bufferingOverlayV2 {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2rem;
+  border-radius: 50%;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.spinnerV2 {
+  color: #ff3b30;
+  animation: spinV2 1s linear infinite;
+}
+
+@keyframes spinV2 {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

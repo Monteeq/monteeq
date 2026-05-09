@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Monitor, Square, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Monitor, Square, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import styles from './VideoPlayer.module.css';
 import { initView, sendHeartbeat, API_BASE_URL } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +37,7 @@ const VideoPlayer = ({
   const [hoverX, setHoverX] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [osd, setOsd] = useState({ icon: null, visible: false });
+  const [isBuffering, setIsBuffering] = useState(false);
   
   const isPremium = user?.is_premium;
   const [showPreRoll, setShowPreRoll] = useState(false);
@@ -277,9 +278,18 @@ const VideoPlayer = ({
         poster={poster}
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
+        onWaiting={() => setIsBuffering(true)}
+        onPlaying={() => setIsBuffering(false)}
+        onCanPlay={() => setIsBuffering(false)}
         playsInline
         crossOrigin="anonymous"
       />
+
+      {isBuffering && (
+        <div className={styles.bufferingOverlay}>
+          <Loader2 className={styles.spinner} size={48} />
+        </div>
+      )}
 
       {/* Strategic Ads */}
       {showPreRoll && (

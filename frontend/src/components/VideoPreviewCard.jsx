@@ -8,6 +8,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
     const videoRef = useRef(null);
     const hoverTimerRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
+    const [isBuffering, setIsBuffering] = useState(false);
 
     const handleMouseEnter = useCallback(() => {
         // Debounce: only load video preview after 300ms of sustained hover
@@ -105,8 +106,17 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                             loop
                             playsInline
                             onLoadedData={() => setIsLoaded(true)}
+                            onWaiting={() => setIsBuffering(true)}
+                            onPlaying={() => setIsBuffering(false)}
+                            onCanPlay={() => setIsBuffering(false)}
                             className={`vc-video ${isLoaded ? 'vc-video-visible' : ''}`}
                         />
+                    )}
+
+                    {isBuffering && showPreview && (
+                        <div className="vc-buffering-overlay">
+                            <Loader2 className="vc-spinner" size={24} />
+                        </div>
                     )}
 
                     {/* Duration Badge */}
