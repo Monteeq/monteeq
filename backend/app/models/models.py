@@ -164,12 +164,14 @@ class Video(Base):
         if not url:
             return url
         # If it's already a full URL that doesn't match our current domain, we extract the path
-        if "amazonaws.com" in url or "monteeq.s3" in url:
+        if "amazonaws.com" in url or "monteeq.s3" in url or "cdn.monteeq.com" in url:
             from app.core.storage import storage
-            # Extract the key part (everything after the bucket domain)
-            parts = url.split(".com/")
-            if len(parts) > 1:
-                return storage.get_url(parts[1])
+            # Extract the key part (everything after the domain)
+            # Both S3 and CDN URLs follow the pattern [domain]/[key]
+            if ".com/" in url:
+                parts = url.split(".com/")
+                if len(parts) > 1:
+                    return storage.get_url(parts[1])
         return url
 
     @property

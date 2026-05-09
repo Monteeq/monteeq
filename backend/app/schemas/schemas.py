@@ -17,12 +17,13 @@ class UserBase(BaseModel):
     def resolve_user_cdn_url(cls, v):
         if not v or not isinstance(v, str):
             return v
-        if "amazonaws.com" in v or "monteeq.s3" in v:
+        if "amazonaws.com" in v or "monteeq.s3" in v or "cdn.monteeq.com" in v:
             try:
                 from app.core.storage import storage
-                parts = v.split(".com/")
-                if len(parts) > 1:
-                    return storage.get_url(parts[1])
+                if ".com/" in v:
+                    parts = v.split(".com/")
+                    if len(parts) > 1:
+                        return storage.get_url(parts[1])
             except Exception:
                 return v
         return v
@@ -213,12 +214,13 @@ class Video(VideoBase):
     def resolve_cdn_url(cls, v):
         if not v or not isinstance(v, str):
             return v
-        if "amazonaws.com" in v or "monteeq.s3" in v:
+        if "amazonaws.com" in v or "monteeq.s3" in v or "cdn.monteeq.com" in v:
             try:
                 from app.core.storage import storage
-                parts = v.split(".com/")
-                if len(parts) > 1:
-                    return storage.get_url(parts[1])
+                if ".com/" in v:
+                    parts = v.split(".com/")
+                    if len(parts) > 1:
+                        return storage.get_url(parts[1])
             except Exception:
                 return v
         return v
@@ -256,12 +258,13 @@ class Post(PostBase):
     def resolve_post_cdn_url(cls, v):
         if not v or not isinstance(v, str):
             return v
-        if "amazonaws.com" in v or "monteeq.s3" in v:
+        if "amazonaws.com" in v or "monteeq.s3" in v or "cdn.monteeq.com" in v:
             try:
                 from app.core.storage import storage
-                parts = v.split(".com/")
-                if len(parts) > 1:
-                    return storage.get_url(parts[1])
+                if ".com/" in v:
+                    parts = v.split(".com/")
+                    if len(parts) > 1:
+                        return storage.get_url(parts[1])
             except Exception:
                 return v
         return v
