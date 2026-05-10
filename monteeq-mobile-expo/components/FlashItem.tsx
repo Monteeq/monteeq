@@ -30,7 +30,7 @@ import { Video } from '@/types/api';
 interface Props {
   video: Video;
   isActive: boolean;
-  onLike: (videoId: string) => void;
+  onLike: (videoId: number) => void;
   onCommentPress: (video: Video) => void;
   onSharePress: (video: Video) => void;
 }
@@ -43,7 +43,7 @@ export const FlashItem = ({
   onSharePress 
 }: Props) => {
   const { width, height } = useWindowDimensions();
-  const [isLiked, setIsLiked] = useState(video.is_liked);
+  const [isLiked, setIsLiked] = useState(video.liked_by_user);
   const [progress, setProgress] = useState(0);
   
   const heartScale = useSharedValue(0);
@@ -149,7 +149,7 @@ export const FlashItem = ({
 
             <TouchableOpacity onPress={() => onSharePress(video)} style={styles.actionItem}>
               <Ionicons name="share-social" size={30} color={COLORS.WHITE} />
-              <Text style={styles.actionText}>{video.shares || 0}</Text>
+              <Text style={styles.actionText}>{video.shares_count || 0}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionItem}>
@@ -165,13 +165,13 @@ export const FlashItem = ({
           <View style={styles.bottomOverlay}>
             <View style={styles.uploaderRow}>
               <MonteeqAvatar 
-                uri={video.owner_avatar} 
+                uri={video.owner?.profile_pic} 
                 size={48} 
-                goldRing={video.is_verified} 
+                goldRing={video.owner?.is_verified} 
               />
               <View style={styles.uploaderInfo}>
-                <Text style={styles.username}>@{video.owner_name}</Text>
-                {!video.is_following && (
+                <Text style={styles.username}>@{video.owner?.username || 'user'}</Text>
+                {!video.owner_followed && (
                   <TouchableOpacity 
                     onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
                     style={styles.followBadge}
@@ -183,13 +183,13 @@ export const FlashItem = ({
             </View>
 
             <Text style={styles.caption} numberOfLines={2}>
-              {video.title} {video.tags?.map(t => `#${t} `)}
+              {video.title} {video.tags ? `#${video.tags}` : ''}
             </Text>
 
             <View style={styles.audioRow}>
               <Ionicons name="musical-notes" size={14} color={COLORS.WHITE} />
               <Text style={styles.audioText} numberOfLines={1}>
-                Original Audio - {video.owner_name}
+                Original Audio - {video.owner?.username || 'user'}
               </Text>
             </View>
           </View>

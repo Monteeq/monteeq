@@ -9,7 +9,9 @@ from app.models.models import Video, User
 from app.core import config
 from app.core.storage import storage
 from app.utils.push import notify_user_push
+from app.core.redis import redis_client
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -24,47 +26,58 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
             rust_response = requests.post(
                 f"{config.RUST_SERVICE_URL}/process",
                 json={
-                    "video_id": source_key, # Send the GCS key instead of local path
+                    "video_id": source_key,
                     "target_format": video_type,
                     "skip_thumbnail": thumbnail_provided,
                     "task_id": task_id
                 },
-                timeout=600.0
+                timeout=10.0 # Rust should accept/queue immediately
             )
+            rust_response.raise_for_status()
             logger.info(f"Rust service accepted task. Starting polling for task_id={task_id}")
             max_retries = 300 # 10 minutes with 2s sleep
             retries = 0
             while retries < max_retries:
                 try:
-                    status_resp = requests.get(f"{config.RUST_SERVICE_URL}/status/{task_id}")
-                    if status_resp.status_code == 200:
-                        status_data = status_resp.json()
-                        if status_data:
-                            current_status = status_data.get("status")
-                            logger.debug(f"Task {task_id} status: {current_status} ({status_data.get('progress')}%)")
-                            
-                            # Update DB status if it changed
-                            if current_status and current_status.lower() in ["completed", "uploaded", "success"]:
-                                logger.info(f"Transcoding completed for task_id={task_id} with status={current_status}")
-                                break
-                            if current_status == "error":
-                                logger.error(f"Rust processing error for task {task_id}: {status_data.get('message')}")
-                                raise Exception(f"Rust processing error: {status_data.get('message')}")
-                            
-                            # Provide progress update to DB for frontend polling
-                            db_video = db.query(Video).filter(Video.id == video_id).first()
-                            if db_video:
-                                db_video.processing_message = f"Transcoding... {status_data.get('progress')}%"
-                                db.commit()
-                                
-                    elif status_resp.status_code == 404:
-                        logger.warning(f"Task {task_id} not found in Rust status map yet.")
+                    # Priority 1: Check Redis (Shared with Rust)
+                    status_data_raw = redis_client.get(f"task:status:{task_id}")
+                    status_data = None
+                    
+                    if status_data_raw:
+                        status_data = json.loads(status_data_raw)
+                    else:
+                        # Priority 2: Fallback to HTTP (If Redis is inconsistent or Rust is updating differently)
+                        status_resp = requests.get(f"{config.RUST_SERVICE_URL}/status/{task_id}", timeout=2.0)
+                        if status_resp.status_code == 200:
+                            status_data = status_resp.json()
+
+                    if status_data:
+                        current_status = status_data.get("status")
+                        progress = status_data.get("progress", 0)
+                        msg = status_data.get("message", "")
+                        
+                        logger.debug(f"Task {task_id} status: {current_status} ({progress}%)")
+                        
+                        # Provide progress update to DB
+                        db_video = db.query(Video).filter(Video.id == video_id).first()
+                        if db_video:
+                            db_video.processing_message = f"{msg} ({progress}%)"
+                            db.commit()
+
+                        if current_status and current_status.lower() in ["completed", "uploaded", "success"]:
+                            logger.info(f"Transcoding completed for task_id={task_id}")
+                            break
+                        if current_status == "error":
+                            logger.error(f"Rust processing error for task {task_id}: {msg}")
+                            raise Exception(f"Rust processing error: {msg}")
+                    else:
+                        logger.warning(f"Task {task_id} status not found in Redis or Rust API.")
+
                 except Exception as e:
-                    if "Rust processing error" in str(e):
-                        raise e
+                    if "Rust processing error" in str(e): raise e
                     logger.warning(f"Polling error (try {retries}): {e}")
                 
-                time.sleep(2)
+                time.sleep(3)
                 retries += 1
             
             if retries >= max_retries:

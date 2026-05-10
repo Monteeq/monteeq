@@ -7,8 +7,8 @@ import {
   KeyboardAvoidingView, 
   Platform,
   TextInput,
-  Image,
-  Dimensions
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,38 +16,57 @@ import * as Haptics from 'expo-haptics';
 import Animated, { 
   FadeInDown, 
   FadeInUp,
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming
 } from 'react-native-reanimated';
 import { COLORS } from '@/constants/colors';
-import { SPACING, RADIUS } from '@/constants/spacing';
-import { TYPOGRAPHY } from '@/constants/typography';
+import { RADIUS } from '@/constants/spacing';
 import { MonteeqButton } from '@/components/MonteeqButton';
 import { useAuthStore } from '@/store/authStore';
-
-const { width } = Dimensions.get('window');
+import { authApi } from '@/lib/api/auth';
 
 export const AuthScreen = () => {
   const router = useRouter();
-  const { setAuthenticated, setUser } = useAuthStore();
+  const { login, googleLogin, isLoading, error, setError } = useAuthStore();
+  
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [username, setUsername] = useState(''); // Use username as backend expects it (can be email)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isFocused, setIsFocused] = useState<'email' | 'password' | null>(null);
+  const [isFocused, setIsFocused] = useState<'username' | 'email' | 'password' | null>(null);
 
   const handleAuth = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    // Real auth logic would hit /api/v1/auth/token or /register
-    setAuthenticated(true);
+    if (mode === 'login') {
+      if (!username || !password) {
+        setError('Please fill in all fields');
+        return;
+      }
+      try {
+        await login(username, password);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // Navigation is handled by auth gate in _layout.tsx
+      } catch (err) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      }
+    } else {
+      // Register flow
+      if (!username || !email || !password) {
+        setError('Please fill in all fields');
+        return;
+      }
+      try {
+        await authApi.register({ username, email, password });
+        Alert.alert('Verification', 'Please check your email for a verification code.');
+        setMode('login');
+      } catch (err: any) {
+        setError(err.response?.data?.detail || 'Registration failed');
+      }
+    }
   };
 
-  const GoogleButton = () => (
-    <TouchableOpacity style={styles.googleBtn} activeOpacity={0.8}>
-      <Ionicons name="logo-google" size={20} color={COLORS.WHITE} />
-      <Text style={styles.googleBtnText}>CONTINUE WITH GOOGLE</Text>
-    </TouchableOpacity>
-  );
+  const handleGoogleLogin = async () => {
+    // In a real app, you'd use expo-auth-session to get the credential
+    // For now, we assume the UI handles the trigger
+    Alert.alert('Google Login', 'Google OAuth flow would start here.');
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -61,20 +80,44 @@ export const AuthScreen = () => {
         </Animated.View>
 
         <Animated.View entering={FadeInUp.delay(400).duration(800)} style={styles.form}>
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error.toUpperCase()}</Text>
+            </View>
+          )}
+
           <View style={styles.inputWrapper}>
-            <Text style={[styles.label, isFocused === 'email' && styles.labelActive]}>EMAIL</Text>
+            <Text style={[styles.label, isFocused === 'username' && styles.labelActive]}>
+              {mode === 'login' ? 'USERNAME OR EMAIL' : 'USERNAME'}
+            </Text>
             <TextInput
-              style={[styles.input, isFocused === 'email' && styles.inputActive]}
-              placeholder="Enter your email"
+              style={[styles.input, isFocused === 'username' && styles.inputActive]}
+              placeholder={mode === 'login' ? "Enter username or email" : "Pick a unique username"}
               placeholderTextColor={COLORS.TEXT_MUTED}
-              value={email}
-              onChangeText={setEmail}
-              onFocus={() => setIsFocused('email')}
+              value={username}
+              onChangeText={setUsername}
+              onFocus={() => setIsFocused('username')}
               onBlur={() => setIsFocused(null)}
               autoCapitalize="none"
-              keyboardType="email-address"
             />
           </View>
+
+          {mode === 'register' && (
+            <View style={styles.inputWrapper}>
+              <Text style={[styles.label, isFocused === 'email' && styles.labelActive]}>EMAIL</Text>
+              <TextInput
+                style={[styles.input, isFocused === 'email' && styles.inputActive]}
+                placeholder="your@email.com"
+                placeholderTextColor={COLORS.TEXT_MUTED}
+                value={email}
+                onChangeText={setEmail}
+                onFocus={() => setIsFocused('email')}
+                onBlur={() => setIsFocused(null)}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+          )}
 
           <View style={styles.inputWrapper}>
             <Text style={[styles.label, isFocused === 'password' && styles.labelActive]}>PASSWORD</Text>
@@ -91,10 +134,13 @@ export const AuthScreen = () => {
           </View>
 
           <MonteeqButton 
-            label={mode === 'login' ? 'LOGIN' : 'SIGN UP'}
+            label={isLoading ? '' : (mode === 'login' ? 'LOGIN' : 'SIGN UP')}
             onPress={handleAuth}
             style={styles.authBtn}
-          />
+            disabled={isLoading}
+          >
+            {isLoading && <ActivityIndicator color={COLORS.BG_PRIMARY} />}
+          </MonteeqButton>
 
           <View style={styles.dividerRow}>
             <View style={styles.line} />
@@ -102,10 +148,20 @@ export const AuthScreen = () => {
             <View style={styles.line} />
           </View>
 
-          <GoogleButton />
+          <TouchableOpacity 
+            style={styles.googleBtn} 
+            activeOpacity={0.8}
+            onPress={handleGoogleLogin}
+          >
+            <Ionicons name="logo-google" size={20} color={COLORS.WHITE} />
+            <Text style={styles.googleBtnText}>CONTINUE WITH GOOGLE</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity 
-            onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
+            onPress={() => {
+              setMode(mode === 'login' ? 'register' : 'login');
+              setError(null);
+            }}
             style={styles.switchBtn}
           >
             <Text style={styles.switchText}>
@@ -133,7 +189,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 60,
+    marginBottom: 40,
   },
   wordmark: {
     fontSize: 44,
@@ -149,7 +205,20 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   form: {
-    gap: 24,
+    gap: 20,
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.ACCENT,
+  },
+  errorText: {
+    color: COLORS.ACCENT,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   inputWrapper: {
     gap: 8,
@@ -181,7 +250,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    marginVertical: 12,
+    marginVertical: 8,
   },
   line: {
     flex: 1,

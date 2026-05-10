@@ -21,6 +21,10 @@ impl WeightedScheduler {
         }
     }
 
+    pub fn client(&self) -> &RedisClient {
+        &self.client
+    }
+
     /// Fetches a task using a 70:30 weighted ratio (PRO:FREE).
     /// If both queues are empty, it waits (BRPOP) with a timeout.
     pub async fn next_task(&self) -> Result<VideoTask> {

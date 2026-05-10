@@ -13,13 +13,15 @@ import { COLORS } from '@/constants/colors';
 import { FlashItem } from '@/components/FlashItem';
 import { useFeed } from '@/hooks/useFeed';
 import { useVideo } from '@/hooks/useVideo';
-import { Video } from '@/types/api';
+import { useAuthGate } from '@/hooks/useAuthGate';
+import { AuthPromptSheet } from '@/components/AuthPromptSheet';
 
 export default function FlashScreen() {
   const { height } = useWindowDimensions();
   const navigation = useNavigation();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isFocused, setIsFocused] = useState(true);
+  const { requireAuth, isPromptVisible, closePrompt } = useAuthGate();
 
   const { 
     data, 
@@ -27,7 +29,7 @@ export default function FlashScreen() {
     hasNextPage 
   } = useFeed('flash');
 
-  const flashes = data?.pages.flatMap(page => page.items) || [];
+  const flashes = data?.pages ? data.pages.flat() : [];
   const { toggleLike } = useVideo();
 
   // Hide tab bar on focus, show on blur
@@ -52,11 +54,12 @@ export default function FlashScreen() {
     }
   }).current;
 
-  const handleLike = (videoId: string) => {
-    // In a real app, you'd pass the specific video object or handle it via a hook
-    // Since FlashItem handles its own internal like state for speed, 
-    // we just trigger the API call here.
-    toggleLike(false); // Simplified for now
+  const handleLike = (videoId: number) => {
+    requireAuth(() => toggleLike(videoId));
+  };
+
+  const handleComment = (videoId: number) => {
+    requireAuth(() => console.log('Comment', videoId));
   };
 
   return (
@@ -70,11 +73,11 @@ export default function FlashScreen() {
             video={item} 
             isActive={isFocused && activeIndex === index}
             onLike={handleLike}
-            onCommentPress={(v) => console.log('Comment', v.id)}
+            onCommentPress={(v) => handleComment(v.id)}
             onSharePress={(v) => console.log('Share', v.id)}
           />
         )}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         estimatedItemSize={height}
         pagingEnabled
         snapToInterval={height}
@@ -85,6 +88,12 @@ export default function FlashScreen() {
         viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
         onEndReached={() => hasNextPage && fetchNextPage()}
         onEndReachedThreshold={2}
+      />
+
+      <AuthPromptSheet 
+        isVisible={isPromptVisible} 
+        onClose={closePrompt} 
+        message="Sign in to like and comment on your favorite Flash clips."
       />
     </View>
   );

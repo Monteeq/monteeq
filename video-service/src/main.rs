@@ -33,14 +33,12 @@ struct ProcessRequest {
 }
 
 struct AppState {
-    status_map: StatusMap,
     scheduler: WeightedScheduler,
 }
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    let status_map = Arc::new(dashmap::DashMap::new());
 
     // Redis Setup - Highly optimized for limited connections
     let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
@@ -51,18 +49,19 @@ async fn main() {
     
     let perf = PerformanceConfig {
         // Ensure we only use 1 connection and set a 5s timeout
-        default_command_timeout: std::time::Duration::from_millis(5000),
+        default_command_timeout: std::time::Duration::from_secs(5),
         ..Default::default()
     };
     
     let policy = ReconnectPolicy::default();
+    // RedisClient::new(config, performance, connection, policy)
     let client = RedisClient::new(config, Some(perf), None, Some(policy));
     
     client.connect();
     client.wait_for_connect().await.expect("Failed to connect to Redis Cloud");
 
     let scheduler = WeightedScheduler::new(client);
-    let worker_pool = WorkerPool::new(scheduler.clone(), status_map.clone());
+    let worker_pool = WorkerPool::new(scheduler.clone());
 
     // Start prioritized worker pool
     tokio::spawn(async move {
@@ -70,7 +69,6 @@ async fn main() {
     });
 
     let state = Arc::new(AppState { 
-        status_map: status_map.clone(),
         scheduler: scheduler.clone(),
     });
 
@@ -100,21 +98,28 @@ async fn process_video(
         skip_thumbnail: payload.skip_thumbnail,
     };
 
-    state.status_map.insert(payload.task_id.clone(), TaskStatus {
+    let status = TaskStatus {
         progress: 0,
         status: "queued".to_string(),
         message: "Task added to priority queue".to_string(),
-    });
+    };
+
+    // Save status to Redis with 24h TTL
+    let status_json = serde_json::to_string(&status).unwrap();
+    let status_key = format!("task:status:{}", payload.task_id);
+    let _: () = state.scheduler.client().set(status_key, status_json, Some(Expiration::EX(86400)), None, false).await.unwrap_or_default();
 
     // Push to weighted queue
     match state.scheduler.push_task(task).await {
         Ok(_) => {
+            println!("[UPLOAD] Task accepted: {}", payload.task_id);
             Json(serde_json::json!({
                 "status": "accepted",
                 "task_id": payload.task_id
             }))
         },
         Err(e) => {
+            eprintln!("[ERROR] Failed to push task {}: {}", payload.task_id, e);
             Json(serde_json::json!({
                 "status": "error",
                 "message": e.to_string()
@@ -127,5 +132,18 @@ async fn get_status(
     State(state): State<Arc<AppState>>,
     Path(task_id): Path<String>
 ) -> Json<Option<TaskStatus>> {
-    Json(state.status_map.get(&task_id).map(|s| s.value().clone()))
+    let status_key = format!("task:status:{}", task_id);
+    let val: Option<String> = state.scheduler.client().get(status_key).await.unwrap_or(None);
+    
+    match val {
+        Some(json) => {
+            let status: TaskStatus = serde_json::from_str(&json).unwrap_or(TaskStatus {
+                progress: 0,
+                status: "error".to_string(),
+                message: "Failed to parse status".to_string(),
+            });
+            Json(Some(status))
+        },
+        None => Json(None)
+    }
 }

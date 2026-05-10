@@ -7,7 +7,9 @@ import {
   TouchableOpacity, 
   FlatList,
   SafeAreaView,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform,
+  ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -27,8 +29,9 @@ export default function SearchScreen() {
   const [searchType, setSearchType] = useState<'Videos' | 'Creators'>('Videos');
   const [trending, setTrending] = useState<string[]>([]);
   
-  const { data: searchResults, isLoading } = useFeed('home'); // Simplified for search integration
-  const videos = searchResults?.pages.flatMap(p => p.items) || [];
+  // Use 'home' feed as a placeholder for search results until dedicated search API is integrated
+  const { data: searchResults, isLoading } = useFeed('home'); 
+  const videos = searchResults?.pages ? searchResults.pages.flat() : [];
 
   useEffect(() => {
     fetchTrending();
@@ -55,7 +58,7 @@ export default function SearchScreen() {
             value={query}
             onChangeText={setQuery}
             selectionColor={COLORS.ACCENT}
-            autoFocus
+            autoFocus={false}
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')}>
@@ -80,7 +83,7 @@ export default function SearchScreen() {
       </View>
 
       {!query ? (
-        <View style={styles.noQueryContainer}>
+        <ScrollView style={styles.noQueryContainer} showsVerticalScrollIndicator={false}>
           <Text style={styles.sectionTitle}>TRENDING SEARCHES</Text>
           <View style={styles.tagCloud}>
             {trending.length > 0 ? trending.map(tag => (
@@ -101,6 +104,7 @@ export default function SearchScreen() {
             horizontal
             showsHorizontalScrollIndicator={false}
             data={[1, 2, 3, 4]}
+            keyExtractor={(item) => item.toString()}
             renderItem={() => (
               <TouchableOpacity style={styles.creatorCard}>
                 <MonteeqAvatar size={72} accentRing />
@@ -109,15 +113,17 @@ export default function SearchScreen() {
             )}
             contentContainerStyle={{ gap: 24, paddingHorizontal: SPACING.md }}
           />
-        </View>
+          <View style={{ height: 100 }} />
+        </ScrollView>
       ) : (
         <MonteeqList
+          key={searchType} // CRITICAL: Force re-render when changing numColumns
           data={videos}
           renderItem={({ item }) => (
             searchType === 'Videos' ? (
               <VideoCardCompact 
                 video={item} 
-                onPress={(v) => router.push(`/screens/VideoPlayerScreen?videoId=${v.id}`)} 
+                onPress={(v) => router.push({ pathname: '/watch', params: { id: v.id }})} 
               />
             ) : (
               <TouchableOpacity 
@@ -136,7 +142,7 @@ export default function SearchScreen() {
             )
           )}
           numColumns={searchType === 'Videos' ? 2 : 1}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listPadding}
         />
       )}
@@ -152,6 +158,7 @@ const styles = StyleSheet.create({
   searchHeader: {
     padding: SPACING.md,
     gap: 16,
+    marginTop: Platform.OS === 'android' ? 25 : 0,
   },
   searchBar: {
     flexDirection: 'row',
@@ -170,7 +177,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: COLORS.TEXT_PRIMARY,
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: 'Outfit_600SemiBold',
   },
   tabToggle: {
     flexDirection: 'row',
@@ -191,7 +198,7 @@ const styles = StyleSheet.create({
   typeBtnText: {
     fontSize: 13,
     color: COLORS.TEXT_SECONDARY,
-    fontWeight: '800',
+    fontFamily: 'Outfit_700Bold',
     letterSpacing: 0.5,
   },
   activeTypeBtnText: {
@@ -202,7 +209,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: '900',
+    fontFamily: 'Outfit_800ExtraBold',
     color: COLORS.TEXT_MUTED,
     paddingHorizontal: SPACING.md,
     marginBottom: 20,
@@ -225,7 +232,7 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 13,
     color: COLORS.TEXT_PRIMARY,
-    fontWeight: '600',
+    fontFamily: 'Outfit_600SemiBold',
   },
   creatorCard: {
     alignItems: 'center',
@@ -234,7 +241,7 @@ const styles = StyleSheet.create({
   creatorName: {
     fontSize: 12,
     color: COLORS.WHITE,
-    fontWeight: '700',
+    fontFamily: 'Outfit_700Bold',
   },
   listPadding: {
     padding: 8,
@@ -255,13 +262,15 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   userName: {
-    ...TYPOGRAPHY.h3,
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 16,
     color: COLORS.TEXT_PRIMARY,
   },
   userStats: {
     fontSize: 12,
     color: COLORS.TEXT_MUTED,
     marginTop: 2,
+    fontFamily: 'Outfit_400Regular',
   },
   miniFollowBtn: {
     backgroundColor: COLORS.ACCENT,
@@ -271,7 +280,7 @@ const styles = StyleSheet.create({
   },
   miniFollowBtnText: {
     fontSize: 12,
-    fontWeight: '900',
+    fontFamily: 'Outfit_800ExtraBold',
     color: COLORS.WHITE,
   },
 });

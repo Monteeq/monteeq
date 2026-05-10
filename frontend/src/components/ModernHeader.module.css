@@ -2,22 +2,28 @@
     position: sticky;
     top: 0;
     width: 100%;
-    height: 72px;
-    background: rgba(5, 5, 5, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    height: var(--header-height);
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 1.5rem;
+    padding: 0 1rem;
     z-index: 1000;
+}
+
+@media (min-width: 1024px) {
+    .header {
+        padding: 0 1.5rem;
+    }
 }
 
 .navSection {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 /* --- Left Section --- */
@@ -35,12 +41,13 @@
     justify-content: center;
     padding: 8px;
     border-radius: 50%;
-    transition: background 0.2s, transform 0.2s;
+    transition: all 0.2s;
 }
 
-.menuBtn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    transform: scale(1.1);
+@media (min-width: 1024px) {
+    .menuBtn {
+        display: none; /* Sidebar is permanent on desktop */
+    }
 }
 
 .logo {
@@ -51,21 +58,20 @@
 }
 
 .logoImg {
-    height: 36px;
+    height: 32px;
     width: auto;
     object-fit: contain;
-    filter: drop-shadow(0 0 10px rgba(235, 0, 0, 0.3));
 }
 
 .brandName {
     font-family: 'Outfit', sans-serif;
     font-weight: 900;
-    font-size: 1.4rem;
+    font-size: 1.2rem;
     letter-spacing: -0.5px;
     display: none;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 768px) {
     .brandName {
         display: block;
     }
@@ -75,9 +81,8 @@
 .sectionCenter {
     flex: 1;
     max-width: 600px;
-    margin: 0 2rem;
+    margin: 0 1rem;
     display: none;
-    /* Hidden on mobile by default */
 }
 
 @media (min-width: 768px) {
@@ -95,14 +100,14 @@
 
 .searchBar {
     width: 100%;
-    height: 48px;
+    height: 40px;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-glass);
     border-radius: 50px;
     display: flex;
     align-items: center;
     padding: 0 1rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s var(--transition-smooth);
 }
 
 .searchBar:focus-within {

@@ -4,7 +4,7 @@ use std::path::Path;
 use tokio::fs;
 use crate::storage::StorageManager;
 use crate::models::{UserTier, TaskStatus};
-use crate::ax_status::StatusMap;
+use crate::queue::WeightedScheduler;
 
 pub struct TranscodingConfig {
     pub preset: String,
@@ -35,7 +35,7 @@ pub async fn process(
     format: &str, 
     tier: UserTier,
     skip_thumbnail: bool, 
-    status_map: Option<StatusMap>, 
+    scheduler: Option<WeightedScheduler>, 
     task_id: String  // Processing Key
 ) -> Result<()> {
     println!("Starting processing for task_id={} video_path={}", task_id, video_path);
@@ -48,6 +48,15 @@ pub async fn process(
     let config = TranscodingConfig::for_tier(&tier);
     
     // 1. Metadata extraction
+    if let Some(ref sched) = scheduler {
+        let status = TaskStatus {
+            progress: 5,
+            status: "processing".to_string(),
+            message: "Analyzing video streams and metadata...".to_string(),
+        };
+        let status_json = serde_json::to_string(&status).unwrap();
+        let _: () = sched.client().set(format!("task:status:{}", task_id), status_json, Some(fred::types::Expiration::EX(86400)), None, false).await.unwrap_or_default();
+    }
     println!("Extracting metadata for {}", video_path);
     let (width, height, has_audio) = match get_video_metadata(video_path).await {
         Ok(m) => m,
@@ -66,7 +75,7 @@ pub async fn process(
     }
 
     // 3. Transcode + Thumbnail Concurrently
-    let transcoding_fut = transcode_tiered(video_path, &output_dir, format, &config, status_map.clone(), task_id.clone(), has_audio, &tier);
+    let transcoding_fut = transcode_tiered(video_path, &output_dir, format, &config, scheduler.clone(), task_id.clone(), has_audio, &tier);
     let v_path = video_path.to_string();
     let thumbnail_fut = async move {
         if !skip_thumbnail {
@@ -86,12 +95,14 @@ pub async fn process(
     match StorageManager::new().await {
         Ok(storage) => {
             let s3_prefix = format!("videos/{}", task_id);
-            if let Some(ref map) = status_map {
-                map.insert(task_id.clone(), TaskStatus {
-                    progress: 98,
-                    status: "uploading".to_string(),
-                    message: "Uploading to cloud storage...".to_string(),
-                });
+            if let Some(ref sched) = scheduler {
+                let status = TaskStatus {
+                    progress: 90,
+                    status: "processing".to_string(),
+                    message: "Syncing video segments to edge nodes...".to_string(),
+                };
+                let status_json = serde_json::to_string(&status).unwrap();
+                let _: () = sched.client().set(format!("task:status:{}", task_id), status_json, Some(fred::types::Expiration::EX(86400)), None, false).await.unwrap_or_default();
             }
             storage.upload_hls_dir(&output_dir, &s3_prefix).await?;
             
@@ -149,7 +160,7 @@ async fn transcode_tiered(
     output_dir: &str, 
     format: &str, 
     config: &TranscodingConfig,
-    status_map: Option<StatusMap>,
+    scheduler: Option<WeightedScheduler>,
     task_id: String,
     has_audio: bool,
     tier: &UserTier
@@ -246,12 +257,14 @@ async fn transcode_tiered(
         output_pattern,
     ]);
 
-    if let Some(ref map) = status_map {
-        map.insert(task_id, TaskStatus {
+    if let Some(ref sched) = scheduler {
+        let status = TaskStatus {
             progress: 15,
             status: "processing".to_string(),
             message: format!("Compressing and optimizing video (Tier: {:?})", tier),
-        });
+        };
+        let status_json = serde_json::to_string(&status).unwrap();
+        let _: () = sched.client().set(format!("task:status:{}", task_id), status_json, Some(fred::types::Expiration::EX(86400)), None, false).await.unwrap_or_default();
     }
 
     let output = Command::new("ffmpeg").args(&args).output().await?;

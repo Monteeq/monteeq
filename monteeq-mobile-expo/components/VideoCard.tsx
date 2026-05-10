@@ -3,19 +3,32 @@ import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-nativ
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { useRouter } from 'expo-router';
 import { COLORS } from '@/constants/colors';
 import { SPACING, RADIUS } from '@/constants/spacing';
 import { TYPOGRAPHY } from '@/constants/typography';
 import { MonteeqAvatar } from './MonteeqAvatar';
-import { Video } from '@/types/api';
 
 interface Props {
-  video: Video;
-  onPress: (video: Video) => void;
+  video: any;
+  onPress?: (video: any) => void;
   onProfilePress?: (userId: string) => void;
 }
 
 export const VideoCard = ({ video, onPress, onProfilePress }: Props) => {
+  const router = useRouter();
+
+  const handlePress = () => {
+    if (onPress) {
+      onPress(video);
+    } else {
+      router.push({
+        pathname: '/watch',
+        params: { id: video.id }
+      });
+    }
+  };
+
   const formatDuration = (seconds: number) => {
     if (!seconds) return "";
     const h = Math.floor(seconds / 3600);
@@ -53,7 +66,7 @@ export const VideoCard = ({ video, onPress, onProfilePress }: Props) => {
   return (
     <TouchableOpacity 
       activeOpacity={0.9} 
-      onPress={() => onPress(video)}
+      onPress={handlePress}
       style={styles.container}
     >
       <View style={styles.thumbnailContainer}>
@@ -66,15 +79,16 @@ export const VideoCard = ({ video, onPress, onProfilePress }: Props) => {
         
         {/* Duration Badge */}
         {!isProcessing && video.duration > 0 && (
-          <BlurView intensity={30} tint="dark" style={styles.durationBadge}>
+          <BlurView intensity={40} tint="dark" style={styles.durationBadge}>
             <Text style={styles.durationText}>{formatDuration(video.duration)}</Text>
           </BlurView>
         )}
 
-        {/* Quality Badge */}
-        {!isProcessing && (
-          <View style={styles.qualityBadge}>
-            <Text style={styles.qualityText}>4K</Text>
+        {/* Status Badges */}
+        {!isProcessing && video.views > 10000 && (
+          <View style={styles.trendingBadge}>
+            <Ionicons name="flame" size={12} color={COLORS.WHITE} />
+            <Text style={styles.trendingText}>TRENDING</Text>
           </View>
         )}
 
@@ -87,33 +101,26 @@ export const VideoCard = ({ video, onPress, onProfilePress }: Props) => {
             </BlurView>
           </View>
         )}
-
-        {video.status === 'failed' && (
-          <View style={styles.errorOverlay}>
-            <Ionicons name="alert-circle" size={32} color={COLORS.ERROR} />
-            <Text style={styles.errorText}>UPLOAD FAILED</Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.infoRow}>
         <Pressable onPress={() => onProfilePress?.(video.owner_id)}>
           <MonteeqAvatar 
-            uri={video.owner_avatar} 
-            size={36} 
-            goldRing={video.is_verified} 
+            uri={video.owner_avatar || video.owner?.profile_pic} 
+            size={38} 
+            accentRing={video.owner?.is_verified} 
           />
         </Pressable>
 
         <View style={styles.textContainer}>
           <Text style={styles.title} numberOfLines={2}>{video.title}</Text>
           <Text style={styles.metadata}>
-            {video.owner_name} • {formatViews(video.views)} • {formatTimeAgo(video.created_at)}
+            {video.owner?.username || video.owner_name} • {formatViews(video.views)} • {formatTimeAgo(video.created_at)}
           </Text>
         </View>
 
         <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-vertical" size={20} color={COLORS.TEXT_SECONDARY} />
+          <Ionicons name="ellipsis-vertical" size={20} color={COLORS.TEXT_MUTED} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -122,8 +129,7 @@ export const VideoCard = ({ video, onPress, onProfilePress }: Props) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SPACING.xl,
-    paddingHorizontal: SPACING.md,
+    width: '100%',
   },
   thumbnailContainer: {
     width: '100%',
@@ -131,6 +137,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     overflow: 'hidden',
     backgroundColor: COLORS.BG_SURFACE,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER_SUBTLE,
   },
   thumbnail: {
     width: '100%',
@@ -146,24 +154,27 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   durationText: {
-    ...TYPOGRAPHY.caption,
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 11,
     color: COLORS.WHITE,
-    fontWeight: '700',
   },
-  qualityBadge: {
+  trendingBadge: {
     position: 'absolute',
     top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 4,
-    borderRadius: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    left: 8,
+    backgroundColor: COLORS.ACCENT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 4,
   },
-  qualityText: {
-    fontSize: 10,
-    fontWeight: '900',
+  trendingText: {
+    fontFamily: 'Outfit_800ExtraBold',
+    fontSize: 9,
     color: COLORS.WHITE,
+    letterSpacing: 0.5,
   },
   processingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -186,48 +197,36 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.NEON,
+    backgroundColor: COLORS.ACCENT,
   },
   processingText: {
     fontSize: 10,
-    fontWeight: '900',
+    fontFamily: 'Outfit_800ExtraBold',
     color: COLORS.WHITE,
-    letterSpacing: 1,
-  },
-  errorOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  errorText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.ERROR,
-    fontWeight: '900',
     letterSpacing: 1,
   },
   infoRow: {
     flexDirection: 'row',
-    marginTop: SPACING.md,
+    marginTop: 12,
     alignItems: 'flex-start',
   },
   textContainer: {
     flex: 1,
-    marginLeft: SPACING.sm,
+    marginLeft: 12,
   },
   title: {
-    ...TYPOGRAPHY.bodySmall,
+    fontFamily: 'Outfit_600SemiBold',
     color: COLORS.TEXT_PRIMARY,
-    fontWeight: '600',
+    fontSize: 15,
     lineHeight: 20,
   },
   metadata: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.TEXT_SECONDARY,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.TEXT_MUTED,
+    fontSize: 12,
     marginTop: 4,
   },
   moreButton: {
-    padding: SPACING.xs,
+    padding: 4,
   },
 });

@@ -125,13 +125,25 @@ function AppContent() {
       )}
       <div className={hideSidebar ? "app-layout-fullscreen" : "app-layout"}>
         {!hideSidebar && <Sidebar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />}
+        
+        {/* Mobile Sidebar Overlay */}
+        {isMenuOpen && (
+          <div 
+            className="mobile-overlay" 
+            onClick={() => setIsMenuOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 100,
+              display: 'block'
+            }}
+          />
+        )}
+
         <main className={hideSidebar ? "landing-page-main" : `main-stage ${isFlashPage ? 'no-padding' : ''}`}>
-          <div className={hideSidebar ? "content-wrapper-fullscreen" : "content-wrapper"} style={hideSidebar ? { minHeight: '100%', display: 'flex' } : {
-            display: 'flex',
-            gap: '2rem',
-            width: '100%',
-            flexWrap: 'wrap'
-          }}>
+          <div className={hideSidebar ? "content-wrapper-fullscreen" : "content-wrapper"}>
             <div style={hideSidebar ? { width: '100%', minHeight: '100%' } : { flex: 1, minWidth: '300px' }}>
               <React.Suspense fallback={<PageSkeleton />}>
                 <Routes>

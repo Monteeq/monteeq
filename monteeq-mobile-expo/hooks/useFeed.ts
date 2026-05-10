@@ -1,18 +1,23 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import api from '@/lib/axios';
-import { PaginatedResponse, Video } from '@/types/api';
+import { videoApi } from '@/lib/api/videos';
 
 export const useFeed = (type: 'home' | 'flash') => {
   return useInfiniteQuery({
     queryKey: ['feed', type],
-    queryFn: async ({ pageParam = '' }) => {
-      const endpoint = type === 'home' ? '/feed/home' : '/feed/flash';
-      const { data } = await api.get<PaginatedResponse<Video>>(
-        `${endpoint}?cursor=${pageParam}&limit=20`
-      );
+    queryFn: async ({ pageParam = 0 }) => {
+      const data = await videoApi.getVideos({
+        video_type: type,
+        status: 'approved',
+        skip: pageParam,
+        limit: 10,
+      });
       return data;
     },
-    getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
-    initialPageParam: '',
+    getNextPageParam: (lastPage, allPages) => {
+      // If we got 10 items, there might be more. 
+      // Skip = total items loaded so far
+      return lastPage.length === 10 ? allPages.length * 10 : undefined;
+    },
+    initialPageParam: 0,
   });
 };

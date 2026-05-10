@@ -1,51 +1,51 @@
-import { useState, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import api from '@/lib/axios';
+import { useState } from 'react';
+import { uploadApi } from '@/lib/api/upload';
+import { ProcessingStatus } from '@/types/api';
 
 export const useUpload = () => {
+  const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<ProcessingStatus['status']>('unknown');
+  const [statusMessage, setStatusMessage] = useState('');
 
-  const uploadMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const { data } = await api.post('/videos/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent) => {
-          const progress = progressEvent.total
-            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
-            : 0;
-          setUploadProgress(progress);
-        },
-      });
-      return data;
-    },
-  });
-
-  const pollStatus = async (videoId: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const { data } = await api.get(`/videos/${videoId}/status`);
-        setProcessingStatus(data.status);
-        
-        if (data.status === 'ready' || data.status === 'failed') {
-          clearInterval(interval);
-        }
-      } catch (err) {
-        console.error('Polling failed:', err);
-        clearInterval(interval);
-      }
-    }, 3000);
+  const upload = async (
+    file: { uri: string; type: string; name: string },
+    metadata: { title: string; description: string; tags: string; video_type: string }
+  ) => {
+    setIsUploading(true);
+    setUploadProgress(0);
+    setProcessingStatus('queued');
     
-    return () => clearInterval(interval);
+    try {
+      const video = await uploadApi.uploadVideo(file, metadata, (progress) => {
+        setUploadProgress(progress);
+      });
+      return video;
+    } catch (err) {
+      setProcessingStatus('error');
+      throw err;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const pollStatus = async (processingKey: string) => {
+    try {
+      await uploadApi.pollStatus(processingKey, (status) => {
+        setProcessingStatus(status.status);
+        setStatusMessage(status.message);
+      });
+    } catch (err) {
+      setProcessingStatus('error');
+    }
   };
 
   return {
-    upload: uploadMutation.mutateAsync,
-    isUploading: uploadMutation.isPending,
+    upload,
+    isUploading,
     uploadProgress,
     processingStatus,
+    statusMessage,
     pollStatus,
   };
 };

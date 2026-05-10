@@ -9,18 +9,16 @@ use crate::models::TaskStatus;
 pub struct WorkerPool {
     scheduler: WeightedScheduler,
     semaphore: Arc<Semaphore>,
-    status_map: StatusMap,
 }
 
 impl WorkerPool {
-    pub fn new(scheduler: WeightedScheduler, status_map: StatusMap) -> Self {
+    pub fn new(scheduler: WeightedScheduler) -> Self {
         let max_procs = calculate_max_processes();
         println!("Initializing Worker Pool with {} slots", max_procs);
         
         Self {
             scheduler,
             semaphore: Arc::new(Semaphore::new(max_procs)),
-            status_map,
         }
     }
 
@@ -34,7 +32,7 @@ impl WorkerPool {
             
             match self.scheduler.next_task().await {
                 Ok(task) => {
-                    let smap = self.status_map.clone();
+                    let scheduler = self.scheduler.clone();
                     
                     tokio::spawn(async move {
                         let _permit = permit; // Hold permit until done
@@ -65,11 +63,13 @@ impl WorkerPool {
                         println!("Downloading {} from S3 to {}", s3_key, temp_path);
                         if let Err(e) = storage.download_file(&s3_key, temp_file.path()).await {
                             eprintln!("Download failed for task {}: {}", task_id, e);
-                            smap.insert(task_id.clone(), TaskStatus {
+                            let status = TaskStatus {
                                 progress: 0,
                                 status: "error".to_string(),
                                 message: format!("Download failed: {}", e),
-                            });
+                            };
+                            let status_json = serde_json::to_string(&status).unwrap();
+                            let _: () = scheduler.client().set(format!("task:status:{}", task_id), status_json, Some(fred::types::Expiration::EX(86400)), None, false).await.unwrap_or_default();
                             return; 
                         }
 
@@ -83,27 +83,31 @@ impl WorkerPool {
                                 &target_format, 
                                 tier.clone(), 
                                 skip_thumbnail, 
-                                Some(smap.clone()), 
+                                Some(scheduler.clone()), 
                                 task_id.clone()
                             ).await;
 
                             match res {
                                 Ok(_) => {
                                     println!("Completed Task: {}", task_id);
-                                    smap.insert(task_id.clone(), TaskStatus {
+                                    let status = TaskStatus {
                                         progress: 100,
                                         status: "completed".to_string(),
-                                        message: "Success".to_string(),
-                                    });
+                                        message: "Video live and distributed globally!".to_string(),
+                                    };
+                                    let status_json = serde_json::to_string(&status).unwrap();
+                                    let _: () = scheduler.client().set(format!("task:status:{}", task_id), status_json, Some(fred::types::Expiration::EX(86400)), None, false).await.unwrap_or_default();
                                     break;
                                 },
                                 Err(e) if attempt == 3 => {
                                     eprintln!("Failed Task {} after 3 attempts: {}", task_id, e);
-                                    smap.insert(task_id.clone(), TaskStatus {
+                                    let status = TaskStatus {
                                         progress: 0,
                                         status: "error".to_string(),
                                         message: format!("Final error: {}", e),
-                                    });
+                                    };
+                                    let status_json = serde_json::to_string(&status).unwrap();
+                                    let _: () = scheduler.client().set(format!("task:status:{}", task_id), status_json, Some(fred::types::Expiration::EX(86400)), None, false).await.unwrap_or_default();
                                 },
                                 Err(_) => {
                                     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;

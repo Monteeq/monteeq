@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { 
@@ -22,8 +22,6 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/store/authStore';
-import { OnboardingScreen } from '@/screens/OnboardingScreen';
-import { AuthScreen } from '@/screens/AuthScreen';
 import { COLORS } from '@/constants/colors';
 
 // Keep the splash screen visible while we fetch resources
@@ -42,8 +40,7 @@ export default function RootLayout() {
     JetBrainsMono_500Medium,
   });
 
-  const { isAuthenticated, isLoading, initialize } = useAuthStore();
-  const [showOnboarding, setShowOnboarding] = useState(true);
+  const { isLoading, initialize } = useAuthStore();
 
   useEffect(() => {
     initialize();
@@ -59,15 +56,6 @@ export default function RootLayout() {
     return null;
   }
 
-  // Auth Gate
-  if (showOnboarding) {
-    return <OnboardingScreen onFinish={() => setShowOnboarding(false)} />;
-  }
-
-  if (!isAuthenticated) {
-    return <AuthScreen />;
-  }
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
@@ -79,12 +67,29 @@ export default function RootLayout() {
             animation: 'fade',
           }}
         >
+          {/* Main Public Routes (Tabs) */}
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          
+          {/* Stack Screens */}
           <Stack.Screen 
-            name="screens/VideoPlayerScreen" 
+            name="watch" 
             options={{ 
-              presentation: 'fullScreenModal',
+              presentation: 'card',
+              animation: 'slide_from_right'
+            }} 
+          />
+          <Stack.Screen 
+            name="auth" 
+            options={{ 
+              presentation: 'modal',
               animation: 'slide_from_bottom'
+            }} 
+          />
+          <Stack.Screen 
+            name="onboarding" 
+            options={{ 
+              gestureEnabled: false,
+              animation: 'fade'
             }} 
           />
           <Stack.Screen 

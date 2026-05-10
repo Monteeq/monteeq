@@ -6,12 +6,14 @@ import {
   ScrollView, 
   TouchableOpacity, 
   Dimensions,
-  ImageBackground
+  ImageBackground,
+  ActivityIndicator
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { MonteeqList as FlashList } from '@/components/MonteeqList';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '@/constants/colors';
 import { SPACING, RADIUS } from '@/constants/spacing';
 import { TYPOGRAPHY } from '@/constants/typography';
@@ -20,21 +22,74 @@ import { VideoCardCompact } from '@/components/VideoCardCompact';
 import { MonteeqButton } from '@/components/MonteeqButton';
 import { useAuthStore } from '@/store/authStore';
 import { useFeed } from '@/hooks/useFeed';
+import { useProfile } from '@/hooks/useProfile';
 
 const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userId: paramsUserId } = useLocalSearchParams<{ userId: string }>();
-  const { user: currentUser } = useAuthStore();
+  const { username: paramsUsername } = useLocalSearchParams<{ username: string }>();
+  const { user: currentUser, isAuthenticated } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'Edits' | 'Flash' | 'Liked'>('Edits');
   
-  // Use current user if no userId provided
-  const user = currentUser; 
-  const { data: userVideos } = useFeed('home'); // Simplified feed mapping
-  const videos = userVideos?.pages.flatMap(p => p.items) || [];
+  const isOwnProfile = !paramsUsername || paramsUsername === currentUser?.username;
+  
+  // Only fetch profile if it's NOT the current user's own tab when unauthenticated
+  const targetUsername = paramsUsername || currentUser?.username;
+  const { data: profileUser, isLoading: isProfileLoading } = useProfile(targetUsername);
 
-  if (!user) return null;
+  const user = profileUser || (isOwnProfile ? currentUser : null);
+  
+  const { data: userVideos, isLoading: isVideosLoading } = useFeed(activeTab === 'Flash' ? 'flash' : 'home'); 
+  const videos = userVideos?.pages.flat().filter(v => v.owner_id === user?.id) || [];
+
+  // Guest State: Accessing the Profile Tab without being logged in
+  if (!isAuthenticated && isOwnProfile) {
+    return (
+      <View style={[styles.container, styles.centered, { paddingHorizontal: 40 }]}>
+        <LinearGradient
+          colors={['rgba(255, 59, 48, 0.1)', 'transparent']}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.guestIconContainer}>
+          <Ionicons name="person-circle-outline" size={80} color={COLORS.ACCENT} />
+        </View>
+        <Text style={styles.guestTitle}>Your Profile</Text>
+        <Text style={styles.guestMessage}>
+          Sign in to track your edits, view your statistics, and manage your Monteeq creator identity.
+        </Text>
+        <MonteeqButton 
+          label="SIGN IN TO MONTEEQ" 
+          variant="filled"
+          onPress={() => router.push('/auth')} 
+          style={{ width: '100%', height: 54 }}
+        />
+        <TouchableOpacity style={{ marginTop: 20 }} onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.guestLink}>Continue as Guest</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (isProfileLoading && !user) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator color={COLORS.ACCENT} size="large" />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Ionicons name="alert-circle-outline" size={60} color={COLORS.TEXT_MUTED} />
+        <Text style={styles.errorText}>USER NOT FOUND</Text>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)')} style={{ marginTop: 20 }}>
+          <Text style={styles.guestLink}>GO TO FEED</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -42,7 +97,7 @@ export default function ProfileScreen() {
         {/* Profile Header Section */}
         <View style={styles.header}>
           <ImageBackground 
-            source={{ uri: user.profile_pic || user.avatar_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe' }} 
+            source={{ uri: user.profile_pic || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe' }} 
             style={styles.banner}
           >
             <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
@@ -54,13 +109,13 @@ export default function ProfileScreen() {
 
           <View style={styles.profileInfo}>
             <MonteeqAvatar 
-              uri={user.profile_pic || user.avatar_url} 
+              uri={user.profile_pic} 
               size={110} 
               accentRing 
               isVerified={user.is_verified} 
             />
             <Text style={styles.displayName}>{user.full_name || user.username}</Text>
-            <Text style={styles.username}>@{user.username}</Text>
+            <Text style={styles.username}>@{user.username.toUpperCase()}</Text>
             
             <Text style={styles.bio}>
               {user.bio || "Cinematic editor pushing the boundaries of visual art on Monteeq."}
@@ -83,8 +138,8 @@ export default function ProfileScreen() {
 
             <View style={styles.actionRow}>
               <MonteeqButton 
-                label="EDIT PROFILE" 
-                variant="ghost" 
+                label={isOwnProfile ? "EDIT PROFILE" : "FOLLOW"} 
+                variant={isOwnProfile ? "ghost" : "filled"} 
                 size="sm" 
                 onPress={() => {}}
                 style={{ flex: 1 }}
@@ -115,38 +170,43 @@ export default function ProfileScreen() {
 
         {/* Content Grid */}
         <View style={styles.gridContainer}>
-          <FlashList
-            data={videos}
-            renderItem={({ item }) => (
-              <VideoCardCompact 
-                video={item} 
-                onPress={(v) => router.push(`/screens/VideoPlayerScreen?videoId=${v.id}`)} 
-              />
-            )}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            estimatedItemSize={180}
-            scrollEnabled={false}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Ionicons name="film-outline" size={48} color={COLORS.TEXT_MUTED} />
-                <Text style={styles.emptyText}>No {activeTab.toLowerCase()} yet</Text>
-              </View>
-            }
-          />
+          {isVideosLoading ? (
+            <ActivityIndicator color={COLORS.ACCENT} style={{ marginTop: 40 }} />
+          ) : (
+            <FlashList
+              data={videos}
+              renderItem={({ item }) => (
+                <VideoCardCompact 
+                  video={item} 
+                  onPress={(v) => router.push({ pathname: '/watch', params: { id: v.id }})} 
+                />
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              numColumns={2}
+              estimatedItemSize={180}
+              scrollEnabled={false}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Ionicons name="film-outline" size={48} color={COLORS.TEXT_MUTED} />
+                  <Text style={styles.emptyText}>No {activeTab.toLowerCase()} yet</Text>
+                </View>
+              }
+            />
+          )}
         </View>
       </ScrollView>
     </View>
   );
 }
 
-// Add LinearGradient import if needed
-import { LinearGradient } from 'expo-linear-gradient';
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.BG_PRIMARY,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     paddingBottom: SPACING.xl,
@@ -168,7 +228,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   displayName: {
-    ...TYPOGRAPHY.h1,
+    fontFamily: 'Outfit_700Bold',
     color: COLORS.WHITE,
     marginTop: 16,
     fontSize: 24,
@@ -176,16 +236,17 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 14,
     color: COLORS.ACCENT,
-    fontWeight: '800',
+    fontFamily: 'Outfit_800ExtraBold',
     letterSpacing: 1,
     marginTop: 2,
   },
   bio: {
-    ...TYPOGRAPHY.bodySmall,
+    fontFamily: 'Outfit_400Regular',
     color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 22,
+    fontSize: 14,
   },
   statsRow: {
     flexDirection: 'row',
@@ -203,12 +264,12 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     fontSize: 18,
-    fontWeight: '900',
+    fontFamily: 'Outfit_800ExtraBold',
     color: COLORS.WHITE,
   },
   statLabel: {
     fontSize: 10,
-    fontWeight: '900',
+    fontFamily: 'Outfit_700Bold',
     color: COLORS.TEXT_MUTED,
     letterSpacing: 1.5,
     marginTop: 4,
@@ -224,10 +285,10 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.BORDER_ACCENT,
+    borderColor: COLORS.ACCENT,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 62, 62, 0.05)',
+    backgroundColor: 'rgba(255, 59, 48, 0.05)',
   },
   tabsContainer: {
     backgroundColor: COLORS.BG_PRIMARY,
@@ -251,7 +312,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 12,
     color: COLORS.TEXT_MUTED,
-    fontWeight: '900',
+    fontFamily: 'Outfit_700Bold',
     letterSpacing: 1,
   },
   activeTabText: {
@@ -267,9 +328,43 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    ...TYPOGRAPHY.bodySmall,
+    fontFamily: 'Outfit_700Bold',
     color: COLORS.TEXT_MUTED,
-    fontWeight: '700',
     letterSpacing: 1,
   },
+  errorText: {
+    fontFamily: 'Outfit_800ExtraBold',
+    color: COLORS.ACCENT,
+    fontSize: 20,
+    marginTop: 16,
+  },
+  guestIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 59, 48, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  guestTitle: {
+    fontFamily: 'Outfit_800ExtraBold',
+    fontSize: 28,
+    color: COLORS.WHITE,
+    marginBottom: 12,
+  },
+  guestMessage: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 16,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  guestLink: {
+    fontFamily: 'Outfit_700Bold',
+    color: COLORS.TEXT_MUTED,
+    fontSize: 14,
+    letterSpacing: 1,
+  }
 });

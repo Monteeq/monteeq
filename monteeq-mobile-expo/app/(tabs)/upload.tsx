@@ -52,22 +52,24 @@ export default function UploadScreen() {
   const handleUpload = async () => {
     if (!selectedVideo || !title || !videoType) return;
 
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('video_type', videoType);
-    formData.append('tags', tags);
-    
-    // @ts-ignore
-    formData.append('file', {
-      uri: selectedVideo.uri,
-      name: 'upload.mp4',
-      type: 'video/mp4',
-    });
-
     try {
-      const data = await upload(formData);
+      const data = await upload(
+        {
+          uri: selectedVideo.uri,
+          name: 'upload.mp4',
+          type: 'video/mp4',
+        },
+        {
+          title,
+          description: '',
+          tags,
+          video_type: videoType,
+        }
+      );
       setStep(3); // Moving to processing step
-      pollStatus(data.processing_key); // Verified processing_key is used in API
+      if (data.processing_key) {
+        pollStatus(data.processing_key);
+      }
     } catch (err) {
       Alert.alert('Upload Failed', 'There was an error uploading your edit.');
     }

@@ -22,7 +22,51 @@ from app.core.config import FLASH_QUOTA_LIMIT, HOME_QUOTA_LIMIT
 from app.models.models import Video, User
 from app.core.redis import redis_client
 
+from enum import Enum
+
+class VideoStatus(str, Enum):
+    UPLOADING   = "uploading"
+    QUEUED      = "queued"
+    PROCESSING  = "processing"
+    READY       = "ready"
+    FAILED      = "failed"
+
 router = APIRouter()
+
+@router.get("/health")
+async def health_check(db: Session = Depends(get_db)):
+    health = {
+        "status": "ok",
+        "redis": "disconnected",
+        "database": "disconnected",
+        "celery": "unknown",
+        "rust_service": "unknown"
+    }
+    
+    # Check DB
+    try:
+        db.execute("SELECT 1")
+        health["database"] = "connected"
+    except Exception:
+        health["status"] = "error"
+        
+    # Check Redis
+    try:
+        if redis_client.ping():
+            health["redis"] = "connected"
+    except Exception:
+        health["status"] = "error"
+        
+    # Check Rust Service
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(f"{config.RUST_SERVICE_URL}/health", timeout=1.0)
+            if resp.status_code == 200:
+                health["rust_service"] = "reachable"
+        except Exception:
+            health["rust_service"] = "unreachable"
+            
+    return health
 
 @router.get("/", response_model=List[schemas.Video])
 def read_videos(
@@ -419,44 +463,46 @@ async def reupload_video(
 
 @router.get("/status/{key}")
 async def get_processing_status(key: str, db: Session = Depends(get_db)):
-    # 1. Try to get real-time status from Rust service
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await client.get(f"{config.RUST_SERVICE_URL}/status/{key}", timeout=2.0)
-            if resp.status_code == 200:
-                data = resp.json()
-                if data:
-                    # If Rust says completed, verify if DB Phase 2 is also done
-                    if data.get("status") == "completed":
-                        video = db.query(Video).filter(Video.processing_key == key).first()
-                        if not video or not video.video_url:
-                            # Still waiting for Phase 2 (metadata/DB update) in Celery
-                            return {
-                                "status": "processing",
-                                "progress": 99,
-                                "message": "Finalizing video details..."
-                            }
-                    return data
-        except Exception as e:
-            logger.warning(f"Failed to reach Rust service for status: {e}")
+    logger.info(f"[STATUS] Checking status for key: {key}")
+    
+    # 1. Try to get status from Redis directly (Shared with Rust service)
+    try:
+        import json
+        status_data_raw = redis_client.get(f"task:status:{key}")
+        if status_data_raw:
+            status_data = json.loads(status_data_raw)
+            logger.info(f"[STATUS] Redis found: {status_data}")
+            
+            # Map Rust status to Frontend expectations if needed
+            # Rust statuses: "queued", "processing", "completed", "error"
+            rust_status = status_data.get("status")
+            if rust_status == "completed":
+                # Verify Phase 2 in DB
+                video = db.query(Video).filter(Video.processing_key == key).first()
+                if video and video.status == "approved":
+                    return {"status": "completed", "progress": 100, "message": "Ready"}
+                return {"status": "processing", "progress": 99, "message": "Finalizing..."}
+            
+            return {
+                "status": "processing" if rust_status in ["queued", "processing"] else rust_status,
+                "progress": status_data.get("progress", 0),
+                "message": status_data.get("message", "")
+            }
+    except Exception as e:
+        logger.warning(f"[STATUS] Redis error: {e}")
 
     # 2. Fallback: Get persistent status from Database
     video = db.query(Video).filter(Video.processing_key == key).first()
     if video:
-        # If we have a video URL, transcoding is finished regardless of approval status
-        if video.video_url:
-            return {"status": "completed", "progress": 100, "message": "Success"}
-            
         if video.status == "approved":
-            return {"status": "completed", "progress": 100, "message": "Success"}
+            return {"status": "completed", "progress": 100, "message": "Ready"}
         if video.status == "failed":
-            return {"status": "error", "progress": 0, "message": "Processing failed. Please check logs or try again."}
+            return {"status": "error", "progress": 0, "message": "Failed"}
         
-        # If pending, but Rust didn't have it, it's either in Celery queue or Rust queue or worker died
         return {
-            "status": "processing" if video.status == "pending" else video.status,
-            "progress": 50, # Rough estimate if we have no better data
-            "message": video.processing_message or "Task is in queue..."
+            "status": "processing",
+            "progress": 50,
+            "message": video.processing_message or "Processing..."
         }
 
     return {"status": "unknown"}
