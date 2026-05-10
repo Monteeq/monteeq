@@ -37,6 +37,7 @@ class Storage:
                 's3',
                 aws_access_key_id=config.AWS_ACCESS_KEY_ID,
                 aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY,
+                endpoint_url=config.S3_ENDPOINT,
                 config=s3_config
             )
             logger.info("Successfully initialized AWS S3 client")
@@ -171,6 +172,11 @@ class Storage:
             # If CloudFront is configured, use it for super-fast global delivery
             if config.AWS_CLOUDFRONT_DOMAIN:
                 return f"https://{config.AWS_CLOUDFRONT_DOMAIN}/{url_key}"
+            
+            # Use custom endpoint if available (e.g. Backblaze)
+            if config.S3_ENDPOINT:
+                endpoint_host = config.S3_ENDPOINT.replace("https://", "").replace("http://", "")
+                return f"https://{config.AWS_STORAGE_BUCKET_NAME}.{endpoint_host}/{url_key}"
             
             # Fallback to direct S3
             return f"https://{config.AWS_STORAGE_BUCKET_NAME}.s3.{config.AWS_S3_REGION_NAME}.amazonaws.com/{url_key}"

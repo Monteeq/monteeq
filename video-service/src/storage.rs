@@ -14,11 +14,11 @@ use aws_config::Region;
 
 impl StorageManager {
     pub async fn new() -> Result<Self> {
-        let region_name = std::env::var("AWS_S3_REGION_NAME").ok();
-        let aws_region = std::env::var("AWS_REGION").ok();
+        let region_name = std::env::var("S3_REGION").ok()
+            .or_else(|| std::env::var("AWS_S3_REGION_NAME").ok())
+            .or_else(|| std::env::var("AWS_REGION").ok());
         
         let region_provider = RegionProviderChain::first_try(region_name.map(Region::new))
-            .or_else(aws_region.map(Region::new))
             .or_default_provider()
             .or_else(Region::new("eu-west-1"));
 
@@ -27,25 +27,34 @@ impl StorageManager {
             .load()
             .await;
         
+        let mut s3_config_builder = aws_sdk_s3::config::Builder::from(&config);
+        
+        // Handle custom endpoint (e.g. Backblaze)
+        if let Ok(endpoint) = std::env::var("S3_ENDPOINT") {
+            println!("Rust: Using custom S3 endpoint: {}", endpoint);
+            s3_config_builder = s3_config_builder.endpoint_url(endpoint);
+        }
+
         // Build S3 config with optional Transfer Acceleration
         let use_accelerate = std::env::var("AWS_S3_USE_ACCELERATE")
             .map(|v| v.to_lowercase() == "true")
             .unwrap_or(false);
             
-        let mut s3_config_builder = aws_sdk_s3::config::Builder::from(&config);
         if use_accelerate {
             println!("Rust: Enabling S3 Transfer Acceleration");
             s3_config_builder = s3_config_builder.accelerate(true);
         }
+        
         let s3_config = s3_config_builder.build();
-            
         let client = Client::from_conf(s3_config);
         
-        let bucket = std::env::var("AWS_STORAGE_BUCKET_NAME")
-            .map_err(|_| anyhow!("AWS_STORAGE_BUCKET_NAME not set"))?;
+        let bucket = std::env::var("S3_BUCKET_NAME")
+            .or_else(|_| std::env::var("AWS_STORAGE_BUCKET_NAME"))
+            .map_err(|_| anyhow!("Storage bucket name not set (S3_BUCKET_NAME or AWS_STORAGE_BUCKET_NAME)"))?;
         
         Ok(Self { client, bucket })
     }
+
 
     /// Recursively upload HLS directory to S3
     pub async fn upload_hls_dir(&self, local_dir: &str, s3_prefix: &str) -> Result<()> {
