@@ -51,12 +51,12 @@ async fn main() {
     
     let perf = PerformanceConfig {
         // Ensure we only use 1 connection and set a 5s timeout
-        default_command_timeout_ms: 5000,
+        default_command_timeout: std::time::Duration::from_millis(5000),
         ..Default::default()
     };
     
     let policy = ReconnectPolicy::default();
-    let client = RedisClient::new(config, Some(perf), Some(policy), None);
+    let client = RedisClient::new(config, Some(perf), None, Some(policy));
     
     client.connect();
     client.wait_for_connect().await.expect("Failed to connect to Redis Cloud");
