@@ -8,9 +8,9 @@ use tower_http::cors::CorsLayer;
 use dotenvy::dotenv;
 use std::env;
 use fred::prelude::*;
+use fred::interfaces::KeysInterface;
 
 mod transcoder;
-mod ax_status;
 mod worker;
 mod models;
 mod queue;
@@ -19,7 +19,6 @@ mod storage;
 use models::{VideoTask, UserTier, TaskStatus};
 use queue::WeightedScheduler;
 use worker::WorkerPool;
-use ax_status::StatusMap;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct ProcessRequest {

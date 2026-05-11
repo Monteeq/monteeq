@@ -1,4 +1,5 @@
 use tokio::process::Command;
+use fred::interfaces::KeysInterface;
 use anyhow::{Result, anyhow};
 use std::path::Path;
 use tokio::fs;

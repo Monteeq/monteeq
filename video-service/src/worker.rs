@@ -2,8 +2,8 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use sysinfo::{System, SystemExt};
 use crate::queue::WeightedScheduler;
+use fred::interfaces::KeysInterface;
 use crate::transcoder;
-use crate::ax_status::StatusMap;
 use crate::models::TaskStatus;
 
 pub struct WorkerPool {

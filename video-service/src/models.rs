@@ -18,7 +18,7 @@ pub struct VideoTask {
     pub skip_thumbnail: bool,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TaskStatus {
     pub progress: u32,
     pub status: String,
