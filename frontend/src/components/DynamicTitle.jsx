@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const TITLE_MAP = {
-  '/': 'Monteeq | Create, Share, Earn',
+  '/': 'Monteeq | Create and Share',
   '/home': 'Home | Monteeq',
   '/flash': 'Flash | Vertical Video',
   '/posts': 'Feed | Monteeq',
@@ -53,18 +53,18 @@ const DynamicTitle = () => {
     let title = customTitle || TITLE_MAP[location.pathname] || 'Monteeq';
 
     if (!customTitle) {
-        // Handle Dynamic Routes fallback
-        if (location.pathname.startsWith('/watch/')) {
-          title = 'Watch Video | Monteeq';
-        } else if (location.pathname.startsWith('/profile/')) {
-          const username = location.pathname.split('/')[2];
-          title = username ? `@${username} | Monteeq` : 'Profile | Monteeq';
-        }
+      // Handle Dynamic Routes fallback
+      if (location.pathname.startsWith('/watch/')) {
+        title = 'Watch Video | Monteeq';
+      } else if (location.pathname.startsWith('/profile/')) {
+        const username = location.pathname.split('/')[2];
+        title = username ? `@${username} | Monteeq` : 'Profile | Monteeq';
+      }
     } else {
-        // If it's a custom title, append the brand suffix if not present
-        if (!title.includes('Monteeq')) {
-            title = `${title} | Monteeq`;
-        }
+      // If it's a custom title, append the brand suffix if not present
+      if (!title.includes('Monteeq')) {
+        title = `${title} | Monteeq`;
+      }
     }
 
     document.title = title;

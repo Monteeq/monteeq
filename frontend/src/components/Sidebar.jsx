@@ -35,10 +35,10 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* ── DISCOVER ────────────────────────────────── */}
         <NavGroup label="Discover" show={isOpen} />
-        <NavItem to="/home"     icon={<HomeIcon size={24} />}  label="Home"        onClick={onClose} />
-        <NavItem to="/flash"    icon={<Zap size={24} />}       label="Flash Clips" onClick={onClose} />
-        <NavItem to="/posts"    icon={<Layout size={24} />}    label="Feed"        onClick={onClose} />
-        <NavItem to="/challenges" icon={<Trophy size={24} />}  label="Challenges"  onClick={onClose} accent="var(--accent-primary)" />
+        <NavItem to="/home" icon={<HomeIcon size={24} />} label="Home" onClick={onClose} />
+        <NavItem to="/flash" icon={<Zap size={24} />} label="Flash Clips" onClick={onClose} />
+        <NavItem to="/posts" icon={<Layout size={24} />} label="Feed" onClick={onClose} />
+        <NavItem to="/challenges" icon={<Trophy size={24} />} label="Challenges" onClick={onClose} accent="var(--accent-primary)" />
 
         {/* ── CREATE ──────────────────────────────────── */}
         <NavGroup label="Create" show={isOpen} />
@@ -59,15 +59,15 @@ const Sidebar = ({ isOpen, onClose }) => {
         {token && (
           <>
             <NavGroup label="Grow" show={isOpen} />
-            <NavItem to="/insights"     icon={<TrendingUp size={24} />}    label="Insights"        onClick={onClose} accent="#f59e0b" />
-            <NavItem to="/achievements" icon={<Trophy size={24} />}        label="Achievements"    onClick={onClose} />
-            <NavItem 
-              to="/pro" 
-              icon={<Crown size={24} />} 
-              label="Monteeq Pro" 
-              onClick={onClose} 
+            <NavItem to="/insights" icon={<TrendingUp size={24} />} label="Insights" onClick={onClose} accent="#f59e0b" />
+            <NavItem to="/achievements" icon={<Trophy size={24} />} label="Achievements" onClick={onClose} />
+            <NavItem
+              to="/pro"
+              icon={<Crown size={24} />}
+              label="Monteeq Pro"
+              onClick={onClose}
               accent="#ffd700"
-              bold 
+              bold
             />
           </>
         )}
@@ -84,8 +84,8 @@ const Sidebar = ({ isOpen, onClose }) => {
         {/* ── MONTEEQ ──────────────────────────────────
             Always visible */}
         <NavGroup label="Monteeq" show={isOpen} />
-        <NavItem to="/partner" icon={<Handshake size={24} />}  label="Partner With Us" onClick={onClose} />
-        <NavItem to="/about"   icon={<Telescope size={24} />}  label="About"           onClick={onClose} accent="#60a5fa" />
+        <NavItem to="/partner" icon={<Handshake size={24} />} label="Partner With Us" onClick={onClose} />
+        <NavItem to="/about" icon={<Telescope size={24} />} label="About" onClick={onClose} accent="#60a5fa" />
 
       </nav>
 

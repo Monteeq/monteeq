@@ -72,7 +72,8 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const isFlashPage = location.pathname === '/flash';
-  const isHomePage = location.pathname === '/home';
+  const isHomePage = location.pathname === '/home' || (location.pathname === '/' && token);
+
   const isOnboardingPage = location.pathname === '/onboarding';
   const isLandingPage = location.pathname === '/' && !token;
   
@@ -144,7 +145,8 @@ function AppContent() {
           />
         )}
 
-        <main className={hideSidebar ? "landing-page-main" : `main-stage ${isFlashPage ? 'no-padding' : ''}`}>
+        <main className={hideSidebar ? "landing-page-main" : `main-stage ${isFlashPage ? 'no-padding' : ''} ${isHomePage ? 'home-stage' : ''}`}>
+
           <div className={hideSidebar ? "content-wrapper-fullscreen" : "content-wrapper"}>
             <div style={hideSidebar ? { width: '100%', minHeight: '100%' } : { flex: 1, minWidth: '300px' }}>
               <React.Suspense fallback={<PageSkeleton />}>

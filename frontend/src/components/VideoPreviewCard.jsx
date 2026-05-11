@@ -126,6 +126,8 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                         </div>
                     )}
 
+
+
                     {/* Status Overlays */}
                     {video.status === 'pending' && (
                         <div className="vc-status pending">
@@ -141,32 +143,12 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                     )}
 
                     {/* Hover indicator */}
-                    {showPreview && isLoaded ? (
+                    {showPreview && isLoaded && (
                         <div className="vc-play-indicator">
                             <Play size={12} fill="white" />
                         </div>
-                    ) : (
-                        <div style={{
-                            position: 'absolute',
-                            bottom: '8px',
-                            left: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            color: 'white',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                            zIndex: 2,
-                            background: 'rgba(0,0,0,0.4)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            backdropFilter: 'blur(4px)'
-                        }}>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                            <span>{formatViews(video.views)}</span>
-                        </div>
                     )}
+
                 </div>
             </div>
 
