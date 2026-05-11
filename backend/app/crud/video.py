@@ -54,7 +54,6 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
 
     # Ordering: trending sorts by recent engagement, default is discovery score
     if feed_mode == 'trending':
-        from datetime import timedelta
         week_ago = datetime.now() - timedelta(days=7)
         query = query.filter(Video.created_at >= week_ago)
         query = query.order_by(desc(Video.likes_count + Video.views))
@@ -91,7 +90,6 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
 def search_videos(db: Session, query_str: str, status: str = "approved", current_user_id: int = None):
     query = db.query(Video).options(joinedload(Video.owner))
     if status == "approved" and current_user_id:
-        from datetime import timedelta
         twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
         query = query.filter(
             or_(
