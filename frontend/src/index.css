@@ -1075,6 +1075,15 @@ button {
   }
 }
 
+.landing-page-main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100vh;
+  position: relative;
+  scrollbar-width: thin;
+}
+
 /* Unified and moved to top */
 
 .video-details {
@@ -1922,9 +1931,9 @@ button,
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.5rem;
+  padding: 2rem 1rem;
   position: relative;
-  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .auth-v4-bg {

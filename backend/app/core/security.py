@@ -45,13 +45,19 @@ def is_bot(request) -> bool:
     
     # 1. Extensive User-Agent Blacklist
     bot_keywords = [
-        "bot", "crawler", "spider", "google", "bing", "yahoo", "slurp", "headless",
+        "bot", "crawler", "spider", "slurp", "headless",
         "phantom", "selenium", "puppeteer", "playwright", "python", "curl", "wget",
         "postman", "insomnia", "axios", "scrapy", "ahrefs", "semrush", "majestic",
         "dotbot", "rogerbot", "exabot", "gigabot", "yandex", "baiduspider", "petalbot"
     ]
     
+    # Legit crawlers to allowlist
+    legit_crawlers = ["googlebot", "bingbot", "google-site-verification", "adsbot-google", "bingpreview"]
+    
     if any(keyword in user_agent for keyword in bot_keywords):
+        # Double check if it's a legit one
+        if any(legit in user_agent for legit in legit_crawlers):
+            return False
         return True
     
     # 2. Headless Detection: Headless browsers often omit certain headers

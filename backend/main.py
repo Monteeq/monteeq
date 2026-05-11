@@ -41,8 +41,11 @@ class AntiBotMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         from app.core import security
         
-        # 1. Skip check for static files and health
-        if request.url.path.startswith("/static") or request.url.path == "/health":
+        # 1. Skip check for static files, health, and SEO/Sitemaps
+        if (request.url.path.startswith("/static") or 
+            request.url.path == "/health" or
+            "/seo/" in request.url.path or
+            "sitemap" in request.url.path):
             return await call_next(request)
             
         # 2. Heuristic check
