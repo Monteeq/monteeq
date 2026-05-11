@@ -151,6 +151,8 @@ def get_leaderboard(challenge_id: int, db: Session = Depends(get_db)):
     leaderboard = []
     for entry in entries:
         video = entry.video
+        if not video:
+            continue
         user = entry.user
         leaderboard.append({
             "username": user.username,

@@ -45,5 +45,3 @@ SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "Monteeq")
 # Redis Configuration (Live Cloud)
 REDIS_URL = os.getenv("REDIS_URL")
 
-# Email API Configuration
-BREVO_API_KEY = os.getenv("BREVO_API_KEY")

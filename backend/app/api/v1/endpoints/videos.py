@@ -20,6 +20,7 @@ from app.utils.push import notify_user_push
 from app.core.storage import storage
 from app.core.config import FLASH_QUOTA_LIMIT, HOME_QUOTA_LIMIT
 from app.models.models import Video, User
+from app.services.email_service import send_challenge_exit_email
 from app.core.redis import redis_client
 
 from enum import Enum
@@ -285,6 +286,14 @@ def delete_video(
     
     # Delete physical files
     delete_video_files(video)
+    
+    # Handle challenge entry counts and notifications
+    for entry in video.challenge_entries:
+        if entry.challenge:
+            entry.challenge.entry_count = max(0, entry.challenge.entry_count - 1)
+            # Notify the user
+            if entry.user and entry.user.email:
+                send_challenge_exit_email(entry.user.email, entry.user.username, entry.challenge.title)
     
     # Delete from DB
     db.delete(video)

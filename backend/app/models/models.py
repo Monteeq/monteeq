@@ -154,6 +154,7 @@ class Video(Base):
     owner = relationship("User", back_populates="videos", foreign_keys=[owner_id])
     comments = relationship("Comment", back_populates="video", cascade="all, delete-orphan")
     likes = relationship("Like", back_populates="video", cascade="all, delete-orphan")
+    challenge_entries = relationship("ChallengeEntry", back_populates="video", cascade="all, delete-orphan")
 
     @property
     def owner_username(self):
@@ -387,7 +388,7 @@ class ChallengeEntry(Base):
 
     challenge = relationship("Challenge", back_populates="entries")
     user = relationship("User")
-    video = relationship("Video")
+    video = relationship("Video", back_populates="challenge_entries")
 
 
 class Wallet(Base):
