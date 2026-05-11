@@ -48,6 +48,7 @@ import Footer from './components/Footer';
 import MeshBackground from './components/MeshBackground';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ErrorProvider } from './context/ErrorContext';
+import DynamicTitle from './components/DynamicTitle';
 import './index.css';
 
 
@@ -116,6 +117,7 @@ function AppContent() {
 
   return (
     <div className="app-container">
+      <DynamicTitle />
       <MeshBackground />
       {!hideHeader && (
         <ModernHeader

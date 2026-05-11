@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share2, Trophy, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { viewVideo } from '../api';
 
 // Services
 import { metricsManager } from '../services/metricsManager';
@@ -38,15 +39,25 @@ const FlashCard = ({
 
     useEffect(() => {
         if (!videoRef.current) return;
+        let viewTimer = null;
+
         if (isActive) {
             videoRef.current.muted = muted;
-
             videoRef.current.play().catch(() => { });
 
             setPlaying(true);
             entryTime.current = Date.now();
             const vDuration = videoRef.current.duration || video.duration || 0;
             trackingManager.startSession(video.id, vDuration);
+
+            // Count view after 3 seconds of active watching
+            viewTimer = setTimeout(async () => {
+                try {
+                    await viewVideo(video.id);
+                } catch (err) {
+                    console.error("Failed to count view", err);
+                }
+            }, 3000);
         } else {
             if (playing && entryTime.current > 0) {
                 const watchMs = Date.now() - entryTime.current;
@@ -54,14 +65,18 @@ const FlashCard = ({
                 adaptiveDiscovery.recordWatch(video.id, watchMs, (videoRef.current?.duration || 0) * 1000, video.mood);
                 trackingManager.endSession(video.id);
             }
+            if (viewTimer) clearTimeout(viewTimer);
+            
             videoRef.current.pause();
-
             videoRef.current.currentTime = 0;
-
             setPlaying(false);
             setProgress(0);
             setIsEngaged(false);
         }
+
+        return () => {
+            if (viewTimer) clearTimeout(viewTimer);
+        };
     }, [isActive, video.status, video.id, muted]);
 
     const handleTimeUpdate = (e) => {

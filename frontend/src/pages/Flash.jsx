@@ -340,6 +340,12 @@ const Flash = () => {
 
     const activeClip = useMemo(() => clips.find(c => c.id === activeVideoId), [clips, activeVideoId]);
 
+    useEffect(() => {
+        if (activeClip?.title) {
+            window.dispatchEvent(new CustomEvent('monteeq:update-title', { detail: activeClip.title }));
+        }
+    }, [activeClip?.title]);
+
     // ─────────────────────────────────────────────────────────────────────────
     const handleLike = async (id) => {
         if (!token) {

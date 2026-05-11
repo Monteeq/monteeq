@@ -92,6 +92,12 @@ const Watch = () => {
         fetchVideoData();
     }, [id, token]);
 
+    useEffect(() => {
+        if (video?.title) {
+            window.dispatchEvent(new CustomEvent('monteeq:update-title', { detail: video.title }));
+        }
+    }, [video?.title]);
+
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
         if (!newComment.trim() || !token) return;
