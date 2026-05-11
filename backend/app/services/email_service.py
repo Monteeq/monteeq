@@ -54,6 +54,7 @@ def _send_email_logic(to_email: str, subject: str, plain_text: str, html_content
             logger.info(f"SMTP: Email '{subject}' sent to {to_email}")
             return True
         except Exception as e:
+            logger.error(f"SMTP Failed for {to_email}: {e}")
 
     # --- 2. Final Fallback (Console) ---
     logger.warning(f"NO EMAIL SERVICE ACTIVE. Email '{subject}' to {to_email}")
