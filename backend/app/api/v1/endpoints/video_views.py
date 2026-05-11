@@ -39,6 +39,12 @@ async def init_view(
     db: Session = Depends(get_db),
     current_user: Optional[dict] = Depends(dependencies.get_current_user_optional)
 ):
+    # Bot detection
+    user_agent = request.headers.get("User-Agent", "").lower()
+    bot_keywords = ["bot", "crawler", "spider", "google", "bing", "yahoo", "slurp", "headless", "phantom"]
+    if any(keyword in user_agent for keyword in bot_keywords):
+        return {"status": "success", "message": "Bot detected, view session not initialized"}
+
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")

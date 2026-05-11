@@ -2,13 +2,12 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc, text, or_
 from app.models.models import Video, Like, Comment, View, User, Post, SponsoredAd
 from app.schemas import schemas
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str = "approved", current_user_id: Optional[int] = None, skip: int = 0, limit: int = 100, mood: Optional[str] = None, feed_mode: Optional[str] = None):
     from app.models.models import Follow
     query = db.query(Video).options(joinedload(Video.owner))
-    from datetime import timedelta
     twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
     
     # Filtering Logic based on status
@@ -278,56 +277,56 @@ def increment_share(db: Session, video_id: int):
     return None
 
 def increment_view(db: Session, user_id: Optional[int] = None, video_id: Optional[int] = None, post_id: Optional[int] = None):
-    if user_id:
-        # Check daily limit for videos (spam prevention)
-        if video_id:
-            today = datetime.now().date()
-            start_of_day = datetime(today.year, today.month, today.day, 0, 0, 0)
-            end_of_day = datetime(today.year, today.month, today.day, 23, 59, 59)
-            
-            view_count = db.query(func.count(View.id)).filter(
-                View.video_id == video_id,
-                View.user_id == user_id,
-                View.created_at >= start_of_day,
-                View.created_at <= end_of_day
-            ).scalar() or 0
-            
-            if view_count >= 5:
-                return get_video(db, video_id)
-                
-        new_view = View(video_id=video_id, post_id=post_id, user_id=user_id)
-        db.add(new_view)
-        if video_id:
-             update_user_interests_from_video(db, user_id, video_id)
-             
-        db.commit() 
-    else:
-        # Record anonymous views too for analytics
-        new_view = View(video_id=video_id, post_id=post_id, user_id=None)
-        db.add(new_view)
-        db.commit()
-        
+    # Fetch target objects
+    video = None
     if video_id:
-        target = db.query(Video).filter(Video.id == video_id).first()
-        if target:
-
-            target.views = (target.views or 0) + 1
-            db.commit()
-            db.refresh(target)
-            
-            return target
-    elif post_id:
-        target = db.query(Post).filter(Post.id == post_id).first()
-        if target:
-            target.views_count = (target.views_count or 0) + 1
-            db.commit()
-            db.refresh(target)
-            update_discovery_score(db, post_id=post_id)
-            return target
+        video = db.query(Video).filter(Video.id == video_id).first()
     
-    # Trigger score update for video even if no user_id (anonymous views)
-    if video_id:
+    post = None
+    if post_id:
+        post = db.query(Post).filter(Post.id == post_id).first()
+
+    # 1. Uploader Check: If uploader, only count 1 view ever
+    if user_id and video and video.owner_id == user_id:
+        exists = db.query(View).filter(View.video_id == video_id, View.user_id == user_id).first()
+        if exists:
+            return video
+
+    # 2. 10-Hour Window Check (Max 5 views per 10 hours for authenticated users)
+    if user_id and video_id:
+        ten_hours_ago = datetime.now() - timedelta(hours=10)
+        view_count = db.query(func.count(View.id)).filter(
+            View.video_id == video_id,
+            View.user_id == user_id,
+            View.created_at >= ten_hours_ago
+        ).scalar() or 0
+        
+        if view_count >= 5:
+            return video
+
+    # Record the view
+    new_view = View(video_id=video_id, post_id=post_id, user_id=user_id)
+    db.add(new_view)
+    
+    if user_id and video_id:
+        update_user_interests_from_video(db, user_id, video_id)
+        
+    db.commit()
+
+    # Increment the public counter
+    if video:
+        video.views = (video.views or 0) + 1
+        db.commit()
+        db.refresh(video)
         update_discovery_score(db, video_id=video_id)
+        return video
+    
+    if post:
+        post.views_count = (post.views_count or 0) + 1
+        db.commit()
+        db.refresh(post)
+        update_discovery_score(db, post_id=post_id)
+        return post
         
     return None
 
