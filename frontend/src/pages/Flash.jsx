@@ -9,6 +9,7 @@ import { useNotification } from '../context/NotificationContext';
 import { FlashSkeleton } from '../components/Skeleton';
 import { Flame, Star, ChevronUp, ChevronDown, Sparkles, Zap, Users } from 'lucide-react';
 import NativeFeedAd from '../components/ads/NativeFeedAd';
+import SEO from '../components/SEO';
 
 // Services
 import { adaptiveEngine } from '../services/adaptiveEngine';
@@ -395,6 +396,11 @@ const Flash = () => {
 
     return (
         <div className={s.container}>
+            <SEO 
+                title="Flash"
+                description="Watch short, engaging vertical videos on Monteeq Flash. Discover the latest trends, creative edits, and amazing clips."
+                canonical={`${window.location.origin}/flash`}
+            />
             {isDesktop && <DesktopSidebar activeCategory={activeCategory} onSelectCategory={setActiveCategory} feedType={feedType} setFeedType={handleFeedTypeChange} categories={categories} />}
 
             <div className={s.mainContent}>

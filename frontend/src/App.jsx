@@ -60,7 +60,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (!token) return <Navigate to="/login" replace />;
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to="/" replace />;
   }
   return children;
 };
@@ -150,15 +150,15 @@ function AppContent() {
               <React.Suspense fallback={<PageSkeleton />}>
                 <Routes>
                   {/* Public Routes */}
-                  <Route path="/" element={token ? <Navigate to="/home" replace /> : <Landing />} />
+                  <Route path="/" element={token ? <Home /> : <Landing />} />
                   <Route path="/home" element={<Home />} />
                   <Route path="/flash" element={<Flash />} />
                   <Route path="/watch/:id" element={<Watch />} />
 
-                  <Route path="/login" element={token ? <Navigate to="/home" replace /> : <Login />} />
-                  <Route path="/signup" element={token ? <Navigate to="/home" replace /> : <Signup />} />
-                  <Route path="/forgot-password" element={token ? <Navigate to="/home" replace /> : <ForgotPassword />} />
-                  <Route path="/reset-password" element={token ? <Navigate to="/home" replace /> : <ResetPassword />} />
+                  <Route path="/login" element={token ? <Navigate to="/" replace /> : <Login />} />
+                  <Route path="/signup" element={token ? <Navigate to="/" replace /> : <Signup />} />
+                  <Route path="/forgot-password" element={token ? <Navigate to="/" replace /> : <ForgotPassword />} />
+                  <Route path="/reset-password" element={token ? <Navigate to="/" replace /> : <ResetPassword />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />

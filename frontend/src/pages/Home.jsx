@@ -9,6 +9,7 @@ import NativeFeedAd from '../components/ads/NativeFeedAd';
 import DashboardBannerAd from '../components/ads/DashboardBannerAd';
 import AdSenseAd from '../components/ads/AdSenseAd';
 import { VideoSkeleton, FlashSkeleton, HomeSkeleton } from '../components/Skeleton';
+import SEO from '../components/SEO';
 import Footer from '../components/Footer';
 
 const CATEGORIES = ["All", "Gaming", "Music", "Live", "Comedy", "Vlogs", "Recently uploaded", "News", "Sports", "Learning"];
@@ -150,6 +151,11 @@ const Home = () => {
 
     return (
         <div className="home-container page-container">
+            <SEO 
+                title="Home"
+                description="Experience the best creative video content on Monteeq. Watch, share, and discover amazing videos from creators worldwide."
+                canonical={`${window.location.origin}/`}
+            />
             {/* Hero Section */}
             <section className="hero-section">
                 <img src={featured.image} alt="Featured" className="hero-image" fetchpriority="high" />

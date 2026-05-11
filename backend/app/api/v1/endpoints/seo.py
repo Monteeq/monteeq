@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.models import Video
+from app.core import config
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
 router = APIRouter()
 
-BASE_URL = "https://monteeq.com" # Should ideally be from config
+BASE_URL = config.FRONTEND_URL.rstrip('/')
 
 @router.get("/sitemap.xml")
 async def get_sitemap(db: Session = Depends(get_db)):
@@ -15,12 +16,21 @@ async def get_sitemap(db: Session = Depends(get_db)):
     urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
     
     # Static Public Pages
-    pages = ["", "/home", "/flash", "/about", "/partner", "/privacy", "/terms", "/login", "/signup", "/challenges"]
+    pages = [
+        {"path": "", "priority": "1.0"},
+        {"path": "/home", "priority": "0.9"},
+        {"path": "/flash", "priority": "0.9"},
+        {"path": "/challenges", "priority": "0.8"},
+        {"path": "/about", "priority": "0.7"},
+        {"path": "/partner", "priority": "0.7"},
+        {"path": "/privacy", "priority": "0.5"},
+        {"path": "/terms", "priority": "0.5"},
+    ]
     for page in pages:
         url_el = ET.SubElement(urlset, "url")
-        ET.SubElement(url_el, "loc").text = f"{BASE_URL}{page}"
+        ET.SubElement(url_el, "loc").text = f"{BASE_URL}{page['path']}"
         ET.SubElement(url_el, "changefreq").text = "daily"
-        ET.SubElement(url_el, "priority").text = "1.0" if page == "" else "0.8"
+        ET.SubElement(url_el, "priority").text = page['priority']
 
     # Dynamic Video Pages
     videos = db.query(Video).filter(Video.status == "approved").all()
