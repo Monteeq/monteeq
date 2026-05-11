@@ -245,26 +245,28 @@ def toggle_follow(db: Session, follower_id: int, followed_id: int):
         new_follow = Follow(follower_id=follower_id, followed_id=followed_id)
         db.add(new_follow)
         db.commit()
-        
-        # Check for achievements
-        follower_count = db.query(func.count(Follow.follower_id)).filter(Follow.followed_id == followed_id).scalar()
-        
-        if follower_count == 1:
-            crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="FIRST_FOLLOWER")
-        elif follower_count == 100:
-            crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="100_FOLLOWERS")
-        elif follower_count == 1000:
-            crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="1K_FOLLOWERS")
-            
-        # Notify user
-        try:
-            follower = get_user_by_id(db, follower_id)
-            msg = f"{follower.username} started following you!"
-            notify_user_push(db, followed_id, "New Follower!", msg, link=f"/profile/{follower.username}", n_type="follower")
-        except Exception:
-            pass
-
         return True
+
+def handle_follow_side_effects(db: Session, follower_id: int, followed_id: int):
+    """Secondary tasks after a user follows another."""
+    # 1. Check for achievements
+    follower_count = db.query(func.count(Follow.follower_id)).filter(Follow.followed_id == followed_id).scalar()
+    
+    if follower_count == 1:
+        crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="FIRST_FOLLOWER")
+    elif follower_count == 100:
+        crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="100_FOLLOWERS")
+    elif follower_count == 1000:
+        crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="1K_FOLLOWERS")
+        
+    # 2. Notify user
+    try:
+        follower = get_user_by_id(db, follower_id)
+        msg = f"{follower.username} started following you!"
+        notify_user_push(db, followed_id, "New Follower!", msg, link=f"/profile/{follower.username}", n_type="follower")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to handle follow side effects: {e}")
 
 def create_verification_code(db: Session, email: str):
     # Delete existing codes

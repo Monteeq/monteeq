@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import List, Optional
@@ -13,7 +13,7 @@ import json
 import hashlib
 from fastapi import Body
 
-from app.db.session import get_db
+from app.db.session import get_db, SessionLocal
 from app.crud import user as crud_user
 from app.schemas import schemas
 from app.core.dependencies import get_current_user, get_current_user_optional
@@ -86,13 +86,27 @@ def get_profile(
         raise HTTPException(status_code=404, detail="User not found")
     return profile
 
+def handle_follow_background(follower_id: int, followed_id: int):
+    """Background task for follow side effects."""
+    db = SessionLocal()
+    try:
+        crud_user.handle_follow_side_effects(db, follower_id, followed_id)
+    finally:
+        db.close()
+
 @router.post("/follow/{user_id}")
 def follow_user(
     user_id: int, 
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_user)
 ):
     is_following = crud_user.toggle_follow(db, follower_id=current_user.id, followed_id=user_id)
+    
+    if is_following:
+        # Background side effects (achievements, notifications)
+        background_tasks.add_task(handle_follow_background, current_user.id, user_id)
+        
     return {"is_following": is_following}
 
 @router.get("/search", response_model=schemas.UnifiedSearchResponse)

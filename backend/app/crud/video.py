@@ -228,37 +228,45 @@ def toggle_like(db: Session, user_id: int, video_id: Optional[int] = None, post_
             db.query(Post).filter(Post.id == post_id).update({"likes_count": Post.likes_count + 1})
         db.commit()
 
-        # Update Discovery Score
-        update_discovery_score(db, video_id=video_id, post_id=post_id)
-
-        # Personalization: Update user interests (Top 3 tags)
-        if video_id:
-             update_user_interests_from_video(db, user_id, video_id)
-
-        # Notify owner
-        try:
-            target = None
-            msg = ""
-            link = ""
-            liker = db.query(User).filter(User.id == user_id).first()
-            
-            if video_id:
-                target = db.query(Video).filter(Video.id == video_id).first()
-                if target:
-                    msg = f"{liker.username} liked your video: {target.title}"
-                    link = f"/watch/{video_id}"
-            elif post_id:
-                target = db.query(Post).filter(Post.id == post_id).first()
-                if target:
-                    msg = f"{liker.username} liked your post"
-                    link = "/posts"
-
-            if target and target.owner_id != user_id:
-                notify_user_push(db, target.owner_id, "New Like!", msg, link=link, n_type="like")
-        except Exception:
-            pass
-
         return True
+
+def handle_like_side_effects(db: Session, user_id: int, video_id: Optional[int] = None, post_id: Optional[int] = None):
+    """
+    Perform secondary tasks after a like is created:
+    - Update discovery score
+    - Update user interests
+    - Send push notifications
+    """
+    # 1. Update Discovery Score
+    update_discovery_score(db, video_id=video_id, post_id=post_id)
+
+    # 2. Personalization: Update user interests
+    if video_id:
+         update_user_interests_from_video(db, user_id, video_id)
+
+    # 3. Notify owner
+    try:
+        target = None
+        msg = ""
+        link = ""
+        liker = db.query(User).filter(User.id == user_id).first()
+        
+        if video_id:
+            target = db.query(Video).filter(Video.id == video_id).first()
+            if target:
+                msg = f"{liker.username} liked your video: {target.title}"
+                link = f"/watch/{video_id}"
+        elif post_id:
+            target = db.query(Post).filter(Post.id == post_id).first()
+            if target:
+                msg = f"{liker.username} liked your post"
+                link = "/posts"
+
+        if target and target.owner_id != user_id:
+            notify_user_push(db, target.owner_id, "New Like!", msg, link=link, n_type="like")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to handle like side effects: {e}")
 
 def increment_share(db: Session, video_id: int):
     video = db.query(Video).filter(Video.id == video_id).first()
@@ -353,7 +361,10 @@ def create_comment(db: Session, comment: schemas.CommentBase, user_id: int, vide
     db.commit()
     db.refresh(db_comment)
 
-    # Check for Creator Boost: if owner is replying to a comment
+    # Update Discovery Score
+    update_discovery_score(db, video_id=video_id, post_id=post_id)
+
+    # Check for Creator Boost
     target = None
     if video_id:
         target = db.query(Video).filter(Video.id == video_id).first()
@@ -361,14 +372,13 @@ def create_comment(db: Session, comment: schemas.CommentBase, user_id: int, vide
         target = db.query(Post).filter(Post.id == post_id).first()
     
     if target and target.owner_id == user_id:
-        # Creator interaction detected
         target.last_owner_interaction_at = func.now()
         db.commit()
 
-    # Update Discovery Score
-    update_discovery_score(db, video_id=video_id, post_id=post_id)
+    return db_comment
 
-    # Notify owner
+def handle_comment_side_effects(db: Session, user_id: int, video_id: Optional[int] = None, post_id: Optional[int] = None):
+    """Secondary tasks after a comment is created."""
     try:
         target = None
         msg = ""
@@ -388,10 +398,9 @@ def create_comment(db: Session, comment: schemas.CommentBase, user_id: int, vide
 
         if target and target.owner_id != user_id:
             notify_user_push(db, target.owner_id, "New Comment!", msg, link=link, n_type="comment")
-    except Exception:
-        pass
-
-    return db_comment
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to handle comment side effects: {e}")
 
 def get_comments(db: Session, video_id: Optional[int] = None, post_id: Optional[int] = None):
     query = db.query(Comment).filter(Comment.parent_id == None) # Only get root comments

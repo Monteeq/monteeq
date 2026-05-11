@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import uuid4
 
-from app.db.session import get_db
+from app.db.session import get_db, SessionLocal
 from app.core.dependencies import get_current_user, get_current_user_optional
 from app.schemas import schemas
 from app.core import config
@@ -123,9 +123,18 @@ def repost_post(
     db.refresh(new_repost)
     return new_repost
 
+def handle_post_like_background(user_id: int, post_id: int):
+    """Background task to handle side effects of a post like."""
+    db = SessionLocal()
+    try:
+        crud_video.handle_like_side_effects(db, user_id, post_id=post_id)
+    finally:
+        db.close()
+
 @router.post("/{post_id}/like")
 def like_post(
     post_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -134,14 +143,28 @@ def like_post(
         raise HTTPException(status_code=404, detail="Post not found")
     
     is_liked = crud_video.toggle_like(db, user_id=current_user.id, post_id=post_id)
+    
+    if is_liked:
+        # Background side effects
+        background_tasks.add_task(handle_post_like_background, current_user.id, post_id)
+        
     likes_count = db.query(func.count(Like.id)).filter(Like.post_id == post_id).scalar() or 0
     
     return {"status": "success", "liked": is_liked, "likes_count": likes_count}
+
+def handle_post_comment_background(user_id: int, post_id: int):
+    """Background task for post comment side effects."""
+    db = SessionLocal()
+    try:
+        crud_video.handle_comment_side_effects(db, user_id, post_id=post_id)
+    finally:
+        db.close()
 
 @router.post("/{post_id}/comment", response_model=schemas.Comment)
 def comment_post(
     post_id: int,
     comment: schemas.CommentCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -149,7 +172,12 @@ def comment_post(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     
-    return crud_video.create_comment(db, comment=comment, user_id=current_user.id, post_id=post_id)
+    db_comment = crud_video.create_comment(db, comment=comment, user_id=current_user.id, post_id=post_id)
+    
+    # Background side effects
+    background_tasks.add_task(handle_post_comment_background, current_user.id, post_id)
+    
+    return db_comment
 
 @router.get("/{post_id}/comments", response_model=List[schemas.Comment])
 def read_post_comments(post_id: int, db: Session = Depends(get_db)):

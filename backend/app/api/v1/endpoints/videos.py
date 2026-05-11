@@ -540,8 +540,9 @@ def view_video(
 def create_comment(
     video_id: int,
     comment: schemas.CommentCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     video = crud_video.get_video(db, video_id=video_id)
     if not video:
@@ -550,17 +551,39 @@ def create_comment(
     if video.status != "approved":
         raise HTTPException(status_code=403, detail="Comments are disabled for videos still in processing or failed state")
     
-    return crud_video.create_comment(db, comment=comment, user_id=current_user.id, video_id=video_id)
+    db_comment = crud_video.create_comment(db, comment=comment, user_id=current_user.id, video_id=video_id)
+    
+    # Background side effects
+    background_tasks.add_task(handle_comment_background, current_user.id, video_id=video_id)
+    
+    return db_comment
 
 @router.get("/{video_id}/comments", response_model=List[schemas.Comment])
 def read_comments(video_id: int, db: Session = Depends(get_db)):
     return crud_video.get_comments(db, video_id=video_id)
 
+def handle_like_background(user_id: int, video_id: int):
+    """Background task to handle side effects of a video like."""
+    db = SessionLocal()
+    try:
+        crud_video.handle_like_side_effects(db, user_id, video_id=video_id)
+    finally:
+        db.close()
+
+def handle_comment_background(user_id: int, video_id: Optional[int] = None, post_id: Optional[int] = None):
+    """Background task to handle side effects of a comment."""
+    db = SessionLocal()
+    try:
+        crud_video.handle_comment_side_effects(db, user_id, video_id=video_id, post_id=post_id)
+    finally:
+        db.close()
+
 @router.post("/{video_id}/like")
 def like_video(
     video_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     video = crud_video.get_video(db, video_id=video_id)
     if not video:
@@ -570,6 +593,10 @@ def like_video(
         raise HTTPException(status_code=403, detail="Likes are disabled for videos still in processing or failed state")
     
     is_liked = crud_video.toggle_like(db, user_id=current_user.id, video_id=video_id)
+    
+    if is_liked:
+        # Perform notifications and score updates in background
+        background_tasks.add_task(handle_like_background, current_user.id, video_id)
     
     from app.models.models import Like
     likes_count = db.query(func.count(Like.video_id)).filter(Like.video_id == video_id).scalar() or 0
