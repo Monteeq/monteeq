@@ -35,6 +35,27 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestIDMiddleware)
 
+# ── Anti-Bot Middleware ───────────────────────────────────────────────────────
+class AntiBotMiddleware(BaseHTTPMiddleware):
+    """Identify and block malicious bots globally."""
+    async def dispatch(self, request: Request, call_next):
+        from app.core import security
+        
+        # 1. Skip check for static files and health
+        if request.url.path.startswith("/static") or request.url.path == "/health":
+            return await call_next(request)
+            
+        # 2. Heuristic check
+        if security.is_bot(request):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Access denied. Automated traffic detected."}
+            )
+            
+        return await call_next(request)
+
+app.add_middleware(AntiBotMiddleware)
+
 # CORS middleware - MUST be added before other middleware
 app.add_middleware(
     CORSMiddleware,

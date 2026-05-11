@@ -35,3 +35,56 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def is_bot(request) -> bool:
+    """
+    Heuristic-based bot detection.
+    Checks User-Agent, missing standard headers, and known headless browser patterns.
+    """
+    user_agent = request.headers.get("User-Agent", "").lower()
+    
+    # 1. Extensive User-Agent Blacklist
+    bot_keywords = [
+        "bot", "crawler", "spider", "google", "bing", "yahoo", "slurp", "headless",
+        "phantom", "selenium", "puppeteer", "playwright", "python", "curl", "wget",
+        "postman", "insomnia", "axios", "scrapy", "ahrefs", "semrush", "majestic",
+        "dotbot", "rogerbot", "exabot", "gigabot", "yandex", "baiduspider", "petalbot"
+    ]
+    
+    if any(keyword in user_agent for keyword in bot_keywords):
+        return True
+    
+    # 2. Headless Detection: Headless browsers often omit certain headers
+    # Legitimate browsers usually have Sec-CH-UA or Accept-Language
+    # Note: This might block very old browsers, but for Monteeq it's acceptable.
+    if not request.headers.get("Accept-Language") and not request.headers.get("Sec-CH-UA"):
+        # Very suspicious for a real user
+        return True
+        
+    # 3. Automation-specific headers
+    if request.headers.get("X-Selenium-Driver") or request.headers.get("X-Puppeteer-Session"):
+        return True
+        
+    return False
+
+def check_rate_limit(key: str, limit: int, period: int) -> bool:
+    """
+    Check if a key (usually IP) has exceeded a limit within a period (seconds).
+    Returns True if allowed, False if blocked.
+    """
+    from app.core.redis import redis_client
+    if not redis_client:
+        return True # Fallback if Redis is down
+        
+    try:
+        current = redis_client.get(key)
+        if current and int(current) >= limit:
+            return False
+            
+        pipe = redis_client.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, period)
+        pipe.execute()
+        return True
+    except Exception:
+        return True

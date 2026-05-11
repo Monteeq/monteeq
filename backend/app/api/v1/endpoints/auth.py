@@ -17,9 +17,14 @@ router = APIRouter()
 
 @router.post("/token", response_model=schemas.Token)
 async def login_for_access_token(
+    request: Request,
     db: Session = Depends(get_db), 
     form_data: OAuth2PasswordRequestForm = Depends()
 ):
+    # Rate Limit: 10 attempts per minute per IP
+    if not security.check_rate_limit(f"ratelimit:login:{request.client.host}", 10, 60):
+        raise HTTPException(status_code=429, detail="Too many login attempts. Please wait.")
+
     # Support login by username OR email
     user = crud_user.get_user_by_username(db, username=form_data.username)
     if not user:
@@ -59,6 +64,10 @@ async def login_for_access_token(
 
 @router.post("/register", response_model=schemas.VerificationResponse)
 def register_user(request: Request, user_in: schemas.UserCreate, db: Session = Depends(get_db)):
+    # Rate Limit: 3 registrations per hour per IP (very strict)
+    if not security.check_rate_limit(f"ratelimit:register:{request.client.host}", 3, 3600):
+        raise HTTPException(status_code=429, detail="Too many registration attempts. Please wait.")
+
     db_user = crud_user.get_user_by_email(db, email=user_in.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")

@@ -548,9 +548,15 @@ def create_comment(
     video_id: int,
     comment: schemas.CommentCreate,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Rate Limit: 5 comments per minute per IP
+    from app.core import security
+    if not security.check_rate_limit(f"ratelimit:comment:{request.client.host}", 5, 60):
+        raise HTTPException(status_code=429, detail="You are commenting too fast. Please wait.")
+
     video = crud_video.get_video(db, video_id=video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
