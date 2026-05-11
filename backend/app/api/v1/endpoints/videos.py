@@ -522,7 +522,7 @@ def view_video(
     video_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Optional[dict] = Depends(dependencies.get_current_user_optional)
+    current_user: Optional[dict] = Depends(get_current_user_optional)
 ):
     # Bot detection
     user_agent = request.headers.get("User-Agent", "").lower()
