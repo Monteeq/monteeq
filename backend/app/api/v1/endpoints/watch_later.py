@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func, delete
+from sqlalchemy.orm import selectinload
 from datetime import datetime, timedelta
 
 from app.db.async_session import get_async_db
@@ -17,7 +18,7 @@ async def get_watch_later(
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(get_async_current_user)
 ):
-    query = select(LibraryWatchLater).filter(LibraryWatchLater.user_id == current_user.id).order_by(LibraryWatchLater.saved_at.desc())
+    query = select(LibraryWatchLater).options(selectinload(LibraryWatchLater.video)).filter(LibraryWatchLater.user_id == current_user.id).order_by(LibraryWatchLater.saved_at.desc())
     result = await db.execute(query)
     items = result.scalars().all()
     

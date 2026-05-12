@@ -9,19 +9,19 @@ pub const QUEUE_FREE: &str = "tasks:free";
 
 #[derive(Clone)]
 pub struct WeightedScheduler {
-    client: RedisClient,
+    client: RedisPool,
     pro_counter: Arc<Mutex<u32>>,
 }
 
 impl WeightedScheduler {
-    pub fn new(client: RedisClient) -> Self {
+    pub fn new(client: RedisPool) -> Self {
         Self {
             client,
             pro_counter: Arc::new(Mutex::new(0)),
         }
     }
 
-    pub fn client(&self) -> &RedisClient {
+    pub fn client(&self) -> &RedisPool {
         &self.client
     }
 

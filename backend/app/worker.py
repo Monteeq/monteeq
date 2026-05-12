@@ -16,11 +16,11 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     task_time_limit=3600,
-    broker_pool_limit=1,
-    redis_max_connections=2,
-    worker_concurrency=1,
+    broker_pool_limit=20,
+    redis_max_connections=50,
+    worker_concurrency=4,
     broker_transport_options={
         'visibility_timeout': 3600,
-        'max_connections': 2
+        'max_connections': 50
     }
 )

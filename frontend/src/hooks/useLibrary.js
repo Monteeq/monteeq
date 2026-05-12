@@ -1,46 +1,42 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { API_BASE_URL } from '../api';
+import { apiFetch } from '../api';
 import { useAuth } from '../context/AuthContext';
 
-const fetchWithAuth = async (url, options = {}) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(url, {
-        ...options,
-        headers: {
-            ...options.headers,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        }
-    });
-
-    if (res.status === 401) {
-        window.dispatchEvent(new CustomEvent('monteeq:session-expired'));
-        throw new Error('Unauthorized');
-    }
-
-    if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.detail || 'Something went wrong');
-    }
-
-    return res.json();
+const useLibraryRequest = () => {
+    const { token } = useAuth();
+    
+    const request = async (path, options = {}) => {
+        if (!token) throw new Error('Authentication required');
+        
+        return apiFetch(path, {
+            ...options,
+            headers: {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            }
+        });
+    };
+    
+    return { request, token };
 };
 
 // ── History Hooks ───────────────────────────────────────────────────────────
 export const useHistory = (filter = 'all') => {
+    const { request, token } = useLibraryRequest();
     return useQuery({
         queryKey: ['history', filter],
-        queryFn: () => fetchWithAuth(`${API_BASE_URL}/history/?filter=${filter}`),
-        placeholderData: keepPreviousData
+        queryFn: () => request(`/history/?filter=${filter}`),
+        placeholderData: keepPreviousData,
+        enabled: !!token
     });
-
 };
 
 export const useUpdateHistory = () => {
+    const { request } = useLibraryRequest();
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ videoId, progressSeconds }) => 
-            fetchWithAuth(`${API_BASE_URL}/history/${videoId}/progress`, {
+            request(`/history/${videoId}/progress`, {
                 method: 'PATCH',
                 body: JSON.stringify({ progress_seconds: progressSeconds })
             }),
@@ -51,9 +47,10 @@ export const useUpdateHistory = () => {
 };
 
 export const useClearHistory = () => {
+    const { request } = useLibraryRequest();
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: () => fetchWithAuth(`${API_BASE_URL}/history/`, { method: 'DELETE' }),
+        mutationFn: () => request('/history/', { method: 'DELETE' }),
         onSuccess: () => {
             queryClient.invalidateQueries(['history']);
         }
@@ -61,9 +58,10 @@ export const useClearHistory = () => {
 };
 
 export const useRemoveFromHistory = () => {
+    const { request } = useLibraryRequest();
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (videoId) => fetchWithAuth(`${API_BASE_URL}/history/${videoId}`, { method: 'DELETE' }),
+        mutationFn: (videoId) => request(`/history/${videoId}`, { method: 'DELETE' }),
         onSuccess: () => {
             queryClient.invalidateQueries(['history']);
         }
@@ -72,16 +70,19 @@ export const useRemoveFromHistory = () => {
 
 // ── Watch Later Hooks ───────────────────────────────────────────────────────
 export const useWatchLater = () => {
+    const { request, token } = useLibraryRequest();
     return useQuery({
         queryKey: ['watch-later'],
-        queryFn: () => fetchWithAuth(`${API_BASE_URL}/watch-later/`)
+        queryFn: () => request('/watch-later/'),
+        enabled: !!token
     });
 };
 
 export const useAddToWatchLater = () => {
+    const { request } = useLibraryRequest();
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (videoId) => fetchWithAuth(`${API_BASE_URL}/watch-later/${videoId}`, { method: 'POST' }),
+        mutationFn: (videoId) => request(`/watch-later/${videoId}`, { method: 'POST' }),
         onSuccess: () => {
             queryClient.invalidateQueries(['watch-later']);
             queryClient.invalidateQueries(['library-stats']);
@@ -90,9 +91,10 @@ export const useAddToWatchLater = () => {
 };
 
 export const useRemoveFromWatchLater = () => {
+    const { request } = useLibraryRequest();
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (videoId) => fetchWithAuth(`${API_BASE_URL}/watch-later/${videoId}`, { method: 'DELETE' }),
+        mutationFn: (videoId) => request(`/watch-later/${videoId}`, { method: 'DELETE' }),
         onSuccess: () => {
             queryClient.invalidateQueries(['watch-later']);
             queryClient.invalidateQueries(['library-stats']);
@@ -102,24 +104,36 @@ export const useRemoveFromWatchLater = () => {
 
 // ── Liked Videos Hooks ──────────────────────────────────────────────────────
 export const useLikedVideos = (category = 'all') => {
+    const { request, token } = useLibraryRequest();
     return useQuery({
         queryKey: ['liked', category],
-        queryFn: () => fetchWithAuth(`${API_BASE_URL}/liked/?category=${category}`),
-        placeholderData: keepPreviousData
+        queryFn: () => request(`/liked/?category=${category}`),
+        placeholderData: keepPreviousData,
+        enabled: !!token
     });
-
 };
 
 export const useToggleLike = () => {
+    const { request } = useLibraryRequest();
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ videoId, liked }) => {
             const method = liked ? 'DELETE' : 'POST';
-            return fetchWithAuth(`${API_BASE_URL}/liked/${videoId}`, { method });
+            return request(`/liked/${videoId}`, { method });
         },
         onSuccess: () => {
             queryClient.invalidateQueries(['liked']);
             queryClient.invalidateQueries(['library-stats']);
         }
+    });
+};
+
+// ── Stats Hooks ─────────────────────────────────────────────────────────────
+export const useLibraryStats = () => {
+    const { request, token } = useLibraryRequest();
+    return useQuery({
+        queryKey: ['library-stats'],
+        queryFn: () => request('/library/stats'),
+        enabled: !!token
     });
 };

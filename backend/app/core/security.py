@@ -47,7 +47,7 @@ def is_bot(request) -> bool:
     bot_keywords = [
         "bot", "crawler", "spider", "slurp", "headless",
         "phantom", "selenium", "puppeteer", "playwright", "python", "curl", "wget",
-        "postman", "insomnia", "axios", "scrapy", "ahrefs", "semrush", "majestic",
+        "postman", "insomnia", "scrapy", "ahrefs", "semrush", "majestic",
         "dotbot", "rogerbot", "exabot", "gigabot", "yandex", "baiduspider", "petalbot"
     ]
     

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func, delete
+from sqlalchemy.orm import selectinload
 from typing import Optional
 
 from app.db.async_session import get_async_db
@@ -21,7 +22,7 @@ async def get_liked_videos(
     current_user = Depends(get_async_current_user)
 ):
     offset = (page - 1) * limit
-    query = select(LikedVideo).filter(LikedVideo.user_id == current_user.id)
+    query = select(LikedVideo).options(selectinload(LikedVideo.video)).filter(LikedVideo.user_id == current_user.id)
     
     # Category filter (if Video model supports it)
     if category != "all":

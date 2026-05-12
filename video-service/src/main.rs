@@ -53,13 +53,13 @@ async fn main() {
     };
     
     let policy = ReconnectPolicy::default();
-    // RedisClient::new(config, performance, connection, policy)
-    let client = RedisClient::new(config, Some(perf), None, Some(policy));
+    // Use a connection pool for higher concurrency
+    let pool = RedisPool::new(config, Some(perf), None, Some(policy), 16).unwrap();
     
-    client.connect();
-    client.wait_for_connect().await.expect("Failed to connect to Redis Cloud");
+    pool.connect();
+    pool.wait_for_connect().await.expect("Failed to connect to Redis Cloud");
 
-    let scheduler = WeightedScheduler::new(client);
+    let scheduler = WeightedScheduler::new(pool);
     let worker_pool = WorkerPool::new(scheduler.clone());
 
     // Start prioritized worker pool

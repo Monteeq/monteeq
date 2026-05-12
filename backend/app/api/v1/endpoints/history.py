@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func, delete, update
+from sqlalchemy.orm import selectinload
 from typing import Optional
 from datetime import datetime, timedelta
 
@@ -22,7 +23,7 @@ async def get_history(
     current_user = Depends(get_async_current_user)
 ):
     offset = (page - 1) * limit
-    query = select(WatchHistory).filter(WatchHistory.user_id == current_user.id)
+    query = select(WatchHistory).options(selectinload(WatchHistory.video)).filter(WatchHistory.user_id == current_user.id)
     
     if filter == "today":
         today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)

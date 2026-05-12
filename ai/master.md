@@ -44,3 +44,6 @@
 - use meaningful commit messages
 - keep commit messages short and concise
 - use /speech.md for better commit messages
+
+## Prompt
+- whatever I say, convert it into a professional prompt then use it
