@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share2, Trophy, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { viewVideo } from '../api';
+import { useTrackHistory } from '../hooks/useLibrary';
 
 // Services
 import { metricsManager } from '../services/metricsManager';
@@ -22,6 +23,7 @@ const FlashCard = ({
 }) => {
     const navigate = useNavigate();
     const videoRef = useRef(null);
+    const trackHistory = useTrackHistory();
     const [playing, setPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [hookProgress, setHookProgress] = useState(0);
@@ -61,9 +63,22 @@ const FlashCard = ({
         } else {
             if (playing && entryTime.current > 0) {
                 const watchMs = Date.now() - entryTime.current;
+                const curTime = Math.floor(videoRef.current?.currentTime || 0);
+                const durTime = Math.floor(videoRef.current?.duration || video.duration || 0);
+                
                 metricsManager.trackWatchTime(video.id, watchMs);
-                adaptiveDiscovery.recordWatch(video.id, watchMs, (videoRef.current?.duration || 0) * 1000, video.mood);
+                adaptiveDiscovery.recordWatch(video.id, watchMs, durTime * 1000, video.mood);
                 trackingManager.endSession(video.id);
+
+                // Persist history on exit
+                if (curTime > 2) {
+                    trackHistory.mutate({
+                        video_id: video.id,
+                        progress_seconds: curTime,
+                        duration_seconds: durTime,
+                        is_completed: curTime >= durTime * 0.9 && durTime > 0
+                    });
+                }
             }
             if (viewTimer) clearTimeout(viewTimer);
             

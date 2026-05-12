@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiFetch } from '../api';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,13 +21,30 @@ const useLibraryRequest = () => {
 };
 
 // ── History Hooks ───────────────────────────────────────────────────────────
-export const useHistory = (filter = 'all') => {
+export const useHistory = (filter = 'all', limit = 20) => {
     const { request, token } = useLibraryRequest();
-    return useQuery({
+    return useInfiniteQuery({
         queryKey: ['history', filter],
-        queryFn: () => request(`/history/?filter=${filter}`),
+        queryFn: ({ pageParam = 1 }) => request(`/history/?filter=${filter}&page=${pageParam}&limit=${limit}`),
+        getNextPageParam: (lastPage) => lastPage.has_more ? lastPage.page + 1 : undefined,
+        initialPageParam: 1,
         placeholderData: keepPreviousData,
         enabled: !!token
+    });
+};
+
+export const useTrackHistory = () => {
+    const { request } = useLibraryRequest();
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (payload) => request('/history/track', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['history'] });
+            queryClient.invalidateQueries({ queryKey: ['library-stats'] });
+        }
     });
 };
 
@@ -35,13 +52,19 @@ export const useUpdateHistory = () => {
     const { request } = useLibraryRequest();
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: ({ videoId, progressSeconds }) => 
+        mutationFn: ({ videoId, progressSeconds, durationSeconds, isCompleted }) => 
             request(`/history/${videoId}/progress`, {
                 method: 'PATCH',
-                body: JSON.stringify({ progress_seconds: progressSeconds })
+                body: JSON.stringify({ 
+                    progress_seconds: progressSeconds,
+                    duration_seconds: durationSeconds,
+                    is_completed: isCompleted
+                })
             }),
         onSuccess: () => {
-            queryClient.invalidateQueries(['history']);
+            // Not invalidating history here to avoid jank during playback, 
+            // but updating stats if needed
+            queryClient.invalidateQueries({ queryKey: ['library-stats'] });
         }
     });
 };
@@ -62,8 +85,28 @@ export const useRemoveFromHistory = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (videoId) => request(`/history/${videoId}`, { method: 'DELETE' }),
-        onSuccess: () => {
-            queryClient.invalidateQueries(['history']);
+        onMutate: async (videoId) => {
+            await queryClient.cancelQueries({ queryKey: ['history'] });
+            const previousHistory = queryClient.getQueryData(['history']);
+            queryClient.setQueryData(['history'], (old) => {
+                if (!old) return old;
+                return {
+                    ...old,
+                    pages: old.pages.map(page => ({
+                        ...page,
+                        items: page.items.filter(item => item.video.id !== videoId),
+                        total: page.total - 1
+                    }))
+                };
+            });
+            return { previousHistory };
+        },
+        onError: (err, videoId, context) => {
+            queryClient.setQueryData(['history'], context.previousHistory);
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['history'] });
+            queryClient.invalidateQueries({ queryKey: ['library-stats'] });
         }
     });
 };

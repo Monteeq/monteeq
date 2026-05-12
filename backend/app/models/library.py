@@ -20,6 +20,8 @@ class WatchHistory(Base):
 
     __table_args__ = (
         Index("ix_history_user_id", "user_id"),
+        Index("ix_history_user_time", "user_id", "watched_at"),
+        Index("ix_history_video_id", "video_id"),
     )
 
 class LibraryWatchLater(Base):

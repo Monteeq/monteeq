@@ -7,6 +7,7 @@
 - Never change website descriptions unnecessarily
 - Keep mobile-first responsiveness
 - Preserve current layouts
+- Do NOT use emoji
 
 ## Performance Rules
 - Use lazy loading

@@ -6,6 +6,7 @@ import { initView, sendHeartbeat } from '../api';
 import { useAuth } from '../context/AuthContext';
 import PreRollPlayer from './ads/PreRollPlayer';
 import PauseOverlayAd from './ads/PauseOverlayAd';
+import { useTrackHistory } from '../hooks/useLibrary';
 
 const VideoPlayerV2 = ({ 
   src, 
@@ -24,6 +25,7 @@ const VideoPlayerV2 = ({
   const containerRef = useRef(null);
   const hlsRef = useRef(null);
   const progressBarRef = useRef(null);
+  const trackHistory = useTrackHistory();
   
   // Analytics & Sessions
   const viewTicketRef = useRef(null);
@@ -98,7 +100,7 @@ const VideoPlayerV2 = ({
     }
   }, [src, autoPlay, isPreRollActive]);
 
-  // Analytics: View & Heartbeat
+  // Analytics: View & Heartbeat + History Tracking
   useEffect(() => {
     if (!videoId || !isPlaying) {
       if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
@@ -115,17 +117,52 @@ const VideoPlayerV2 = ({
       }
 
       heartbeatIntervalRef.current = setInterval(async () => {
+        if (!videoRef.current) return;
+        
+        const curTime = Math.floor(videoRef.current.currentTime);
+        const durTime = Math.floor(videoRef.current.duration);
+        const isComp = curTime >= durTime * 0.9 && durTime > 0;
+
+        // Heartbeat for analytics
         if (viewTicketRef.current && sessionIdRef.current) {
           try {
             await sendHeartbeat(videoId, sessionIdRef.current, viewTicketRef.current);
           } catch (err) { console.error("Heartbeat fail", err); }
         }
-      }, 10000);
+
+        // History tracking persistence
+        if (token && curTime > 0) {
+            trackHistory.mutate({
+                video_id: videoId,
+                progress_seconds: curTime,
+                duration_seconds: durTime,
+                is_completed: isComp
+            });
+        }
+      }, 10000); // Sync history every 10s
     };
 
     startSession();
     return () => clearInterval(heartbeatIntervalRef.current);
   }, [isPlaying, videoId, token]);
+
+  // Track on Exit
+  useEffect(() => {
+    return () => {
+        if (videoRef.current && videoId && token) {
+            const curTime = Math.floor(videoRef.current.currentTime);
+            const durTime = Math.floor(videoRef.current.duration);
+            if (curTime > 5) { // Only track if watched more than 5s
+                trackHistory.mutate({
+                    video_id: videoId,
+                    progress_seconds: curTime,
+                    duration_seconds: durTime,
+                    is_completed: curTime >= durTime * 0.9 && durTime > 0
+                });
+            }
+        }
+    };
+  }, [videoId, token]);
 
   // Keyboard Shortcuts
   useEffect(() => {

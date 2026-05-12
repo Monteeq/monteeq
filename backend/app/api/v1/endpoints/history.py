@@ -74,6 +74,37 @@ async def remove_from_history(
     await db.commit()
     return {"status": "success"}
 
+@router.post("/track")
+async def track_history(
+    payload: schemas.HistoryTrackRequest,
+    db: AsyncSession = Depends(get_async_db),
+    current_user = Depends(get_async_current_user)
+):
+    # UPSERT Logic
+    result = await db.execute(select(WatchHistory).filter(
+        WatchHistory.user_id == current_user.id,
+        WatchHistory.video_id == payload.video_id
+    ))
+    history = result.scalar_one_or_none()
+    
+    if not history:
+        history = WatchHistory(
+            user_id=current_user.id,
+            video_id=payload.video_id,
+            progress_seconds=payload.progress_seconds,
+            duration_seconds=payload.duration_seconds,
+            is_completed=payload.is_completed
+        )
+        db.add(history)
+    else:
+        history.progress_seconds = payload.progress_seconds
+        history.duration_seconds = payload.duration_seconds
+        history.is_completed = payload.is_completed
+        history.watched_at = func.now()
+        
+    await db.commit()
+    return {"status": "success"}
+
 @router.patch("/{video_id}/progress")
 async def update_progress(
     video_id: int,
@@ -96,14 +127,14 @@ async def update_progress(
             user_id=current_user.id,
             video_id=video_id,
             progress_seconds=progress.progress_seconds,
-            duration_seconds=video.duration,
-            is_completed=progress.progress_seconds >= video.duration * 0.9 if video.duration > 0 else False
+            duration_seconds=progress.duration_seconds or video.duration,
+            is_completed=progress.is_completed
         )
         db.add(history)
     else:
         history.progress_seconds = progress.progress_seconds
-        if history.duration_seconds > 0:
-            history.is_completed = progress.progress_seconds >= history.duration_seconds * 0.9
+        history.duration_seconds = progress.duration_seconds or history.duration_seconds
+        history.is_completed = progress.is_completed
         history.watched_at = func.now()
         
     await db.commit()

@@ -36,6 +36,14 @@ class HistoryResponse(BaseModel):
 
 class HistoryProgressUpdate(BaseModel):
     progress_seconds: int
+    duration_seconds: int
+    is_completed: bool
+
+class HistoryTrackRequest(BaseModel):
+    video_id: int
+    progress_seconds: int
+    duration_seconds: int
+    is_completed: bool
 
 # ── Watch Later ─────────────────────────────────────────────────────────────
 class WatchLaterItem(BaseModel):
