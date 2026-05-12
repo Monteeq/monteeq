@@ -145,6 +145,18 @@ export const useRemoveFromWatchLater = () => {
     });
 };
 
+export const useClearWatchLater = () => {
+    const { request } = useLibraryRequest();
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => request('/watch-later/', { method: 'DELETE' }),
+        onSuccess: () => {
+            queryClient.invalidateQueries(['watch-later']);
+            queryClient.invalidateQueries(['library-stats']);
+        }
+    });
+};
+
 // ── Liked Videos Hooks ──────────────────────────────────────────────────────
 export const useLikedVideos = (category = 'all') => {
     const { request, token } = useLibraryRequest();
