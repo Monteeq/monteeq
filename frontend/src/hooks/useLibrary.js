@@ -3,7 +3,7 @@ import { API_BASE_URL } from '../api';
 import { useAuth } from '../context/AuthContext';
 
 const fetchWithAuth = async (url, options = {}) => {
-    const token = localStorage.getItem('monteeq_token');
+    const token = localStorage.getItem('token');
     const res = await fetch(url, {
         ...options,
         headers: {
