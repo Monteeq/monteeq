@@ -5,8 +5,9 @@ import { getFollowing } from '../api';
 import {
   Home as HomeIcon, Zap, UploadCloud,
   Clapperboard, Trophy, TrendingUp,
-  Crown, Users, History, Clock, 
+  Crown, Users, Compass, History, Clock, 
   ThumbsUp, Telescope, Handshake
+
 } from 'lucide-react';
 
 
@@ -100,7 +101,8 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* ── DISCOVER (YouTube Focus) ───────────────────── */}
         <NavGroup label="Discover" />
-        <NavItem to="/trending"   icon={<TrendingUp size={24} />} label="Trending"   onClick={onClose} />
+        <NavItem to="/posts"   icon={<Compass size={24} />} label="Posts"   onClick={onClose} />
+
         <NavItem to="/challenges" icon={<Trophy size={24} />}     label="Challenges" onClick={onClose} accent="var(--accent-primary)" />
 
 
