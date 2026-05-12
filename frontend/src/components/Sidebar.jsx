@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  Home as HomeIcon, Zap, UploadCloud, LogIn,
+  Home as HomeIcon, Zap, UploadCloud,
   Clapperboard, Trophy, TrendingUp,
-  Crown, Users, Compass, History, Clock, 
+  Crown, Users, History, Clock, 
   ThumbsUp, Telescope, Handshake
 } from 'lucide-react';
+
 
 
 import { useAuth } from '../context/AuthContext';
@@ -45,8 +46,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <NavItem to="/home"     icon={<HomeIcon size={24} />}  label="For You"     onClick={onClose} />
         <NavItem to="/flash"    icon={<Zap size={24} />}       label="Flash Clips" onClick={onClose} accent="#ff3b30" />
         <NavItem to="/following" icon={<Users size={24} />}    label="Following"   onClick={onClose} />
-        <NavItem to="/friends"   icon={<Users size={24} />}    label="Friends"     onClick={onClose} />
-        <NavItem to="/posts"    icon={<Compass size={24} />}   label="Explore"     onClick={onClose} />
+
 
         <NavDivider />
 
@@ -80,7 +80,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <NavGroup label="Discover" />
         <NavItem to="/trending"   icon={<TrendingUp size={24} />} label="Trending"   onClick={onClose} />
         <NavItem to="/challenges" icon={<Trophy size={24} />}     label="Challenges" onClick={onClose} accent="var(--accent-primary)" />
-        <NavItem to="/partner"    icon={<Handshake size={24} />}  label="Partners"   onClick={onClose} />
+
 
         <NavDivider />
 
@@ -114,31 +114,14 @@ const Sidebar = ({ isOpen, onClose }) => {
         {/* ── MONTEEQ ─────────────────────────────────── */}
         <NavGroup label="Monteeq" />
         <NavItem to="/pro" icon={<Crown size={24} />} label="Monteeq Pro" onClick={onClose} accent="#ffd700" bold />
+        <NavItem to="/partner" icon={<Handshake size={24} />} label="Partner With Us" onClick={onClose} />
         <NavItem to="/about" icon={<Telescope size={24} />} label="About Monteeq" onClick={onClose} accent="#60a5fa" />
+
 
       </nav>
 
-      {/* ── Bottom: user info or login ─────────────── */}
-      <div className="sidebar-footer">
-        {token ? (
-          <div className="sidebar-user-compact">
-             <div className="avatar-wrapper mini">
-                <img src={user?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`} alt="me" />
-             </div>
-             <span className="footer-username">{user?.username}</span>
-          </div>
-        ) : (
-          <NavLink
-            to="/login"
-            onClick={onClose}
-            className="nav-item login-item"
-          >
-            <LogIn size={24} strokeWidth={2.5} />
-            <span>Sign In</span>
-          </NavLink>
-        )}
-      </div>
     </aside>
+
   );
 
 };
