@@ -1,6 +1,8 @@
 import React from 'react';
-import { FixedSizeList } from 'react-window';
-import { AutoSizer } from 'react-virtualized-auto-sizer';
+import * as reactWindow from 'react-window';
+const { FixedSizeList } = reactWindow;
+import * as autoSizer from 'react-virtualized-auto-sizer';
+const { AutoSizer } = autoSizer;
 import VideoPreviewCard from './VideoPreviewCard';
 
 const VirtualizedFeed = ({ videos, onVideoClick }) => {
