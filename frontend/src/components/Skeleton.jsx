@@ -2,7 +2,8 @@ import React from 'react';
 
 export const VideoSkeleton = () => (
     <div className="video-item" style={{ width: '100%', marginBottom: '1.5rem' }}>
-        <div className="skeleton skeleton-thumbnail" style={{ marginBottom: '0.8rem', borderRadius: '12px' }} />
+        <div className="skeleton skeleton-thumbnail" style={{ marginBottom: '0.8rem', borderRadius: '12px', aspectRatio: '16 / 9', width: '100%', height: 'auto' }} />
+
         <div style={{ display: 'flex', gap: '0.8rem', padding: '0 4px' }}>
             <div className="skeleton" style={{ width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>

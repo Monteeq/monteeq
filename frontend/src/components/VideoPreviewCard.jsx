@@ -88,14 +88,16 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
         >
             {/* Thumbnail Section */}
             <div className="vc-thumbnail-area">
-                <div className="vc-thumb-inner">
+                <div className="vc-thumb-inner" style={{ aspectRatio: '16 / 9', background: 'var(--bg-raised)', overflow: 'hidden', position: 'relative' }}>
                     <img
                         src={video.thumbnail_url || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=60"}
                         alt={video.title}
                         className={`vc-img ${showPreview && isLoaded ? 'vc-img-hide' : ''}`}
                         loading="lazy"
                         decoding="async"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
+
                     
                     {/* Video Preview — only mounts after debounced hover */}
                     {showPreview && (

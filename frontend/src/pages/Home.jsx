@@ -1,43 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Flame, TrendingUp, Heart, Zap, Loader2 } from 'lucide-react';
-import { getVideos, likeVideo, getRecommendedFeed } from '../api';
+import { Play, Flame, Zap, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { useHomeFeed, useFlashFeed } from '../hooks/useFeed';
 import VideoPreviewCard from '../components/VideoPreviewCard';
-import NativeFeedAd from '../components/ads/NativeFeedAd';
-import DashboardBannerAd from '../components/ads/DashboardBannerAd';
+import VirtualizedFeed from '../components/VirtualizedFeed';
 import AdSenseAd from '../components/ads/AdSenseAd';
-import { VideoSkeleton, FlashSkeleton, HomeSkeleton } from '../components/Skeleton';
+import { HomeSkeleton, VideoSkeleton } from '../components/Skeleton';
 import SEO from '../components/SEO';
-import Footer from '../components/Footer';
 
 const CATEGORIES = ["All", "Gaming", "Music", "Live", "Comedy", "Vlogs", "Recently uploaded", "News", "Sports", "Learning"];
 
 const Home = () => {
     const navigate = useNavigate();
     const { token, user } = useAuth();
-    const { showNotification } = useNotification();
-    const [videos, setVideos] = useState([]);
-    const [flashVideos, setFlashVideos] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [error, setError] = useState(null);
-    const [skip, setSkip] = useState(0);
-    const [hasMore, setHasMore] = useState(true);
     const [activeCategory, setActiveCategory] = useState("All");
-    const observer = React.useRef();
+    
+    const { 
+        data, 
+        fetchNextPage, 
+        hasNextPage, 
+        isFetchingNextPage, 
+        isLoading, 
+        isError 
+    } = useHomeFeed(token, activeCategory);
 
-    const lastVideoElementRef = React.useCallback(node => {
-        if (loading || loadingMore) return;
-        if (observer.current) observer.current.disconnect();
-        observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore) {
-                setSkip(prevSkip => prevSkip + 12);
-            }
-        });
-        if (node) observer.current.observe(node);
-    }, [loading, loadingMore, hasMore]);
+    const { data: flashData, isLoading: flashLoading } = useFlashFeed(token);
 
     const featured = {
         title: "Origins of the Peak",
@@ -45,81 +34,8 @@ const Home = () => {
         image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=80"
     };
 
-    const fetchInitialData = async () => {
-        setLoading(true);
-        try {
-            // For logged-in users, use the recommendation engine for the home feed.
-            // getRecommendedFeed returns null on error, so we fall back to getVideos.
-            let homeData;
-            if (token) {
-                homeData = await getRecommendedFeed('home', token, 12);
-            }
-            if (!homeData) {
-                homeData = await getVideos('home', token, 0, 12);
-            }
-
-            const flashData = await getVideos('flash', token, 0, 18);
-            setVideos(Array.isArray(homeData) ? homeData : []);
-            setFlashVideos(Array.isArray(flashData) ? flashData : []);
-            setHasMore((homeData?.length ?? 0) === 12);
-        } catch (err) {
-            console.error("Initial fetch error:", err);
-            setError("Failed to load content.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchMoreVideos = async () => {
-        if (loadingMore || !hasMore) return;
-        setLoadingMore(true);
-        try {
-            const newData = await getVideos('home', token, skip, 12);
-            if (Array.isArray(newData)) {
-                setVideos(prev => [...prev, ...newData]);
-                setHasMore(newData.length === 12);
-            }
-        } catch (err) {
-            console.error("Load more error:", err);
-        } finally {
-            setLoadingMore(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchInitialData();
-    }, [token]);
-
-    useEffect(() => {
-        if (skip > 0) {
-            fetchMoreVideos();
-        }
-    }, [skip]);
-
     const handleVideoClick = (id) => {
         navigate(`/watch/${id}`);
-    };
-
-    const handleFlashClick = () => {
-        navigate('/flash');
-    };
-
-    const handleLike = async (e, videoId) => {
-        e.stopPropagation();
-        if (!token) {
-            showNotification('info', 'Login Required', { message: 'Please login to like videos.' });
-            navigate('/login');
-            return;
-        }
-
-        try {
-            const result = await likeVideo(videoId, token);
-            setVideos(prev => prev.map(v =>
-                v.id === videoId ? { ...v, liked_by_user: result.liked, likes_count: result.likes_count } : v
-            ));
-        } catch (err) {
-            console.error("Like error:", err);
-        }
     };
 
     const formatViews = (num) => {
@@ -129,25 +45,9 @@ const Home = () => {
         return num;
     };
 
-    const formatTimeAgo = (dateStr) => {
-        if (!dateStr) return "Just now";
-        const date = new Date(dateStr);
-        const now = new Date();
-        const diffInSeconds = Math.floor((now - date) / 1000);
+    if (isLoading) return <HomeSkeleton />;
 
-        if (diffInSeconds < 60) return "Just now";
-        const diffInMinutes = Math.floor(diffInSeconds / 60);
-        if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-        const diffInHours = Math.floor(diffInMinutes / 60);
-        if (diffInHours < 24) return `${diffInHours}h ago`;
-        const diffInDays = Math.floor(diffInHours / 24);
-        if (diffInDays < 30) return `${diffInDays}d ago`;
-        return date.toLocaleDateString();
-    };
-
-    if (loading && videos.length === 0) {
-        return <HomeSkeleton />;
-    }
+    const allVideos = data?.pages.flat() || [];
 
     return (
         <div className="home-container page-container">
@@ -156,18 +56,19 @@ const Home = () => {
                 description="Experience the best creative video content on Monteeq. Watch, share, and discover amazing videos from creators worldwide."
                 canonical={`${window.location.origin}/`}
             />
+            
             {/* Hero Section */}
             <section className="hero-section">
                 <img src={featured.image} alt="Featured" className="hero-image" fetchpriority="high" />
                 <div className="hero-content">
                     <div className="hero-badge">
-                        <Flame size={14} /> <span>PREMIUM FEATURE</span>
+                        <Flame size={14} /> <span>FEATURED</span>
                     </div>
                     <h1 className="hero-title">{featured.title}</h1>
                     <p className="hero-desc">{featured.desc}</p>
                     <button
                         className="btn-active hero-btn"
-                        onClick={() => navigate(`/watch/${videos[0]?.id || 1}`)}
+                        onClick={() => navigate(`/watch/${allVideos[0]?.id || 1}`)}
                     >
                         <Play fill="white" size={18} /> WATCH NOW
                     </button>
@@ -187,34 +88,8 @@ const Home = () => {
                 ))}
             </div>
 
-            {/* Trending Long Form - Part 1 */}
-            <div style={{ padding: '0 0 1rem' }}>
-                <div className="video-grid">
-                    {error && <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--accent-primary)' }}>{error}</div>}
-                    {videos.slice(0, 8).map((video, index) => (
-                        <VideoPreviewCard
-                            key={video.id}
-                            video={video}
-                            variant="grid"
-                            onClick={() => handleVideoClick(video.id)}
-                        />
-                    ))}
-                </div>
-            </div>
-
-            {/* AdSense / Banner Section for Non-Pro Users */}
-            {!user?.is_premium && (
-                <div style={{ padding: '0.5rem 0' }}>
-                    {/* You can toggle between DashboardBannerAd and AdSenseAd here */}
-                    <AdSenseAd 
-                        client={import.meta.env.VITE_ADSENSE_CLIENT_ID} 
-                        slot={import.meta.env.VITE_ADSENSE_SLOT_ID} 
-                    />
-                </div>
-            )}
-
-            {/* Flash Section (3 Rows) */}
-            {flashVideos.length > 0 && (
+            {/* Flash Section */}
+            {flashData && flashData.length > 0 && (
                 <div className="flash-shelf-container" style={{ margin: '1rem 0', padding: '1.5rem 0', borderTop: '1px solid var(--border-glass)', borderBottom: '1px solid var(--border-glass)' }}>
                     <div className="section-title" style={{ justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
@@ -230,17 +105,13 @@ const Home = () => {
                     </div>
 
                     <div className="flash-shelf-grid">
-                        {flashVideos.slice(0, window.innerWidth < 768 ? 6 : 18).map(flash => (
-                            <div key={flash.id} className="flash-shelf-item hover-scale" onClick={handleFlashClick}>
+                        {flashData.slice(0, window.innerWidth < 768 ? 6 : 18).map(flash => (
+                            <div key={flash.id} className="flash-shelf-item hover-scale" onClick={() => navigate('/flash')}>
                                 <div className="flash-thumbnail-container">
                                     <img src={flash.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
                                     <div className="flash-overlay-info">
-                                        <div className="flash-item-title">
-                                            {flash.title}
-                                        </div>
-                                        <div className="flash-item-views">
-                                            {formatViews(flash.views)} views
-                                        </div>
+                                        <div className="flash-item-title">{flash.title}</div>
+                                        <div className="flash-item-views">{formatViews(flash.views)} views</div>
                                     </div>
                                 </div>
                             </div>
@@ -249,41 +120,30 @@ const Home = () => {
                 </div>
             )}
 
-            {/* Trending Long Form - Part 2 (Infinite Scroll) */}
-            <div style={{ padding: '1rem 0 2rem' }}>
-                <div className="video-grid">
-                    {videos.slice(8).map((video, index) => (
-                        <React.Fragment key={video.id}>
-                            <VideoPreviewCard
-                                video={video}
-                                variant="grid"
-                                onClick={() => handleVideoClick(video.id)}
-                                ref={index === videos.slice(8).length - 1 ? lastVideoElementRef : null}
-                            />
-                            {(index + 1) % 6 === 0 && !user?.is_premium && (
-                                <AdSenseAd 
-                                    client={import.meta.env.VITE_ADSENSE_CLIENT_ID}
-                                    slot={import.meta.env.VITE_ADSENSE_INFEED_SLOT_ID}
-                                    layoutKey={import.meta.env.VITE_ADSENSE_INFEED_LAYOUT_KEY}
-                                    format="fluid"
-                                />
-                            )}
-                        </React.Fragment>
-                    ))}
-                </div>
+            {/* Main Video Feed with Virtualization */}
+            <div className="feed-section">
+                {allVideos.length > 0 ? (
+                    <VirtualizedFeed 
+                        videos={allVideos} 
+                        onVideoClick={handleVideoClick} 
+                    />
+                ) : (
+                    <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
+                        No videos found in this category.
+                    </div>
+                )}
             </div>
 
-            {/* Loading More State */}
-            {loadingMore && (
-                <div className="video-grid" style={{ marginTop: '2rem' }}>
-                    {[...Array(4)].map((_, i) => (
-                        <VideoSkeleton key={`more-skel-${i}`} />
-                    ))}
-                </div>
-            )}
-            {!hasMore && videos.length > 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    You've reached the end of the line!
+            {/* Load More Button or Observer Trigger */}
+            {hasNextPage && (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <button 
+                        className="btn-secondary" 
+                        onClick={() => fetchNextPage()}
+                        disabled={isFetchingNextPage}
+                    >
+                        {isFetchingNextPage ? <Loader2 className="animate-spin" /> : 'Load More'}
+                    </button>
                 </div>
             )}
         </div>

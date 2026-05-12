@@ -5,6 +5,19 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { PageSkeleton } from './components/Skeleton';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      cacheTime: 1000 * 60 * 30, // 30 minutes
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
 
 const Home = React.lazy(() => import('./pages/Home'));
 const Landing = React.lazy(() => import('./pages/Landing'));
@@ -38,7 +51,11 @@ const AdminPortal = React.lazy(() => import('./pages/AdminPortal'));
 const Privacy = React.lazy(() => import('./pages/Privacy'));
 const Terms = React.lazy(() => import('./pages/Terms'));
 const PaymentCallback = React.lazy(() => import('./pages/PaymentCallback'));
+const History = React.lazy(() => import('./pages/library/History'));
+const WatchLater = React.lazy(() => import('./pages/library/WatchLater'));
+const Liked = React.lazy(() => import('./pages/library/Liked'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
+
 
 
 import NotificationManager from './components/NotificationManager';
@@ -182,6 +199,10 @@ function AppContent() {
                   <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                   <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
                   <Route path="/performance" element={<ProtectedRoute><Performance /></ProtectedRoute>} />
+                  <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+                  <Route path="/watch-later" element={<ProtectedRoute><WatchLater /></ProtectedRoute>} />
+                  <Route path="/liked" element={<ProtectedRoute><Liked /></ProtectedRoute>} />
+
                   
                   {/* Protected Context Routings */}
                   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
@@ -208,20 +229,23 @@ function AppContent() {
 function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <Router>
-        <AuthProvider>
-          <NotificationProvider>
-            <ErrorProvider>
-              <ErrorBoundary>
-                <NotificationManager />
-                <AppContent />
-              </ErrorBoundary>
-            </ErrorProvider>
-          </NotificationProvider>
-        </AuthProvider>
-      </Router>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <AuthProvider>
+            <NotificationProvider>
+              <ErrorProvider>
+                <ErrorBoundary>
+                  <NotificationManager />
+                  <AppContent />
+                </ErrorBoundary>
+              </ErrorProvider>
+            </NotificationProvider>
+          </AuthProvider>
+        </Router>
+      </QueryClientProvider>
     </GoogleOAuthProvider>
   );
 }
+
 
 export default App;

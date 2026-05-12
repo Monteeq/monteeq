@@ -69,8 +69,11 @@ async def health_check(db: Session = Depends(get_db)):
             
     return health
 
+from fastapi_cache.decorator import cache
+
 @router.get("/", response_model=List[schemas.Video])
-def read_videos(
+@cache(expire=30)
+async def read_videos(
     video_type: str = None, 
     status: str = "approved", 
     skip: int = 0,
@@ -81,29 +84,9 @@ def read_videos(
     current_user: Optional[dict] = Depends(get_current_user_optional)
 ):
     user_id = current_user.id if current_user else None
-    
-    cache_key = f"feed_{video_type}_{status}_{skip}_{limit}_{user_id}_{mood}_{feed_mode}"
-    
-    # Try to get from cache
-    try:
-        cached = redis_client.get(cache_key)
-        if cached:
-            import json
-            return json.loads(cached)
-    except Exception:
-        pass
-        
     videos = crud_video.get_videos(db, video_type=video_type, filter_status=status, current_user_id=user_id, skip=skip, limit=limit, mood=mood, feed_mode=feed_mode)
-    
-    # Try to save to cache
-    try:
-        import json
-        serialized_videos = [schemas.Video.from_orm(v).dict() for v in videos]
-        redis_client.setex(cache_key, 30, json.dumps(serialized_videos)) # Shorter TTL for homepage
-    except Exception:
-        pass
-            
     return videos
+
 
 @router.get("/{video_id}/stream/{sub_path:path}")
 @router.get("/{video_id}/stream")

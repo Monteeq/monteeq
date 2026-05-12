@@ -17,8 +17,11 @@ import {
     Tag,
     ChevronLeft,
     Globe,
-    Zap
+    Zap,
+    MessageSquare,
+    Image as PhotoIcon
 } from 'lucide-react';
+
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -48,6 +51,13 @@ const Upload = () => {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [dbVideoId, setDbVideoId] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Post State
+    const [uploadType, setUploadType] = useState('video'); // 'video' | 'post'
+    const [postContent, setPostContent] = useState('');
+    const [postImage, setPostImage] = useState(null);
+    const [postPreview, setPostPreview] = useState(null);
+
 
     const fileInputRef = useRef(null);
     const thumbnailInputRef = useRef(null);
@@ -150,6 +160,32 @@ const Upload = () => {
         finally { setIsSaving(false); }
     };
 
+    const handlePostSubmit = async () => {
+        if (!postContent || uploading) return;
+        setUploading(true);
+        
+        const formData = new FormData();
+        formData.append('content', postContent);
+        formData.append('tags', tags);
+        if (postImage) formData.append('image', postImage);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/posts/create`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+            if (!res.ok) throw new Error("Failed to create post");
+            showNotification('success', "Post published to community!");
+            navigate('/posts');
+        } catch (err) {
+            showNotification('error', err.message);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+
     return (
         <div className={s.uploadPage}>
             <header className={s.header}>
@@ -165,8 +201,26 @@ const Upload = () => {
                 </button>
             </header>
 
-            {step === 'select' ? (
+            <div className={s.modeSwitcher}>
+                <button 
+                    className={`${s.modeTab} ${uploadType === 'video' ? s.activeMode : ''}`}
+                    onClick={() => { setUploadType('video'); setStep('select'); }}
+                >
+                    <Video size={20} /> Video Master
+                </button>
+                <button 
+                    className={`${s.modeTab} ${uploadType === 'post' ? s.activeMode : ''}`}
+                    onClick={() => { setUploadType('post'); setStep('details'); }}
+                >
+                    <MessageSquare size={20} /> Community Post
+                </button>
+            </div>
+
+
+
+            {uploadType === 'video' && step === 'select' ? (
                 <div className={s.dropzoneContainer} style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
+
                     <div 
                         className={s.dropzone}
                         onClick={() => fileInputRef.current.click()}
@@ -193,6 +247,7 @@ const Upload = () => {
                 </div>
             ) : (
                 <div className={s.stepperContainer}>
+
                     {/* Form Column */}
                     <div className={s.card}>
                         <div style={{ marginBottom: '2rem' }}>
@@ -200,35 +255,93 @@ const Upload = () => {
                             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Fill in the metadata for your masterpiece</p>
                         </div>
 
-                        <div className={s.formGroup}>
-                            <label className={s.label}>Title</label>
-                            <div className={s.inputWrapper}>
-                                <Type className={s.inputIcon} size={18} />
-                                <input className={s.input} value={title} onChange={e => setTitle(e.target.value)} placeholder="A name for your video" />
-                            </div>
-                        </div>
-
-                        <div className={s.formGroup}>
-                            <label className={s.label}>Description</label>
-                            <div className={s.inputWrapper}>
-                                <AlignLeft className={s.inputIcon} style={{ top: '1.5rem' }} size={18} />
-                                <textarea className={`${s.input} s.textarea`} value={description} onChange={e => setDescription(e.target.value)} placeholder="What's this video about?" />
-                            </div>
-                        </div>
-
-                        <div className={s.formGroup}>
-                            <label className={s.label}>Format</label>
-                            <div className={s.typeGrid}>
-                                <div className={`${s.typeCard} ${videoType === 'home' ? s.active : ''}`} onClick={() => setVideoType('home')}>
-                                    <Video size={24} style={{ marginBottom: '0.5rem', opacity: videoType === 'home' ? 1 : 0.3 }} />
-                                    <div style={{ fontWeight: 800 }}>Home</div>
+                        {uploadType === 'video' ? (
+                            <>
+                                <div className={s.formGroup}>
+                                    <label className={s.label}>Title</label>
+                                    <div className={s.inputWrapper}>
+                                        <Type className={s.inputIcon} size={18} />
+                                        <input className={s.input} value={title} onChange={e => setTitle(e.target.value)} placeholder="A name for your video" />
+                                    </div>
                                 </div>
-                                <div className={`${s.typeCard} ${videoType === 'flash' ? s.active : ''}`} onClick={() => setVideoType('flash')}>
-                                    <Zap size={24} style={{ marginBottom: '0.5rem', opacity: videoType === 'flash' ? 1 : 0.3 }} />
-                                    <div style={{ fontWeight: 800 }}>Flash</div>
+
+                                <div className={s.formGroup}>
+                                    <label className={s.label}>Description</label>
+                                    <div className={s.inputWrapper}>
+                                        <AlignLeft className={s.inputIcon} style={{ top: '1.5rem' }} size={18} />
+                                        <textarea className={`${s.input} ${s.textarea}`} value={description} onChange={e => setDescription(e.target.value)} placeholder="What's this video about?" />
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+
+                                <div className={s.formGroup}>
+                                    <label className={s.label}>Format</label>
+                                    <div className={s.typeGrid}>
+                                        <div className={`${s.typeCard} ${videoType === 'home' ? s.active : ''}`} onClick={() => setVideoType('home')}>
+                                            <Video size={24} style={{ marginBottom: '0.5rem', opacity: videoType === 'home' ? 1 : 0.3 }} />
+                                            <div style={{ fontWeight: 800 }}>Home</div>
+                                        </div>
+                                        <div className={`${s.typeCard} ${videoType === 'flash' ? s.active : ''}`} onClick={() => setVideoType('flash')}>
+                                            <Zap size={24} style={{ marginBottom: '0.5rem', opacity: videoType === 'flash' ? 1 : 0.3 }} />
+                                            <div style={{ fontWeight: 800 }}>Flash</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className={s.formGroup}>
+                                    <label className={s.label}>Post Content</label>
+                                    <div className={s.inputWrapper}>
+                                        <AlignLeft className={s.inputIcon} style={{ top: '1.5rem' }} size={18} />
+                                        <textarea 
+                                            className={`${s.input} ${s.textarea}`} 
+                                            value={postContent} 
+                                            onChange={e => setPostContent(e.target.value)} 
+                                            placeholder="What's on your mind? Share an update with your followers..." 
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className={s.formGroup}>
+                                    <label className={s.label}>Attach Image (Optional)</label>
+                                    <div 
+                                        className={s.imageDropzone}
+                                        onClick={() => thumbnailInputRef.current.click()}
+                                    >
+                                        <input 
+                                            type="file" 
+                                            ref={thumbnailInputRef} 
+                                            hidden 
+                                            accept="image/*" 
+                                            onChange={(e) => {
+                                                const f = e.target.files[0];
+                                                if (f) {
+                                                    setPostImage(f);
+                                                    setPostPreview(URL.createObjectURL(f));
+                                                }
+                                            }} 
+                                        />
+                                        {postPreview ? (
+                                            <img src={postPreview} alt="Preview" className={s.postImagePreview} />
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--text-muted)' }}>
+                                                <PhotoIcon size={32} />
+                                                <span style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Add a photo</span>
+                                            </div>
+                                        )}
+                                        {postPreview && (
+                                            <button 
+                                                className={s.removeImage}
+                                                onClick={(e) => { e.stopPropagation(); setPostPreview(null); setPostImage(null); }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
 
                         <div className={s.formGroup}>
                             <label className={s.label}>Tags</label>
@@ -239,10 +352,16 @@ const Upload = () => {
                         </div>
 
                         <div className="mobile-only" style={{ marginTop: '2rem' }}>
-                            <button className={uploading ? "btn-loading" : "btn-primary"} disabled={!title || uploading} onClick={startUpload} style={{ width: '100%' }}>
+                            <button 
+                                className={uploading ? "btn-loading" : "btn-primary"} 
+                                disabled={(uploadType === 'video' ? !title : !postContent) || uploading} 
+                                onClick={uploadType === 'video' ? startUpload : handlePostSubmit} 
+                                style={{ width: '100%' }}
+                            >
                                 {uploading ? <><Loader2 className={s.spin} size={20} /> PUBLISHING...</> : 'PUBLISH NOW'}
                             </button>
                         </div>
+
                     </div>
 
                     {/* Status Column */}
@@ -293,12 +412,13 @@ const Upload = () => {
                         <div className="desktop-only" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <button 
                                 className={uploading ? "btn-loading" : "btn-primary"} 
-                                disabled={!title || uploading} 
-                                onClick={startUpload}
+                                disabled={(uploadType === 'video' ? !title : !postContent) || uploading} 
+                                onClick={uploadType === 'video' ? startUpload : handlePostSubmit} 
                                 style={{ width: '100%' }}
                             >
                                 {uploading ? <><Loader2 className={s.spin} size={20} /> PUBLISHING...</> : 'PUBLISH NOW'}
                             </button>
+
                             
                             {uploading && processingStatus !== 'completed' && (
                                 <button className="btn-secondary" style={{ width: '100%' }} onClick={saveMetadata} disabled={isSaving}>

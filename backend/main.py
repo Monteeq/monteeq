@@ -1,10 +1,16 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from app.api.v1.api import api_router
 from app.api.v1.endpoints import seo
 from app.core import dependencies
 from app.core.error_handlers import register_exception_handlers
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from redis import asyncio as aioredis
+
+
 # Database initialized via Supabase schema
 import app.worker
 
@@ -21,7 +27,11 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    default_response_class=ORJSONResponse,
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 
 # ── Request-ID Middleware ──────────────────────────────────────────────────────
 class RequestIDMiddleware(BaseHTTPMiddleware):
@@ -81,7 +91,13 @@ app.include_router(api_router, prefix="/api/v1")
 app.include_router(seo.router)
 
 
-# ── Health Check ──────────────────────────────────────────────────────────────
+# ── Initialization ────────────────────────────────────────────────────────────
+@app.on_event("startup")
+async def startup():
+    from app.core.config import REDIS_URL
+    redis = aioredis.from_url(REDIS_URL, encoding="utf8", decode_responses=True)
+    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+
 @app.get("/health", tags=["System"])
 async def health_check():
     """Simple liveness probe used by load balancers and uptime monitors."""

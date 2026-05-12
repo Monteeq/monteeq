@@ -9,8 +9,10 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { getSearchSuggestions, getTrendingSuggestions } from '../api';
+import { useQueryClient } from '@tanstack/react-query';
 import logo from '../assets/images/logo.png';
 import s from './ModernHeader.module.css';
+
 
 const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -25,7 +27,22 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
     const profileRef = useRef(null);
     const { token, user, logout } = useAuth();
     const { unreadCount } = useNotification();
+    const queryClient = useQueryClient();
     const navigate = useNavigate();
+
+    const prefetchHome = () => {
+        queryClient.prefetchQuery({
+            queryKey: ['feed', 'home', 'All'],
+            // queryFn will be handled by the hook if we use a centralized query client
+        });
+    };
+
+    const prefetchNotifications = () => {
+        queryClient.prefetchQuery({
+            queryKey: ['notifications', 'unread'],
+        });
+    };
+
 
     useEffect(() => {
         const history = JSON.parse(localStorage.getItem('monteeq_search_history') || '[]');
@@ -100,7 +117,8 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                 <button className={s.menuBtn} onClick={onMenuToggle}>
                     <Menu size={24} />
                 </button>
-                <div className={s.logo} onClick={() => navigate('/home')}>
+                <div className={s.logo} onClick={() => navigate('/home')} onMouseEnter={prefetchHome}>
+
                     <img src={logo} alt="Monteeq" className={s.logoImg} />
                     <span className={s.brandName}>MONTEEQ</span>
                 </div>
@@ -172,7 +190,8 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                 )}
 
                 <div className={s.actionGroup}>
-                    <button className={s.actionBtn} onClick={() => navigate('/notifications')}>
+                    <button className={s.actionBtn} onClick={() => navigate('/notifications')} onMouseEnter={prefetchNotifications}>
+
                         <Bell size={22} />
                         {unreadCount > 0 && <span className={s.dashBadge} title={`${unreadCount} unread`} />}
                     </button>

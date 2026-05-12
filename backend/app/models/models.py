@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Text, DateTime, func, Numeric
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Text, DateTime, func, Numeric, Index
+
 from sqlalchemy.orm import relationship, backref
 from app.db.base import Base
 import enum
@@ -18,7 +19,10 @@ class ApprovalStatus(str, enum.Enum):
     REJECTED = "rejected"
     FAILED = "failed"
 
+from app.models.library import WatchHistory, LibraryWatchLater, LikedVideo
+
 class User(Base):
+
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
