@@ -330,6 +330,7 @@ const VideoPlayerV2 = ({
         onError={() => setError("Error loading video. Please try again.")}
         onClick={togglePlay}
         playsInline
+        crossOrigin="anonymous"
         itemProp="contentUrl"
       />
 
