@@ -43,12 +43,12 @@ async fn main() {
     let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
     let mut config = RedisConfig::from_url(&redis_url).unwrap();
     
-    // Disable any features that might open extra connections
-    config.fail_fast = true;
+    // Allow for connection retries and higher throughput
+    config.fail_fast = false;
     
     let perf = PerformanceConfig {
-        // Ensure we only use 1 connection and set a 5s timeout
-        default_command_timeout: std::time::Duration::from_secs(5),
+        // Increase timeout and allow more concurrent operations
+        default_command_timeout: std::time::Duration::from_secs(30),
         ..Default::default()
     };
     

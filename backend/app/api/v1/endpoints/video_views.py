@@ -52,13 +52,7 @@ async def init_view(
     user_id = current_user.id if current_user else None
     ip = request.client.host
     
-    # Rate limiting: Max 10 view attempts per minute per IP
-    rate_limit_key = f"view_rate_limit:{ip}"
-    count = redis_client.incr(rate_limit_key)
-    if count == 1:
-        redis_client.expire(rate_limit_key, 60)
-    if count > 10:
-        raise HTTPException(status_code=429, detail="Too many view attempts. Please wait.")
+    # Rate limiting disabled
 
     ticket = create_view_ticket(video_id, user_id, ip)
     

@@ -75,22 +75,7 @@ def is_bot(request) -> bool:
 
 def check_rate_limit(key: str, limit: int, period: int) -> bool:
     """
-    Check if a key (usually IP) has exceeded a limit within a period (seconds).
-    Returns True if allowed, False if blocked.
+    Rate limiting has been disabled per user request.
+    Always returns True.
     """
-    from app.core.redis import redis_client
-    if not redis_client:
-        return True # Fallback if Redis is down
-        
-    try:
-        current = redis_client.get(key)
-        if current and int(current) >= limit:
-            return False
-            
-        pipe = redis_client.pipeline()
-        pipe.incr(key)
-        pipe.expire(key, period)
-        pipe.execute()
-        return True
-    except Exception:
-        return True
+    return True
