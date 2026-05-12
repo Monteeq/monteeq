@@ -4,10 +4,10 @@ import React, { useEffect } from 'react';
  * Manual SEO Component (Fallback for environments without react-helmet)
  * Handles Title, Meta Tags, and JSON-LD Structured Data
  */
-const SEO = ({ 
-    title, 
-    description, 
-    video, 
+const SEO = ({
+    title,
+    description,
+    video,
     canonical,
     ogImage,
     ogType = "video.other"
@@ -79,14 +79,37 @@ const SEO = ({
                 document.head.appendChild(script);
             }
             script.text = JSON.stringify(schema);
+        } else {
+            // Organization schema for home/generic pages
+            const orgSchema = {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": "Monteeq",
+                "url": window.location.origin,
+                "logo": `${window.location.origin}/favicon.png`,
+                "sameAs": [
+                    "https://twitter.com/monteeq",
+                    "https://instagram.com/monteeq"
+                ]
+            };
+            let script = document.getElementById("json-ld-seo-org");
+            if (!script) {
+                script = document.createElement("script");
+                script.id = "json-ld-seo-org";
+                script.type = "application/ld+json";
+                document.head.appendChild(script);
+            }
+            script.text = JSON.stringify(orgSchema);
         }
 
         // Cleanup (optional, but good for SPA)
         return () => {
-             // We don't necessarily want to remove meta on every unmount in some cases
-             // but for structured data we should
-             const script = document.getElementById("json-ld-seo");
-             if (script) script.remove();
+            // We don't necessarily want to remove meta on every unmount in some cases
+            // but for structured data we should
+            const script = document.getElementById("json-ld-seo");
+            if (script) script.remove();
+            const orgScript = document.getElementById("json-ld-seo-org");
+            if (orgScript) orgScript.remove();
         };
     }, [fullTitle, description, video, ogImage, ogType, url]);
 
