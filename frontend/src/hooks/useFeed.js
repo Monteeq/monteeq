@@ -5,9 +5,9 @@ export const useHomeFeed = (token, category = 'All') => {
     return useInfiniteQuery({
         queryKey: ['feed', 'home', category],
         queryFn: async ({ pageParam = 0 }) => {
-            // For logged-in users, use the recommendation engine if available.
-            // Simplified here to just use getVideos with skip logic.
-            const data = await getVideos('home', token, pageParam, 12, category);
+            // If category is 'All', we don't want to filter by mood/tag.
+            const mood = category === 'All' ? '' : category;
+            const data = await getVideos('home', token, pageParam, 12, mood);
             return data;
         },
         getNextPageParam: (lastPage, allPages) => {
