@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
+import { getFollowing } from '../api';
+
 import {
   Home as HomeIcon, Zap, UploadCloud,
   Clapperboard, Trophy, TrendingUp,
@@ -37,6 +39,30 @@ const NavItem = ({ to, icon, label, onClick, accent, bold }) => (
 /* ═══════════════════════════════════════════════════════ */
 const Sidebar = ({ isOpen, onClose }) => {
   const { user, token } = useAuth();
+  const [following, setFollowing] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchFollowing = async () => {
+      if (!user || !token) {
+        setFollowing([]);
+        return;
+      }
+      
+      setLoading(true);
+      try {
+        const data = await getFollowing(user.username);
+        setFollowing(data);
+      } catch (err) {
+        console.error("Failed to fetch following:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFollowing();
+  }, [user, token]);
+
 
   return (
     <aside className={`sidebar glass-morphism ${isOpen ? 'open' : ''}`}>
@@ -51,30 +77,26 @@ const Sidebar = ({ isOpen, onClose }) => {
         <NavDivider />
 
         {/* ── FOLLOWING (TikTok Avatars) ──────────────────── */}
-        <NavGroup label="Following" />
-        <div className="following-list">
-          {/* Mock Avatars */}
-          <div className="following-avatar-item" title="Felix">
-            <div className="avatar-wrapper live">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="avatar" />
+        {following.length > 0 && (
+          <>
+            <NavGroup label="Following" />
+            <div className="following-list">
+              {following.map((creator) => (
+                <div key={creator.id} className="following-avatar-item" title={creator.username}>
+                  <div className={`avatar-wrapper ${creator.is_live ? 'live' : ''}`}>
+                    <img 
+                      src={creator.profile_pic || `https://api.dicebear.com/7.x/avataaars/svg?seed=${creator.username}`} 
+                      alt={creator.username} 
+                    />
+                  </div>
+                  <span className="following-name">{creator.username}</span>
+                </div>
+              ))}
             </div>
-            <span className="following-name">Felix</span>
-          </div>
-          <div className="following-avatar-item" title="Sonia_Vibe">
-            <div className="avatar-wrapper">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sonia" alt="avatar" />
-            </div>
-            <span className="following-name">Sonia_Vibe</span>
-          </div>
-          <div className="following-avatar-item" title="AlexLive">
-            <div className="avatar-wrapper live">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" alt="avatar" />
-            </div>
-            <span className="following-name">AlexLive</span>
-          </div>
-        </div>
+            <NavDivider />
+          </>
+        )}
 
-        <NavDivider />
 
         {/* ── DISCOVER (YouTube Focus) ───────────────────── */}
         <NavGroup label="Discover" />

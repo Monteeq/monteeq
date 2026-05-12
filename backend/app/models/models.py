@@ -82,7 +82,10 @@ class User(Base):
     posts = relationship("Post", back_populates="owner")
     reposts = relationship("Repost", back_populates="user")
     comments = relationship("Comment", back_populates="owner")
+    # History, Likes, Watch Later
     likes = relationship("Like", back_populates="user")
+    views = relationship("View", back_populates="user")
+    watch_later = relationship("WatchLater", back_populates="user")
 
     # Followers
     followers = relationship(
@@ -97,6 +100,7 @@ class User(Base):
         back_populates="follower",
         cascade="all, delete-orphan",
     )
+
 
 class VerificationCode(Base):
     __tablename__ = "verification_codes"
@@ -200,9 +204,10 @@ class View(Base):
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=True, index=True)
     created_at = Column(DateTime, default=func.now())
 
-    user = relationship("User")
+    user = relationship("User", back_populates="views")
     video = relationship("Video")
     post = relationship("Post")
+
 
 class Like(Base):
     __tablename__ = "likes"
@@ -266,6 +271,18 @@ class Follow(Base):
 
     follower = relationship("User", foreign_keys=[follower_id], back_populates="following")
     followed = relationship("User", foreign_keys=[followed_id], back_populates="followers")
+
+class WatchLater(Base):
+    __tablename__ = "watch_later"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    video_id = Column(Integer, ForeignKey("videos.id"), index=True)
+    created_at = Column(DateTime, default=func.now())
+
+    user = relationship("User", back_populates="watch_later")
+    video = relationship("Video")
+
 
 class Repost(Base):
     __tablename__ = "reposts"
