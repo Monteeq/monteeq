@@ -102,13 +102,13 @@ body {
   background: var(--text-muted);
 }
 
-/* --- Sidebar System (Auto-Collapse) --- */
+/* --- Hybrid Sidebar (YouTube x TikTok) --- */
 .sidebar {
   position: fixed;
   left: 0;
   top: var(--header-height);
   bottom: 0;
-  width: 64px;
+  width: 64px; /* Auto-collapsed */
   background: var(--bg-surface);
   border-right: 1px solid var(--border-glass);
   z-index: 1000;
@@ -120,63 +120,43 @@ body {
   flex-direction: column;
 }
 
-.sidebar:hover {
-  width: var(--sidebar-width);
+.sidebar:hover,
+.sidebar.open {
+  width: 240px;
   box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
 }
 
-@media (max-width: 1024px) {
-  .sidebar {
-    top: 0;
-    width: var(--sidebar-width);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-}
-
-
-/* Scrollbar hide for sidebar */
 .sidebar::-webkit-scrollbar {
   width: 4px;
-}
-
-.sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-  background: var(--border-glass);
-  border-radius: 4px;
 }
 
 .nav-menu {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0.5rem 0;
-  flex-shrink: 0;
-  /* Prevent the menu from shrinking, force scroll */
+  padding: 1rem 0;
 }
 
 .nav-group-label {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 800;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
-  padding: 1rem 0.5rem 0.5rem 20px;
+  padding: 1rem 20px 0.5rem;
   white-space: nowrap;
   opacity: 0;
   transition: opacity 0.2s;
-  overflow: hidden;
 }
 
-.sidebar:hover .nav-group-label {
+.sidebar:hover .nav-group-label,
+.sidebar.open .nav-group-label {
   opacity: 1;
+}
+
+.nav-divider {
+  height: 1px;
+  background: var(--border-glass);
+  margin: 1rem 12px;
 }
 
 .nav-item {
@@ -184,26 +164,40 @@ body {
   align-items: center;
   gap: 20px;
   padding: 12px 20px;
-  border-radius: 12px;
+  border-radius: 0; /* YouTube style is edge-to-edge usually, but let's keep it modern */
   color: #ffffff;
-  font-weight: 600;
+  font-weight: 500;
   transition: all var(--transition-fast);
   white-space: nowrap;
   min-height: 48px;
+  position: relative;
 }
 
 .nav-item svg {
+  flex-shrink: 0;
   color: #ffffff !important;
 }
 
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: white;
 }
 
 .nav-item.active {
-  background: rgba(255, 59, 48, 0.1);
-  color: var(--accent-primary);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-weight: 700;
+}
+
+/* YouTube style active indicator */
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: #ff3b30;
+  border-radius: 0 4px 4px 0;
 }
 
 .nav-item span {
@@ -211,9 +205,130 @@ body {
   transition: opacity 0.2s;
 }
 
-.sidebar:hover .nav-item span {
+.sidebar:hover .nav-item span,
+.sidebar.open .nav-item span {
   opacity: 1;
 }
+
+/* TikTok Style Following List */
+.following-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0.5rem 0;
+}
+
+.following-avatar-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.following-avatar-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.avatar-wrapper {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+  padding: 2px;
+  background: transparent;
+}
+
+.avatar-wrapper img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar-wrapper.live {
+  background: linear-gradient(to bottom, #ff3b30, #ff8c00);
+  animation: pulse-border 1.5s infinite;
+}
+
+.avatar-wrapper.mini {
+  width: 28px;
+  height: 28px;
+}
+
+@keyframes pulse-border {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.following-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar:hover .following-name,
+.sidebar.open .following-name {
+  opacity: 1;
+}
+
+/* Footer Section */
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border-glass);
+}
+
+.sidebar-user-compact {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 18px;
+}
+
+.footer-username {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.sidebar:hover .footer-username,
+.sidebar.open .footer-username {
+  opacity: 1;
+}
+
+.login-item {
+  color: var(--accent-primary) !important;
+}
+
+.login-item:hover {
+  background: rgba(235, 0, 0, 0.1);
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    top: 0;
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    width: 260px;
+  }
+}
+
 
 /* Cinematic Utilities */
 .cinematic-glow {
