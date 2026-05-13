@@ -69,7 +69,7 @@ const About = () => {
             variants={staggerContainer}
           >
             {[
-              { icon: <TrendingUp />, title: "Advanced Insights", text: "Track your growth with enterprise-grade analytics and engagement metrics. No more guessing." },
+              { icon: <TrendingUp />, title: "Deep Insights", text: "Track your growth with advanced analytics and engagement metrics. No more guessing." },
               { icon: <Zap />, title: "Insane Speed", text: "Global CDN distribution ensures your highest-quality edits render and stream instantly." },
               { icon: <Fingerprint />, title: "Pure Independence", text: "Build your personal brand and audience without relying on traditional clients or middlemen." }
             ].map((item, i) => (
@@ -98,7 +98,7 @@ const About = () => {
             <p>Talk is cheap. We back it up with data that you can see, touch, and verify.</p>
             <ul className="ld-v4-list">
               <li><Target size={18} /> <strong>No Gatekeepers</strong> — Your reach is earned, not bought.</li>
-              <li><ShieldCheck size={18} /> <strong>Data Sovereignty</strong> — You own your audience and your metrics.</li>
+              <li><ShieldCheck size={18} /> <strong>Data Ownership</strong> — You own your audience and your metrics.</li>
               <li><Sparkles size={18} /> <strong>Art-First</strong> — Technology that amplifies art, never replaces it.</li>
             </ul>
           </motion.div>

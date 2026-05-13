@@ -56,16 +56,16 @@ const Landing = () => {
                                 visible: { y: 0, opacity: 1, skewY: 0, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } }
                             }}
                         >
-                            The Premier <br />
-                            Network for <br />
+                            The Home <br />
+                            for the World's <br />
                             <span className="ld-v4-outline">Top Editors.</span>
                         </motion.h1>
                         <motion.p
                             className="ld-v4-subtitle"
                             variants={fadeInUp}
                         >
-                            Monteeq is a professional distribution platform that amplifies
-                            your short-form video skills using high-performance engagement algorithms.
+                            Monteeq is built to give your edits the reach they deserve 
+                            using algorithms focused on quality, not just volume.
                         </motion.p>
                         <motion.div
                             className="ld-v4-cta-wrap"
@@ -92,7 +92,7 @@ const Landing = () => {
                         viewport={{ once: true }}
                         variants={fadeInUp}
                     >
-                        <div className="ld-v4-tag">Visibility Reimagined</div>
+                        <div className="ld-v4-tag">Growth Reimagined</div>
                         <h2>The Science of <span className="ld-v4-outline">Performance.</span></h2>
                         <p>On Monteeq, your reach is directly tied to the impact of your work. Our algorithm prioritizes quality over mindless volume.</p>
                     </motion.div>
@@ -136,7 +136,7 @@ const Landing = () => {
                     <motion.div className="ld-v4-split-text" variants={fadeInUp}>
                         <div className="ld-v4-tag">Data-Driven Growth</div>
                         <h2>Master Your <br />Metrics.</h2>
-                        <p>We provide enterprise-grade analytics to help you understand exactly what makes your audience tick.</p>
+                        <p>We provide deep growth insights to help you understand exactly what makes your audience tick.</p>
                         <ul className="ld-v4-list">
                             <li><BarChart3 size={18} /> <strong>Engagement Mapping</strong> — Trace the journey from first frame to conversion</li>
                             <li><BarChart3 size={18} /> <strong>Audience Insights</strong> — Analyze performance data to refine your next edit</li>

@@ -248,7 +248,7 @@ const Performance = () => {
                         <TrendingUp size={14} /> GROWTH INTELLIGENCE
                     </div>
                     <h1 className="perf-page-title">Analytics</h1>
-                    <p className="perf-page-subtitle">Track performance, grow smarter.</p>
+                    <p className="perf-page-subtitle">Track your growth, stay ahead.</p>
                 </div>
                 <div className="range-tabs">
                     {[7, 14, 30].map(d => (

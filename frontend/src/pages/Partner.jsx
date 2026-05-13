@@ -76,7 +76,7 @@ const Partner = () => {
           {/* Final Call to Action before form */}
           <section className="partner-section" style={{ textAlign: 'center', position: 'relative' }}>
              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '800px', height: '300px', backgroundColor: 'rgba(255, 62, 62, 0.1)', borderRadius: '50%', filter: 'blur(120px)', zIndex: -10 }} />
-             <h2 className="partner-hero-title">Ready to revolutionize <br /> your brand's <span className="partner-gradient-text">content?</span></h2>
+             <h2 className="partner-hero-title">Ready to scale <br /> your brand's <span className="partner-gradient-text">reach?</span></h2>
              <p className="partner-hero-desc">
                 Join dozens of brands who are already scaling their reach through the power of Monteeq editors.
              </p>
