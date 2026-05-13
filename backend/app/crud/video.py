@@ -41,7 +41,7 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
 
     # Following feed: restrict to videos from accounts the user follows
     if feed_mode == 'following' and current_user_id:
-        followed_ids = db.query(Follow.followed_id).filter(Follow.follower_id == current_user_id).subquery()
+        followed_ids = db.query(Follow.following_id).filter(Follow.follower_id == current_user_id).subquery()
         query = query.filter(Video.owner_id.in_(followed_ids))
 
     # Personalization: Get user interests for boosting
@@ -59,7 +59,7 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
         query = query.order_by(desc(Video.likes_count + Video.views))
     else:
         # Order by discovery score by default
-        query = query.order_by(desc(Video.discovery_score))
+        query = query.order_by(desc(Video.discovery_score), desc(Video.created_at))
     
     videos = query.offset(skip).limit(limit).all()
     

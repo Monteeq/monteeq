@@ -148,8 +148,8 @@ def get_user_profile(db: Session, username: str, current_user_id: int = None):
     user_id = db_user.id
     
     # Counts
-    followers_count = db.query(func.count(Follow.follower_id)).filter(Follow.followed_id == user_id).scalar() or 0
-    following_count = db.query(func.count(Follow.followed_id)).filter(Follow.follower_id == user_id).scalar() or 0
+    followers_count = db.query(func.count(Follow.follower_id)).filter(Follow.following_id == user_id).scalar() or 0
+    following_count = db.query(func.count(Follow.following_id)).filter(Follow.follower_id == user_id).scalar() or 0
     
     # Total Views & Likes
     total_views = db.query(func.sum(Video.views)).filter(Video.owner_id == user_id).scalar() or 0
@@ -157,7 +157,7 @@ def get_user_profile(db: Session, username: str, current_user_id: int = None):
     
     is_following = False
     if current_user_id:
-        is_following = db.query(Follow).filter(Follow.follower_id == current_user_id, Follow.followed_id == user_id).first() is not None
+        is_following = db.query(Follow).filter(Follow.follower_id == current_user_id, Follow.following_id == user_id).first() is not None
 
     # Videos - Fetch only live (approved) videos for public, but all statuses for the owner
     if current_user_id == user_id:
@@ -231,26 +231,26 @@ from app.crud import notification as crud_notification
 from app.utils.push import notify_user_push
 from app.schemas.notification import NotificationCreate
 
-def toggle_follow(db: Session, follower_id: int, followed_id: int):
+def toggle_follow(db: Session, follower_id: int, following_id: int):
     if follower_id == followed_id:
         return False
     
-    existing = db.query(Follow).filter(Follow.follower_id == follower_id, Follow.followed_id == followed_id).first()
+    existing = db.query(Follow).filter(Follow.follower_id == follower_id, Follow.following_id == following_id).first()
     
     if existing:
         db.delete(existing)
         db.commit()
         return False
     else:
-        new_follow = Follow(follower_id=follower_id, followed_id=followed_id)
+        new_follow = Follow(follower_id=follower_id, following_id=following_id)
         db.add(new_follow)
         db.commit()
         return True
 
-def handle_follow_side_effects(db: Session, follower_id: int, followed_id: int):
+def handle_follow_side_effects(db: Session, follower_id: int, following_id: int):
     """Secondary tasks after a user follows another."""
     # 1. Check for achievements
-    follower_count = db.query(func.count(Follow.follower_id)).filter(Follow.followed_id == followed_id).scalar()
+    follower_count = db.query(func.count(Follow.follower_id)).filter(Follow.following_id == following_id).scalar()
     
     if follower_count == 1:
         crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="FIRST_FOLLOWER")
@@ -263,7 +263,7 @@ def handle_follow_side_effects(db: Session, follower_id: int, followed_id: int):
     try:
         follower = get_user_by_id(db, follower_id)
         msg = f"{follower.username} started following you!"
-        notify_user_push(db, followed_id, "New Follower!", msg, link=f"/profile/{follower.username}", n_type="follower")
+        notify_user_push(db, following_id, "New Follower!", msg, link=f"/profile/{follower.username}", n_type="follower")
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Failed to handle follow side effects: {e}")
@@ -300,7 +300,7 @@ def verify_code(db: Session, email: str, code: str):
     return True
 
 def get_followers(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-    return db.query(User).join(Follow, User.id == Follow.follower_id).filter(Follow.followed_id == user_id).offset(skip).limit(limit).all()
+    return db.query(User).join(Follow, User.id == Follow.follower_id).filter(Follow.following_id == user_id).offset(skip).limit(limit).all()
 
 def get_following(db: Session, user_id: int, skip: int = 0, limit: int = 100):
-    return db.query(User).join(Follow, User.id == Follow.followed_id).filter(Follow.follower_id == user_id).offset(skip).limit(limit).all()
+    return db.query(User).join(Follow, User.id == Follow.following_id).filter(Follow.follower_id == user_id).offset(skip).limit(limit).all()

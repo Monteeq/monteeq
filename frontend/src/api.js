@@ -287,13 +287,10 @@ export const getUserProfile = async (username, token = null) => {
 };
 
 export const toggleFollow = async (userId, token) => {
-    const response = await fetch(`${API_BASE_URL}/users/follow/${userId}`, {
+    return apiFetch(`/users/follow/${userId}`, {
         method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const searchUnified = async (query) => {
@@ -634,3 +631,15 @@ export const getCategoryVideos = async (categoryName, videoType = 'flash', limit
     if (!response.ok) return [];
     return response.json();
 };
+
+export const getFollowingFeed = async (token, skip = 0, limit = 20, contentType = 'all') => {
+    return apiFetch(`/following/feed?skip=${skip}&limit=${limit}&content_type=${contentType}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+};
+
+export const getRecommendedCreators = async (token = null) => {
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    return apiFetch('/following/recommendations', { headers });
+};
+

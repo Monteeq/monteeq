@@ -94,8 +94,8 @@ class User(Base):
     # Followers
     followers = relationship(
         "Follow",
-        foreign_keys="Follow.followed_id",
-        back_populates="followed",
+        foreign_keys="Follow.following_id",
+        back_populates="following",
         cascade="all, delete-orphan",
     )
     following = relationship(
@@ -269,12 +269,13 @@ class Comment(Base):
 class Follow(Base):
     __tablename__ = "follows"
 
-    follower_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    followed_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
-    created_at = Column(DateTime, default=func.now())
+    id = Column(Integer, primary_key=True, index=True)
+    follower_id = Column(Integer, ForeignKey("users.id"), index=True)
+    following_id = Column(Integer, ForeignKey("users.id"), index=True)
+    created_at = Column(DateTime, default=func.now(), index=True)
 
     follower = relationship("User", foreign_keys=[follower_id], back_populates="following")
-    followed = relationship("User", foreign_keys=[followed_id], back_populates="followers")
+    following = relationship("User", foreign_keys=[following_id], back_populates="followers")
 
 class WatchLater(Base):
     __tablename__ = "watch_later"

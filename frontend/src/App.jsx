@@ -22,6 +22,7 @@ const queryClient = new QueryClient({
 const Home = React.lazy(() => import('./pages/Home'));
 const Landing = React.lazy(() => import('./pages/Landing'));
 const Flash = React.lazy(() => import('./pages/Flash'));
+const Following = React.lazy(() => import('./pages/Following'));
 const Posts = React.lazy(() => import('./pages/Posts'));
 const Upload = React.lazy(() => import('./pages/Upload'));
 const Chat = React.lazy(() => import('./pages/Chat'));
@@ -105,7 +106,7 @@ function AppContent() {
     '/flash', '/search', '/settings', '/posts', '/create-post', '/upload', '/chat',
     '/manage', '/manage-videos', '/achievements', '/notifications',
     '/insights', '/performance', '/onboarding', '/challenges',
-    '/admin'
+    '/admin', '/following'
 
   ];
   const isDynamicPath = location.pathname.startsWith('/watch/') || location.pathname.startsWith('/profile/');
@@ -188,6 +189,7 @@ function AppContent() {
                   <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
                   <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route path="/following" element={<ProtectedRoute><Following /></ProtectedRoute>} />
                   <Route path="/posts" element={<Posts />} />
 
                   <Route path="/create-post" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />

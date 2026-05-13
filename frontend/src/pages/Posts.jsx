@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Heart, MessageSquare, Repeat2, Send, MoreHorizontal, Loader2, X } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
@@ -6,21 +6,23 @@ import { API_BASE_URL, getPosts } from '../api';
 import { useNavigate } from 'react-router-dom';
 import CommentsDrawer from '../components/CommentsDrawer';
 import { PostSkeleton } from '../components/Skeleton';
+import SEO from '../components/SEO';
+import styles from './Posts.module.css';
 
 const Posts = () => {
     const { showNotification } = useNotification();
     const { token } = useAuth();
     const navigate = useNavigate();
-    const [posts, setPosts] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-    const [loadingMore, setLoadingMore] = React.useState(false);
-    const [skip, setSkip] = React.useState(0);
-    const [hasMore, setHasMore] = React.useState(true);
-    const [activeCommentPostId, setActiveCommentPostId] = React.useState(null);
-    const [selectedImage, setSelectedImage] = React.useState(null);
-    const observer = React.useRef();
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [skip, setSkip] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [activeCommentPostId, setActiveCommentPostId] = useState(null);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const observer = useRef();
 
-    const lastPostElementRef = React.useCallback(node => {
+    const lastPostElementRef = useCallback(node => {
         if (loading || loadingMore) return;
         if (observer.current) observer.current.disconnect();
         observer.current = new IntersectionObserver(entries => {
@@ -54,11 +56,11 @@ const Posts = () => {
         }
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
         fetchPosts(true);
     }, [token]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (skip > 0) {
             fetchPosts(false);
         }
@@ -112,7 +114,7 @@ const Posts = () => {
             if (response.ok) {
                 showNotification('success', 'Reposted to your profile!');
                 setSkip(0);
-                fetchPosts(true); // Refresh to see the new repost
+                fetchPosts(true);
             } else {
                 showNotification('error', 'Failed to repost');
             }
@@ -127,132 +129,136 @@ const Posts = () => {
     };
 
     return (
-        <div className="page-container" style={{ maxWidth: '700px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '2rem', marginBottom: '2.5rem' }}>Community Feed</h2>
+        <div className={styles.postsContainer}>
+            <SEO 
+                title="Community Feed"
+                description="Join the conversation on Monteeq. Share updates, images, and thoughts with the creator community."
+            />
+            
+            <h1 className={styles.header}>Community</h1>
 
-            {loading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    {[...Array(3)].map((_, i) => (
-                        <PostSkeleton key={i} />
-                    ))}
-                </div>
-            ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    {posts.length === 0 ? (
-                        <div className="glass" style={{ padding: '3rem', borderRadius: '24px', textAlign: 'center' }}>
-                            <p style={{ color: 'var(--text-secondary)' }}>No posts yet. Be the first to share something!</p>
-                        </div>
-                    ) : (
-                        posts.map((post, index) => {
-                            const isRepost = !!post.original_post;
-                            const displayData = isRepost ? post.original_post : post;
-                            const reposter = isRepost ? post.owner : null;
+            <div className={styles.feedList}>
+                {loading ? (
+                    [...Array(3)].map((_, i) => <PostSkeleton key={i} />)
+                ) : posts.length === 0 ? (
+                    <div className={styles.emptyState}>
+                        <MessageSquare size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                        <p>No posts yet. Be the first to share something!</p>
+                    </div>
+                ) : (
+                    posts.map((post, index) => {
+                        const isRepost = !!post.original_post;
+                        const displayData = isRepost ? post.original_post : post;
+                        const reposter = isRepost ? post.owner : null;
 
-                            return (
-                                <div
-                                    key={post.id}
-                                    className="glass hover-scale"
-                                    style={{ padding: '2rem', borderRadius: '24px' }}
-                                    ref={posts.length === index + 1 ? lastPostElementRef : null}
-                                >
-                                    {isRepost && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-primary)', fontSize: '0.85rem', marginBottom: '1rem', fontWeight: 600 }}>
-                                            <Repeat2 size={14} /> Reposted by {reposter.username}
+                        return (
+                            <div
+                                key={post.id}
+                                className={styles.postCard}
+                                ref={posts.length === index + 1 ? lastPostElementRef : null}
+                            >
+                                {isRepost && (
+                                    <div className={styles.repostBadge}>
+                                        <Repeat2 size={14} /> Reposted by {reposter.username}
+                                    </div>
+                                )}
+                                
+                                <div className={styles.cardHeader}>
+                                    <div className={styles.authorInfo}>
+                                        <div className={styles.avatar} onClick={() => navigate(`/profile/${displayData.owner?.username}`)}>
+                                            {displayData.owner?.profile_pic ? (
+                                                <img src={displayData.owner.profile_pic} alt="" loading="lazy" />
+                                            ) : (
+                                                <div className={styles.avatarFallback}>
+                                                    {displayData.owner?.username?.[0].toUpperCase()}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                            <div style={{
-                                                width: '48px',
-                                                height: '48px',
-                                                borderRadius: '50%',
-                                                background: displayData.owner?.profile_pic ? `url(${displayData.owner.profile_pic}) center/cover` : 'linear-gradient(45deg, var(--accent-primary), #ff8e8e)',
-                                                border: '2px solid var(--border-glass)'
-                                            }} />
-                                            <div>
-                                                <div style={{ fontWeight: 700 }}>{displayData.owner?.username || 'Anonymous'}</div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatTime(displayData.created_at)}</div>
+                                        <div className={styles.authorText}>
+                                            <div className={styles.authorName} onClick={() => navigate(`/profile/${displayData.owner?.username}`)}>
+                                                {displayData.owner?.username || 'Anonymous'}
                                             </div>
+                                            <div className={styles.postTime}>{formatTime(displayData.created_at)}</div>
                                         </div>
-                                        <button
-                                            className="btn-active"
-                                            onClick={() => showNotification('info', 'Post options coming soon')}
-                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                                            <MoreHorizontal size={20} />
-                                        </button>
                                     </div>
-
-                                    <div style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
-                                        {displayData.content}
-                                    </div>
-
-                                    {displayData.image_url && (
-                                        <div 
-                                            onClick={() => setSelectedImage(displayData.image_url)}
-                                            style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '1.5rem', border: '1px solid var(--border-glass)', cursor: 'zoom-in' }}
-                                        >
-                                            <img src={displayData.image_url} alt="post content" style={{ width: '100%', display: 'block' }} />
-                                        </div>
-                                    )}
-
-                                    {displayData.tags && (
-                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-                                            {displayData.tags.split(',').map((tag, i) => (
-                                                <span
-                                                    key={i}
-                                                    onClick={() => handleTagClick(tag.trim())}
-                                                    style={{ color: 'var(--accent-primary)', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
-                                                >
-                                                    #{tag.trim()}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <div style={{ display: 'flex', gap: '2rem', borderTop: '1px solid var(--border-glass)', paddingTop: '1.5rem' }}>
-                                        <button
-                                            onClick={() => handleLike(displayData.id)}
-                                            className="btn-active"
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: displayData.liked_by_user ? 'var(--accent-primary)' : 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.9rem' }}>
-                                            <Heart size={18} fill={displayData.liked_by_user ? 'var(--accent-primary)' : 'none'} /> {displayData.likes_count || 0}
-                                        </button>
-                                        <button
-                                            onClick={() => setActiveCommentPostId(displayData.id)}
-                                            className="btn-active"
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.9rem' }}>
-                                            <MessageSquare size={18} /> {displayData.comments_count || 0}
-                                        </button>
-                                        <button
-                                            onClick={() => handleRepost(displayData.id)}
-                                            className="btn-active"
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.9rem' }}>
-                                            <Repeat2 size={18} /> {isRepost ? 'Reposted' : ''}
-                                        </button>
-                                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                                            {displayData.views_count || 0} views
-                                        </div>
-                                        <button
-                                            onClick={() => showNotification('success', 'Post link copied!')}
-                                            className="btn-active"
-                                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                                            <Send size={18} />
-                                        </button>
-                                    </div>
+                                    <button className={styles.optionsBtn}>
+                                        <MoreHorizontal size={20} />
+                                    </button>
                                 </div>
-                            );
-                        })
-                    )}
-                </div>
-            )}
 
-            {loadingMore && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginTop: '2rem' }}>
-                    <PostSkeleton />
-                </div>
-            )}
+                                <div className={styles.content}>
+                                    {displayData.content}
+                                </div>
+
+                                {displayData.image_url && (
+                                    <div className={styles.imageContainer} onClick={() => setSelectedImage(displayData.image_url)}>
+                                        <img src={displayData.image_url} alt="Post content" className={styles.postImage} loading="lazy" />
+                                    </div>
+                                )}
+
+                                {displayData.tags && (
+                                    <div className={styles.tags}>
+                                        {displayData.tags.split(',').map((tag, i) => (
+                                            <span
+                                                key={i}
+                                                className={styles.tag}
+                                                onClick={() => handleTagClick(tag.trim())}
+                                            >
+                                                #{tag.trim()}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className={styles.actions}>
+                                    <button
+                                        onClick={() => handleLike(displayData.id)}
+                                        className={`${styles.actionBtn} ${displayData.liked_by_user ? styles.active : ''}`}
+                                    >
+                                        <Heart size={18} fill={displayData.liked_by_user ? 'var(--accent-primary)' : 'none'} />
+                                        <span>{displayData.likes_count || 0}</span>
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => setActiveCommentPostId(displayData.id)}
+                                        className={styles.actionBtn}
+                                    >
+                                        <MessageSquare size={18} />
+                                        <span>{displayData.comments_count || 0}</span>
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => handleRepost(displayData.id)}
+                                        className={styles.actionBtn}
+                                    >
+                                        <Repeat2 size={18} />
+                                        <span>{isRepost ? 'Reposted' : ''}</span>
+                                    </button>
+                                    
+                                    <div className={styles.viewsCount}>
+                                        {displayData.views_count || 0} views
+                                    </div>
+                                    
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`${window.location.origin}/post/${displayData.id}`);
+                                            showNotification('success', 'Link copied!');
+                                        }}
+                                        className={styles.actionBtn}
+                                    >
+                                        <Send size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+
+            {loadingMore && <div style={{ marginTop: '1.5rem' }}><PostSkeleton /></div>}
 
             {!hasMore && posts.length > 0 && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                     You've reached the end of the feed!
                 </div>
             )}
@@ -264,57 +270,12 @@ const Posts = () => {
                 />
             )}
 
-            {/* Image Viewer Modal */}
             {selectedImage && (
-                <div 
-                    className="modal-overlay"
-                    onClick={() => setSelectedImage(null)}
-                    style={{
-                        position: 'fixed',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.9)',
-                        backdropFilter: 'blur(20px)',
-                        zIndex: 3000,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '2rem',
-                        cursor: 'zoom-out'
-                    }}
-                >
-                    <button 
-                        onClick={() => setSelectedImage(null)}
-                        style={{
-                            position: 'absolute',
-                            top: '2rem',
-                            right: '2rem',
-                            background: 'rgba(255,255,255,0.1)',
-                            border: 'none',
-                            borderRadius: '50%',
-                            color: 'white',
-                            width: '50px',
-                            height: '50px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            zIndex: 3001
-                        }}
-                    >
+                <div className={styles.modalOverlay} onClick={() => setSelectedImage(null)}>
+                    <button className={styles.closeModal} onClick={() => setSelectedImage(null)}>
                         <X size={24} />
                     </button>
-                    <img 
-                        src={selectedImage} 
-                        alt="Preview" 
-                        style={{
-                            maxWidth: '100%',
-                            maxHeight: '90vh',
-                            objectFit: 'contain',
-                            borderRadius: '12px',
-                            boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    />
+                    <img src={selectedImage} alt="Preview" className={styles.modalImage} onClick={(e) => e.stopPropagation()} />
                 </div>
             )}
         </div>

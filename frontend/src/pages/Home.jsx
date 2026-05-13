@@ -23,7 +23,8 @@ const Home = () => {
         hasNextPage, 
         isFetchingNextPage, 
         isLoading, 
-        isError 
+        isError,
+        refetch
     } = useHomeFeed(token, activeCategory);
 
     const { data: flashData, isLoading: flashLoading } = useFlashFeed(token);
@@ -127,12 +128,28 @@ const Home = () => {
                         videos={allVideos} 
                         onVideoClick={handleVideoClick} 
                     />
-                ) : (
-                    <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-                        No videos found in this category.
+                ) : !isLoading ? (
+                    <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)', background: 'var(--bg-raised)', borderRadius: '32px', margin: '2rem 0', border: '1px solid var(--border-glass)' }}>
+                        <Play size={48} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
+                        <h2 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No videos found</h2>
+                        <p>We couldn't find any videos in the "{activeCategory}" category. Try another one!</p>
                     </div>
-                )}
+                ) : null}
             </div>
+
+            {/* Loading more skeletons */}
+            {isFetchingNextPage && (
+                <div className="video-grid" style={{ marginTop: '2rem' }}>
+                    {[...Array(4)].map((_, i) => <VideoSkeleton key={`more-skel-${i}`} />)}
+                </div>
+            )}
+
+            {isError && (
+                <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--accent-primary)' }}>
+                    <p>Failed to load feed. Please check your connection.</p>
+                    <button className="btn-secondary" onClick={() => refetch()} style={{ marginTop: '1rem' }}>Retry</button>
+                </div>
+            )}
 
             {/* Load More Button or Observer Trigger */}
             {hasNextPage && (

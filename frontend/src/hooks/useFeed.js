@@ -1,5 +1,5 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getVideos, getRecommendedFeed, likeVideo } from '../api';
+import { getVideos, getRecommendedFeed, likeVideo, getFollowingFeed } from '../api';
 
 export const useHomeFeed = (token, category = 'All') => {
     return useInfiniteQuery({
@@ -33,5 +33,17 @@ export const useVideoLike = () => {
             // Optionally invalidate queries or update cache optimistically
             queryClient.invalidateQueries({ queryKey: ['feed'] });
         }
+    });
+};
+
+export const useFollowingFeed = (token, contentType = 'all') => {
+    return useInfiniteQuery({
+        queryKey: ['feed', 'following', contentType],
+        queryFn: ({ pageParam = 0 }) => getFollowingFeed(token, pageParam, 12, contentType),
+        getNextPageParam: (lastPage, allPages) => {
+            return lastPage.length === 12 ? allPages.length * 12 : undefined;
+        },
+        staleTime: 1000 * 60 * 2, // 2 minutes
+        enabled: !!token,
     });
 };

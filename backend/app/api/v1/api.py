@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, videos, admin, users, posts, achievements, notifications, ads, chat, challenges, monetization, video_views, seo, recommendations, partners, categories, library, history, watch_later, liked
+from app.api.v1.endpoints import auth, videos, admin, users, posts, achievements, notifications, ads, chat, challenges, monetization, video_views, seo, recommendations, partners, categories, library, history, watch_later, liked, following
 
 
 api_router = APIRouter()
@@ -22,5 +22,6 @@ api_router.include_router(library.router, prefix="/library", tags=["library"])
 api_router.include_router(history.router, prefix="/history", tags=["history"])
 api_router.include_router(watch_later.router, prefix="/watch-later", tags=["watch-later"])
 api_router.include_router(liked.router, prefix="/liked", tags=["liked"])
+api_router.include_router(following.router, prefix="/following", tags=["following"])
 
 

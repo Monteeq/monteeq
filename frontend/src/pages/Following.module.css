@@ -1,0 +1,182 @@
+.followingContainer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.header {
+    margin-bottom: 2rem;
+}
+
+.title {
+    font-size: 2.5rem;
+    font-weight: 900;
+    margin-bottom: 0.5rem;
+    letter-spacing: -1px;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+.filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scrollbar-width: none;
+}
+
+.filters::-webkit-scrollbar {
+    display: none;
+}
+
+.filterBtn {
+    background: var(--bg-raised);
+    border: 1px solid var(--border-glass);
+    padding: 0.6rem 1.2rem;
+    border-radius: 12px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filterBtn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.filterBtn.active {
+    background: var(--accent-primary);
+    color: white;
+    border-color: var(--accent-primary);
+    box-shadow: 0 4px 15px rgba(255, 61, 113, 0.3);
+}
+
+.feedGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+/* Mixed content types might need different sizing */
+.postItem {
+    grid-column: span 1;
+}
+
+@media (min-width: 1200px) {
+    .postItem {
+        grid-column: span 2; /* Posts take more width if space allowed */
+    }
+}
+
+.emptyState {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--bg-raised);
+    border-radius: 30px;
+    border: 1px solid var(--border-glass);
+    margin-top: 2rem;
+}
+
+.emptyIcon {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: var(--accent-primary);
+}
+
+.emptyTitle {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.emptyText {
+    color: var(--text-muted);
+    max-width: 400px;
+    margin: 0 auto 2.5rem;
+}
+
+.recommendationsTitle {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.recommendationsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.5rem;
+}
+
+.creatorCard {
+    background: var(--bg-hover);
+    border: 1px solid var(--border-glass);
+    padding: 1.5rem;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.3s;
+}
+
+.creatorCard:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255,255,255,0.1);
+}
+
+.creatorAvatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 1rem;
+    border: 2px solid var(--accent-primary);
+    padding: 3px;
+}
+
+.creatorName {
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
+}
+
+.creatorStats {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1.2rem;
+}
+
+.followBtn {
+    width: 100%;
+    padding: 0.7rem;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.loadingContainer {
+    display: flex;
+    justify-content: center;
+    padding: 4rem;
+}
+
+@media (max-width: 768px) {
+    .feedGrid {
+        grid-template-columns: 1fr;
+    }
+    .title {
+        font-size: 2rem;
+    }
+}

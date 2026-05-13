@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_validator
-from typing import List, Optional
+from typing import List, Optional, Union
 from datetime import datetime
 
 class UserBase(BaseModel):
@@ -562,3 +562,15 @@ class DiscoveredCategoryOut(BaseModel):
     icon_hint: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+class Follow(BaseModel):
+    id: int
+    follower_id: int
+    following_id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class FollowingFeedItem(BaseModel):
+    type: str # 'video', 'flash', 'post'
+    data: Union[Video, Post]
+    created_at: datetime

@@ -86,11 +86,11 @@ def get_profile(
         raise HTTPException(status_code=404, detail="User not found")
     return profile
 
-def handle_follow_background(follower_id: int, followed_id: int):
+def handle_follow_background(follower_id: int, following_id: int):
     """Background task for follow side effects."""
     db = SessionLocal()
     try:
-        crud_user.handle_follow_side_effects(db, follower_id, followed_id)
+        crud_user.handle_follow_side_effects(db, follower_id, following_id)
     finally:
         db.close()
 
@@ -101,7 +101,7 @@ def follow_user(
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_user)
 ):
-    is_following = crud_user.toggle_follow(db, follower_id=current_user.id, followed_id=user_id)
+    is_following = crud_user.toggle_follow(db, follower_id=current_user.id, following_id=user_id)
     
     if is_following:
         # Background side effects (achievements, notifications)
@@ -206,8 +206,8 @@ def get_user_insights(
     posts_count = db.query(func.count(Post.id)).filter(Post.owner_id == user_id, Post.is_active == True).scalar() or 0
     
     # Followers/Following
-    followers_count = db.query(func.count(Follow.follower_id)).filter(Follow.followed_id == user_id).scalar() or 0
-    following_count = db.query(func.count(Follow.followed_id)).filter(Follow.follower_id == user_id).scalar() or 0
+    followers_count = db.query(func.count(Follow.follower_id)).filter(Follow.following_id == user_id).scalar() or 0
+    following_count = db.query(func.count(Follow.following_id)).filter(Follow.follower_id == user_id).scalar() or 0
     
     # Milestone Logic
     milestones = [100, 500, 1000, 5000, 10000, 50000, 100000]
@@ -315,7 +315,7 @@ def get_user_performance(
     # 3. Daily Followers
     follow_rows = (
         db.query(func.date(Follow.created_at).label("d"), func.count(Follow.follower_id))
-        .filter(Follow.followed_id == user_id, Follow.created_at >= cutoff)
+        .filter(Follow.following_id == user_id, Follow.created_at >= cutoff)
         .group_by(func.date(Follow.created_at))
         .all()
     )
@@ -455,12 +455,12 @@ def get_growth_intelligence(
 
     # Followers gained last 7 / 30 days
     new_followers_7d = db.query(func.count(Follow.follower_id)).filter(
-        Follow.followed_id == user_id,
+        Follow.following_id == user_id,
         Follow.created_at >= cutoff_7
     ).scalar() or 0
 
     new_followers_30d = db.query(func.count(Follow.follower_id)).filter(
-        Follow.followed_id == user_id,
+        Follow.following_id == user_id,
         Follow.created_at >= cutoff_30
     ).scalar() or 0
 
