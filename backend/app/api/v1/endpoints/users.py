@@ -342,7 +342,8 @@ def get_user_performance(
             date=d_str,
             views=daily_stats[d_str]["views"],
             likes=daily_stats[d_str]["likes"],
-            followers=daily_stats[d_str]["followers"]
+            followers=daily_stats[d_str]["followers"],
+            earnings=0.0
         ))
     
     # Serialize Pydantic objects manually for cache
