@@ -12,7 +12,13 @@ import {
     Cell, PieChart, Pie
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
-import { getUserPerformance, getUserInsights, getContentAnalytics, getAudienceSplit, getGrowthIntelligence } from '../api';
+import { 
+    useUserPerformance, 
+    useUserInsights, 
+    useContentAnalytics, 
+    useAudienceSplit, 
+    useGrowthIntelligence 
+} from '../hooks/usePerformance';
 import './PerformanceV2.css';
 
 const StatCard = ({ label, value, growth, icon: Icon, color, sparkData }) => (
@@ -165,44 +171,26 @@ const IntelligencePanel = ({ insights }) => (
 const Performance = () => {
     const { token } = useAuth();
     const navigate = useNavigate();
-    const [performanceData, setPerformanceData] = useState([]);
-    const [insightsData, setInsightsData] = useState(null);
-    const [contentData, setContentData] = useState([]);
-    const [audienceData, setAudienceData] = useState(null);
-    const [intelligenceData, setIntelligenceData] = useState(null);
-    const [loading, setLoading] = useState(true);
     const [activeMetric, setActiveMetric] = useState('views');
     const [activeRange, setActiveRange] = useState(30);
 
-    useEffect(() => {
-        const loadAll = async () => {
-            setLoading(true);
-            try {
-                const [perf, ins, content, audience, intelligence] = await Promise.all([
-                    getUserPerformance(token, activeMetric, activeRange),
-                    getUserInsights(token),
-                    getContentAnalytics(token, 8),
-                    getAudienceSplit(token, activeRange),
-                    getGrowthIntelligence(token),
-                ]);
-                setPerformanceData(perf.data.map(d => ({
-                    ...d,
-                    displayDate: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                    value: d[activeMetric]
-                })));
-                setInsightsData(ins);
-                setContentData(Array.isArray(content) ? content : []);
-                setAudienceData(audience ?? null);
-                setIntelligenceData(intelligence ?? null);
-            } catch (err) {
-                console.error("Dashboard error:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const { data: perfData, isLoading: perfLoading } = useUserPerformance(token, activeMetric, activeRange);
+    const { data: insightsData, isLoading: insightsLoading } = useUserInsights(token);
+    const { data: contentDataRaw, isLoading: contentLoading } = useContentAnalytics(token, 8);
+    const { data: audienceData, isLoading: audienceLoading } = useAudienceSplit(token, activeRange);
+    const { data: intelligenceData, isLoading: intelLoading } = useGrowthIntelligence(token);
 
-        if (token) loadAll();
-    }, [token, activeMetric, activeRange]);
+    const performanceData = useMemo(() => {
+        if (!perfData?.data) return [];
+        return perfData.data.map(d => ({
+            ...d,
+            displayDate: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            value: d[activeMetric] || 0
+        }));
+    }, [perfData, activeMetric]);
+
+    const contentData = Array.isArray(contentDataRaw) ? contentDataRaw : [];
+    const loading = perfLoading || insightsLoading || contentLoading || audienceLoading || intelLoading;
 
     const metricsMap = {
         views: { label: 'Total Views', icon: TrendingUp, color: '#FF3B30' },

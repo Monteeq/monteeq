@@ -272,88 +272,81 @@ def get_user_performance(
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_user)
 ):
+    """
+    Returns a timeline of performance metrics (views, likes, followers, uploads) 
+    aggregated daily for the last N days.
+    """
     from datetime import datetime, timedelta
     from app.models.models import View, Like, Follow, Video
     
     user_id = current_user.id
-    import json
-    cache_key = f"user_perf_{user_id}_{metric}_{days}"
-    try:
-        cached = redis_client.get(cache_key)
-        if cached:
-            return json.loads(cached)
-    except Exception:
-        pass
-    end_date = datetime.now().date()
-    start_date = end_date - timedelta(days=days-1)
+    cutoff = datetime.now() - timedelta(days=days)
     
-    # Initialize daily data
+    # Initialize daily stats dictionary for the range
     daily_stats = {}
-    for i in range(days):
-        d = (start_date + timedelta(days=i)).isoformat()
-        daily_stats[d] = {"views": 0, "likes": 0, "followers": 0}
-    
-    # Aggregate Views
-    views_query = db.query(
-        func.date(View.created_at).label("date"),
-        func.count(View.id).label("count")
-    ).join(Video).filter(
-        Video.owner_id == user_id,
-        View.created_at >= start_date
-    ).group_by(func.date(View.created_at)).all()
-    
-    for v in views_query:
-        d_str = v.date
-        if d_str in daily_stats:
-            daily_stats[d_str]["views"] = v.count
+    for i in range(days + 1):
+        d = (datetime.now() - timedelta(days=i)).date()
+        daily_stats[d] = {"views": 0, "likes": 0, "followers": 0, "uploads": 0, "earnings": 0.0}
 
-    # Aggregate Likes
-    likes_query = db.query(
-        func.date(Like.created_at).label("date"),
-        func.count(Like.id).label("count")
-    ).join(Video).filter(
-        Video.owner_id == user_id,
-        Like.created_at >= start_date
-    ).group_by(func.date(Like.created_at)).all()
-    
-    for l in likes_query:
-        d_str = l.date
-        if d_str in daily_stats:
-            daily_stats[d_str]["likes"] = l.count
+    # 1. Daily Views
+    view_rows = (
+        db.query(func.date(View.created_at).label("d"), func.count(View.id))
+        .join(Video, Video.id == View.video_id)
+        .filter(Video.owner_id == user_id, View.created_at >= cutoff)
+        .group_by(func.date(View.created_at))
+        .all()
+    )
+    for d, count in view_rows:
+        if d in daily_stats:
+            daily_stats[d]["views"] = count
 
-    # Aggregate Followers
-    follows_query = db.query(
-        func.date(Follow.created_at).label("date"),
-        func.count(Follow.follower_id).label("count")
-    ).filter(
-        Follow.followed_id == user_id,
-        Follow.created_at >= start_date
-    ).group_by(func.date(Follow.created_at)).all()
-    
-    for f in follows_query:
-        d_str = f.date
-        if d_str in daily_stats:
-            daily_stats[d_str]["followers"] = f.count
+    # 2. Daily Likes
+    like_rows = (
+        db.query(func.date(Like.created_at).label("d"), func.count(Like.id))
+        .join(Video, Video.id == Like.video_id)
+        .filter(Video.owner_id == user_id, Like.created_at >= cutoff)
+        .group_by(func.date(Like.created_at))
+        .all()
+    )
+    for d, count in like_rows:
+        if d in daily_stats:
+            daily_stats[d]["likes"] = count
 
-    # Convert to list of PerformanceDataPoint
+    # 3. Daily Followers
+    follow_rows = (
+        db.query(func.date(Follow.created_at).label("d"), func.count(Follow.follower_id))
+        .filter(Follow.followed_id == user_id, Follow.created_at >= cutoff)
+        .group_by(func.date(Follow.created_at))
+        .all()
+    )
+    for d, count in follow_rows:
+        if d in daily_stats:
+            daily_stats[d]["followers"] = count
+
+    # 4. Daily Uploads
+    upload_rows = (
+        db.query(func.date(Video.created_at).label("d"), func.count(Video.id))
+        .filter(Video.owner_id == user_id, Video.created_at >= cutoff)
+        .group_by(func.date(Video.created_at))
+        .all()
+    )
+    for d, count in upload_rows:
+        if d in daily_stats:
+            daily_stats[d]["uploads"] = count
+
+    # Convert to list of PerformanceDataPoint sorted by date
     performance_data = []
-    for d_str in sorted(daily_stats.keys()):
+    for d in sorted(daily_stats.keys()):
+        stats = daily_stats[d]
         performance_data.append(schemas.PerformanceDataPoint(
-            date=d_str,
-            views=daily_stats[d_str]["views"],
-            likes=daily_stats[d_str]["likes"],
-            followers=daily_stats[d_str]["followers"],
-            earnings=0.0
+            date=str(d),
+            views=stats["views"],
+            likes=stats["likes"],
+            followers=stats["followers"],
+            earnings=stats["earnings"],
+            uploads=stats["uploads"]
         ))
     
-    # Serialize Pydantic objects manually for cache
-    serialized_data = [p.dict() if hasattr(p, "dict") else p for p in performance_data]
-    result_for_cache = {"data": serialized_data, "metric": metric}
-    if redis_client:
-        try:
-            redis_client.setex(cache_key, 60, json.dumps(result_for_cache))
-        except Exception:
-            pass
     return {"data": performance_data, "metric": metric}
 
 @router.get("/me/content-analytics", response_model=list[schemas.ContentAnalyticsItem])

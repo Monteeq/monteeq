@@ -344,6 +344,7 @@ class PerformanceDataPoint(BaseModel):
     likes: int
     followers: int
     earnings: float
+    uploads: int
 
 class UserPerformance(BaseModel):
     data: List[PerformanceDataPoint]
