@@ -3,17 +3,18 @@ import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Square, Monitor, Settings, RotateCcw, RotateCw, AlertCircle, Loader2 } from 'lucide-react';
 import './VideoPlayerV2.css';
 import { initView, sendHeartbeat } from '../api';
+import { getStreamUrl } from '../utils/streamUrl';
 import { useAuth } from '../context/AuthContext';
 import PreRollPlayer from './ads/PreRollPlayer';
 import PauseOverlayAd from './ads/PauseOverlayAd';
 import { useTrackHistory } from '../hooks/useLibrary';
 
-const VideoPlayerV2 = ({ 
-  src, 
+const VideoPlayerV2 = ({
+  src,
   videoId,
   title,
   creator,
-  poster, 
+  poster,
   autoPlay = false,
   isTheaterMode = false,
   isCinematic = false,
@@ -26,7 +27,7 @@ const VideoPlayerV2 = ({
   const hlsRef = useRef(null);
   const progressBarRef = useRef(null);
   const trackHistory = useTrackHistory();
-  
+
   // Analytics & Sessions
   const viewTicketRef = useRef(null);
   const sessionIdRef = useRef(null);
@@ -44,10 +45,10 @@ const VideoPlayerV2 = ({
   const [showControls, setShowControls] = useState(true);
   const [error, setError] = useState(null);
   const [isBuffering, setIsBuffering] = useState(false);
-  
+
   const isPremium = user?.is_premium;
   const [isPreRollActive, setIsPreRollActive] = useState(false);
-  
+
   useEffect(() => {
     if (isPremium) setIsPreRollActive(false);
   }, [isPremium]);
@@ -69,21 +70,22 @@ const VideoPlayerV2 = ({
     setError(null);
 
     const playVideo = () => {
-        if (autoPlay && !isPreRollActive) {
-            videoRef.current.play().catch(err => {
-                console.log("Autoplay blocked or failed:", err);
-            });
-        }
+      if (autoPlay && !isPreRollActive) {
+        videoRef.current.play().catch(err => {
+          console.log("Autoplay blocked or failed:", err);
+        });
+      }
     };
+
+    const streamSrc = getStreamUrl(src, videoId);
 
     if (Hls.isSupported() && src.endsWith('.m3u8')) {
       if (hlsRef.current) hlsRef.current.destroy();
       const hls = new Hls({ capLevelToPlayerSize: true });
-      let recoveryAttempts = 0;
       hls.loadSource(src);
       hls.attachMedia(videoRef.current);
       hlsRef.current = hls;
-      
+
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         playVideo();
       });
@@ -136,7 +138,7 @@ const VideoPlayerV2 = ({
 
       heartbeatIntervalRef.current = setInterval(async () => {
         if (!videoRef.current) return;
-        
+
         const curTime = Math.floor(videoRef.current.currentTime);
         const durTime = Math.floor(videoRef.current.duration);
         const isComp = curTime >= durTime * 0.9 && durTime > 0;
@@ -150,12 +152,12 @@ const VideoPlayerV2 = ({
 
         // History tracking persistence
         if (token && curTime > 0) {
-            trackHistory.mutate({
-                video_id: videoId,
-                progress_seconds: curTime,
-                duration_seconds: durTime,
-                is_completed: isComp
-            });
+          trackHistory.mutate({
+            video_id: videoId,
+            progress_seconds: curTime,
+            duration_seconds: durTime,
+            is_completed: isComp
+          });
         }
       }, 10000); // Sync history every 10s
     };
@@ -167,18 +169,18 @@ const VideoPlayerV2 = ({
   // Track on Exit
   useEffect(() => {
     return () => {
-        if (videoRef.current && videoId && token) {
-            const curTime = Math.floor(videoRef.current.currentTime);
-            const durTime = Math.floor(videoRef.current.duration);
-            if (curTime > 5) { // Only track if watched more than 5s
-                trackHistory.mutate({
-                    video_id: videoId,
-                    progress_seconds: curTime,
-                    duration_seconds: durTime,
-                    is_completed: curTime >= durTime * 0.9 && durTime > 0
-                });
-            }
+      if (videoRef.current && videoId && token) {
+        const curTime = Math.floor(videoRef.current.currentTime);
+        const durTime = Math.floor(videoRef.current.duration);
+        if (curTime > 5) { // Only track if watched more than 5s
+          trackHistory.mutate({
+            video_id: videoId,
+            progress_seconds: curTime,
+            duration_seconds: durTime,
+            is_completed: curTime >= durTime * 0.9 && durTime > 0
+          });
         }
+      }
     };
   }, [videoId, token]);
 
@@ -234,13 +236,13 @@ const VideoPlayerV2 = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isTheaterMode, isCinematic, toggleTheaterMode, toggleCinematic, isPlaying, isMuted, volume]); 
+  }, [isTheaterMode, isCinematic, toggleTheaterMode, toggleCinematic, isPlaying, isMuted, volume]);
 
   // UI Helpers
   const togglePlay = useCallback(() => {
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play().catch(() => { });
     } else {
       videoRef.current.pause();
     }
@@ -317,18 +319,18 @@ const VideoPlayerV2 = ({
   }, []);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`v2Wrapper ${isTheaterMode ? 'theater' : ''}`}
       onMouseMove={handleMouseMove}
       onClick={(e) => e.target === e.currentTarget && togglePlay()}
-      itemScope 
+      itemScope
       itemType="https://schema.org/VideoObject"
     >
       <meta itemProp="name" content={title} />
       <meta itemProp="thumbnailUrl" content={poster} />
       <meta itemProp="uploadDate" content={new Date().toISOString()} />
-      
+
       <video
         ref={videoRef}
         className="videoElement"
@@ -370,7 +372,7 @@ const VideoPlayerV2 = ({
         <PreRollPlayer onComplete={() => {
           setIsPreRollActive(false);
           if (videoRef.current) {
-              videoRef.current.play().catch(() => {});
+            videoRef.current.play().catch(() => { });
           }
           setIsPlaying(true);
         }} />
@@ -384,12 +386,12 @@ const VideoPlayerV2 = ({
       </div>
 
       <div className={`centralControl ${!isPlaying && !isPreRollActive ? 'visible' : ''}`}>
-         <Play size={40} fill="white" />
+        <Play size={40} fill="white" />
       </div>
 
       <div className={`controlsOverlay ${showControls || !isPlaying ? 'visible' : ''}`}>
-        
-        <div 
+
+        <div
           ref={progressBarRef}
           className="seekBarContainer"
           onClick={handleProgressBarClick}
@@ -406,14 +408,14 @@ const VideoPlayerV2 = ({
             </button>
             <button className="controlBtn" onClick={() => jump(-10)}><RotateCcw size={20} /></button>
             <button className="controlBtn" onClick={() => jump(10)}><RotateCw size={20} /></button>
-            
+
             <div className="volumeWrapper">
               <button className="controlBtn" onClick={toggleMute}>
                 {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
               </button>
-              <input 
-                type="range" min="0" max="1" step="0.01" 
-                value={isMuted ? 0 : volume} 
+              <input
+                type="range" min="0" max="1" step="0.01"
+                value={isMuted ? 0 : volume}
                 onChange={(e) => {
                   const v = parseFloat(e.target.value);
                   setVolume(v);
@@ -421,8 +423,8 @@ const VideoPlayerV2 = ({
                     videoRef.current.volume = v;
                     localStorage.setItem('monteeq_volume', v.toString());
                     if (v > 0) {
-                        videoRef.current.muted = false;
-                        setIsMuted(false);
+                      videoRef.current.muted = false;
+                      setIsMuted(false);
                     }
                   }
                 }}

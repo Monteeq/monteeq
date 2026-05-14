@@ -2,17 +2,18 @@ import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Monitor, Square, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react';
 import styles from './VideoPlayer.module.css';
-import { initView, sendHeartbeat, API_BASE_URL } from '../api';
+import { initView, sendHeartbeat } from '../api';
+import { getStreamUrl } from '../utils/streamUrl';
 import { useAuth } from '../context/AuthContext';
 import PreRollPlayer from './ads/PreRollPlayer';
 import PauseOverlayAd from './ads/PauseOverlayAd';
 
-const VideoPlayer = ({ 
-  src, 
-  poster, 
-  autoPlay = false, 
-  onTimeUpdate, 
-  isTheaterMode = false, 
+const VideoPlayer = ({
+  src,
+  poster,
+  autoPlay = false,
+  onTimeUpdate,
+  isTheaterMode = false,
   toggleTheaterMode,
   videoId
 }) => {
@@ -21,7 +22,7 @@ const VideoPlayer = ({
   const containerRef = useRef(null);
   const hlsRef = useRef(null);
   const progressBarRef = useRef(null);
-  
+
   // View Tracking Refs
   const viewTicketRef = useRef(null);
   const sessionIdRef = useRef(null);
@@ -38,18 +39,23 @@ const VideoPlayer = ({
   const [showControls, setShowControls] = useState(true);
   const [osd, setOsd] = useState({ icon: null, visible: false });
   const [isBuffering, setIsBuffering] = useState(false);
-  
+
   const isPremium = user?.is_premium;
   const [showPreRoll, setShowPreRoll] = useState(false);
-  
+
   useEffect(() => {
     if (isPremium) setShowPreRoll(false);
   }, [isPremium]);
 
   const controlsTimeout = useRef(null);
 
-  // Use direct CDN URL for streaming (consistent with VideoPlayerV2)
-  const streamUrl = useMemo(() => src, [src]);
+  // Use Proxy Stream to bypass CORS
+  const streamUrl = useMemo(() => {
+    if (videoId && src && src.startsWith('http')) {
+      return `${API_BASE_URL}/videos/${videoId}/stream`;
+    }
+    return src;
+  }, [src, videoId]);
 
   // Initialize HLS
   useEffect(() => {
@@ -68,7 +74,7 @@ const VideoPlayer = ({
       hlsRef.current = hls;
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (autoPlay) videoRef.current.play().catch(() => {});
+        if (autoPlay) videoRef.current.play().catch(() => { });
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
@@ -94,7 +100,7 @@ const VideoPlayer = ({
     } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
       // Native HLS support (Safari)
       videoRef.current.src = sourceToUse;
-      if (autoPlay) videoRef.current.play().catch(() => {});
+      if (autoPlay) videoRef.current.play().catch(() => { });
     } else {
       // Fallback for standard MP4
       videoRef.current.src = sourceToUse;
@@ -279,7 +285,7 @@ const VideoPlayer = ({
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`${styles.playerWrapper} ${isTheaterMode ? styles.theaterMode : ''}`}
       onMouseMove={handleMouseMove}
@@ -307,9 +313,9 @@ const VideoPlayer = ({
       {/* Strategic Ads */}
       {showPreRoll && (
         <PreRollPlayer onComplete={() => {
-            setShowPreRoll(false);
-            videoRef.current.play();
-            setIsPlaying(true);
+          setShowPreRoll(false);
+          videoRef.current.play();
+          setIsPlaying(true);
         }} />
       )}
 
@@ -322,9 +328,9 @@ const VideoPlayer = ({
 
       {/* Custom Controls */}
       <div className={`${styles.controlsOverlay} ${showControls ? styles.visible : ''}`}>
-        
+
         {/* Seek Bar */}
-        <div 
+        <div
           ref={progressBarRef}
           className={styles.seekBarContainer}
           onClick={handleProgressBarClick}
@@ -333,7 +339,7 @@ const VideoPlayer = ({
           <div className={styles.seekBarBg} />
           <div className={styles.seekBarProgress} style={{ width: `${progress}%` }} />
           <div className={styles.seekBarHandle} style={{ left: `${progress}%` }} />
-          
+
           {hoverTime !== null && (
             <div className={styles.hoverPreview} style={{ left: hoverX }}>
               {formatTime(hoverTime)}
@@ -346,7 +352,7 @@ const VideoPlayer = ({
             <button className={styles.controlButton} onClick={togglePlay}>
               {isPlaying ? <Pause size={24} fill="white" /> : <Play size={24} fill="white" />}
             </button>
-            
+
             <div className={styles.volumeContainer}>
               <button className={styles.controlButton} onClick={() => {
                 videoRef.current.muted = !isMuted;
@@ -354,12 +360,12 @@ const VideoPlayer = ({
               }}>
                 {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
               </button>
-              <input 
-                type="range" 
-                min="0" 
-                max="1" 
-                step="0.01" 
-                value={isMuted ? 0 : volume} 
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
                 className={styles.volumeSlider}
               />
@@ -371,14 +377,14 @@ const VideoPlayer = ({
           </div>
 
           <div className={styles.rightControls}>
-            <button 
-              className={styles.controlButton} 
+            <button
+              className={styles.controlButton}
               onClick={toggleTheaterMode}
               title="Theater Mode (t)"
             >
               {isTheaterMode ? <Square size={20} /> : <Monitor size={20} />}
             </button>
-            
+
             <button className={styles.controlButton} onClick={toggleFullscreen}>
               <Maximize size={20} />
             </button>

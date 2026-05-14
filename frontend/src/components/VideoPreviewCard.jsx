@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Hls from 'hls.js';
 import { Play, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getStreamUrl } from '../utils/streamUrl';
 
 const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant = 'grid' }, ref) => {
     const navigate = useNavigate();
@@ -32,22 +33,9 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
 
     useEffect(() => {
         if (showPreview && videoRef.current) {
-            const url = video.video_url;
-            if (Hls.isSupported() && url && url.endsWith('.m3u8')) {
-                if (hlsRef.current) hlsRef.current.destroy();
-                const hls = new Hls({ capLevelToPlayerSize: true });
-                hls.loadSource(url);
-                hls.attachMedia(videoRef.current);
-                hlsRef.current = hls;
-                hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                    videoRef.current.play().catch(() => {});
-                });
-            } else {
-                videoRef.current.src = url;
-                videoRef.current.play().catch(err => {
-                    console.warn("Preview autoplay failed:", err);
-                });
-            }
+            videoRef.current.play().catch(err => {
+                console.warn("Preview autoplay failed:", err);
+            });
         } else if (!showPreview && videoRef.current) {
             if (hlsRef.current) {
                 hlsRef.current.destroy();
@@ -124,7 +112,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
 
-                    
+
                     {/* Video Preview — only mounts after debounced hover */}
                     {showPreview && (
                         <video
@@ -192,7 +180,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                             )}
                         </div>
                     )}
-                    
+
                     <div className="vc-text">
                         <h3 className="vc-title">{video.title}</h3>
                         <div className="vc-meta-wrap">
