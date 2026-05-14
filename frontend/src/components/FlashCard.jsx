@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import Hls from 'hls.js';
 import { Heart, MessageCircle, Share2, Trophy, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { viewVideo } from '../api';
@@ -30,6 +31,7 @@ const FlashCard = ({
     const [isEngaged, setIsEngaged] = useState(false);
     const [showHaptic, setShowHaptic] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
+    const hlsRef = useRef(null);
 
     // Interaction Tracking
     const entryTime = useRef(0);
@@ -38,6 +40,55 @@ const FlashCard = ({
     const isSmartMode = video.smart_replay || true;
     const smartStart = 0.25;
     const smartEnd = 0.85;
+
+    // HLS.js initialization for m3u8 streams
+    useEffect(() => {
+        if (!videoRef.current || !shouldRender || !video.video_url) return;
+
+        const url = video.video_url;
+        if (Hls.isSupported() && url.endsWith('.m3u8')) {
+            if (hlsRef.current) hlsRef.current.destroy();
+            const hls = new Hls({ capLevelToPlayerSize: true });
+            let recoveryAttempts = 0;
+            hls.loadSource(url);
+            hls.attachMedia(videoRef.current);
+            hlsRef.current = hls;
+
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    if (recoveryAttempts >= 3) {
+                        console.error('HLS recovery exhausted in FlashCard');
+                        return;
+                    }
+                    recoveryAttempts++;
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            console.error('Fatal HLS error in FlashCard:', data);
+                            break;
+                    }
+                }
+            });
+        } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+            // Native HLS (Safari)
+            videoRef.current.src = url;
+        } else {
+            // Direct MP4 fallback
+            videoRef.current.src = url;
+        }
+
+        return () => {
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
+        };
+    }, [video.video_url, shouldRender]);
 
     useEffect(() => {
         if (!videoRef.current) return;
@@ -148,7 +199,6 @@ const FlashCard = ({
 
                 <video
                     ref={videoRef}
-                    src={shouldRender ? video.video_url : ""}
                     loop={!isSmartMode}
                     playsInline
                     autoPlay
@@ -161,6 +211,7 @@ const FlashCard = ({
                     onPause={() => setPlaying(false)}
                     onEnded={() => { if (isActive) trackingManager.markReplayed(video.id); }}
                     className={s.video}
+                    crossOrigin="anonymous"
                 />
 
                 {isBuffering && (

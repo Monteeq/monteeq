@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import Hls from 'hls.js';
 import { Play, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,6 +10,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
     const hoverTimerRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
+    const hlsRef = useRef(null);
 
     const handleMouseEnter = useCallback(() => {
         // Debounce: only load video preview after 300ms of sustained hover
@@ -30,13 +32,37 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
 
     useEffect(() => {
         if (showPreview && videoRef.current) {
-            videoRef.current.play().catch(err => {
-                console.warn("Preview autoplay failed:", err);
-            });
+            const url = video.video_url;
+            if (Hls.isSupported() && url && url.endsWith('.m3u8')) {
+                if (hlsRef.current) hlsRef.current.destroy();
+                const hls = new Hls({ capLevelToPlayerSize: true });
+                hls.loadSource(url);
+                hls.attachMedia(videoRef.current);
+                hlsRef.current = hls;
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    videoRef.current.play().catch(() => {});
+                });
+            } else {
+                videoRef.current.src = url;
+                videoRef.current.play().catch(err => {
+                    console.warn("Preview autoplay failed:", err);
+                });
+            }
         } else if (!showPreview && videoRef.current) {
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
         }
+
+        return () => {
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
+        };
     }, [showPreview]);
 
     const formatDuration = (seconds) => {
@@ -103,7 +129,6 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                     {showPreview && (
                         <video
                             ref={videoRef}
-                            src={video.video_url}
                             muted
                             loop
                             playsInline
@@ -112,6 +137,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                             onPlaying={() => setIsBuffering(false)}
                             onCanPlay={() => setIsBuffering(false)}
                             className={`vc-video ${isLoaded ? 'vc-video-visible' : ''}`}
+                            crossOrigin="anonymous"
                         />
                     )}
 

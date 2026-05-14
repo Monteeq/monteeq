@@ -79,6 +79,7 @@ const VideoPlayerV2 = ({
     if (Hls.isSupported() && src.endsWith('.m3u8')) {
       if (hlsRef.current) hlsRef.current.destroy();
       const hls = new Hls({ capLevelToPlayerSize: true });
+      let recoveryAttempts = 0;
       hls.loadSource(src);
       hls.attachMedia(videoRef.current);
       hlsRef.current = hls;
@@ -89,7 +90,24 @@ const VideoPlayerV2 = ({
 
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
-          setError("Failed to load video stream.");
+          if (recoveryAttempts >= 3) {
+            setError("Failed to load video stream.");
+            return;
+          }
+          recoveryAttempts++;
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              console.warn('HLS network error, attempting recovery...');
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              console.warn('HLS media error, attempting recovery...');
+              hls.recoverMediaError();
+              break;
+            default:
+              setError("Failed to load video stream.");
+              break;
+          }
         }
       });
 

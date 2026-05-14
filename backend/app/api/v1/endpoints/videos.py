@@ -107,12 +107,27 @@ async def stream_video(video_id: int, request: Request, db: Session = Depends(ge
         target_url = f"{base_dir}/{sub_path}"
 
     async def get_stream():
-        client = httpx.AsyncClient(timeout=None) 
+        client = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0))
         range_header = request.headers.get("Range")
         headers = {"Range": range_header} if range_header else {}
         
-        req = client.build_request("GET", target_url, headers=headers)
-        resp = await client.send(req, stream=True)
+        try:
+            req = client.build_request("GET", target_url, headers=headers)
+            resp = await client.send(req, stream=True)
+        except httpx.TimeoutException:
+            await client.aclose()
+            raise HTTPException(status_code=504, detail="Upstream stream timed out")
+        except Exception as e:
+            await client.aclose()
+            logger.error(f"Stream proxy failed for video {video_id}: {e}")
+            raise HTTPException(status_code=502, detail="Failed to connect to video source")
+
+        # Check for upstream errors before proxying
+        if resp.status_code >= 400:
+            error_status = resp.status_code
+            await resp.aclose()
+            await client.aclose()
+            raise HTTPException(status_code=error_status, detail=f"Video source returned {error_status}")
         
         return StreamingResponse(
             resp.aiter_bytes(),

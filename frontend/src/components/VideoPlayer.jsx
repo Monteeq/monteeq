@@ -48,13 +48,8 @@ const VideoPlayer = ({
 
   const controlsTimeout = useRef(null);
 
-  // Use Proxy Stream to bypass CORS
-  const streamUrl = useMemo(() => {
-    if (videoId && src && src.startsWith('http')) {
-      return `${API_BASE_URL}/videos/${videoId}/stream`;
-    }
-    return src;
-  }, [src, videoId]);
+  // Use direct CDN URL for streaming (consistent with VideoPlayerV2)
+  const streamUrl = useMemo(() => src, [src]);
 
   // Initialize HLS
   useEffect(() => {
@@ -67,12 +62,30 @@ const VideoPlayer = ({
         capLevelToPlayerSize: true,
         autoStartLoad: true,
       });
+      let recoveryAttempts = 0;
       hls.loadSource(sourceToUse);
       hls.attachMedia(videoRef.current);
       hlsRef.current = hls;
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         if (autoPlay) videoRef.current.play().catch(() => {});
+      });
+
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          if (recoveryAttempts >= 3) return;
+          recoveryAttempts++;
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              break;
+          }
+        }
       });
 
       return () => {
