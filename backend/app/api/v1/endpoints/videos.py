@@ -99,6 +99,17 @@ async def stream_video(video_id: int, request: Request, db: Session = Depends(ge
     if not base_url:
         raise HTTPException(status_code=400, detail="Video has no URL")
 
+    # Resolve to CDN URL if applicable to avoid S3 DNS timeouts
+    if "amazonaws.com" in base_url or "monteeq.s3" in base_url or "cdn.monteeq.com" in base_url:
+        try:
+            from app.core.storage import storage
+            if ".com/" in base_url:
+                parts = base_url.split(".com/")
+                if len(parts) > 1:
+                    base_url = storage.get_url(parts[1])
+        except Exception as e:
+            logger.warning(f"Failed to resolve CDN URL for streaming: {e}")
+
     # Construct the proxy target URL
     target_url = base_url
     if sub_path:
@@ -109,7 +120,11 @@ async def stream_video(video_id: int, request: Request, db: Session = Depends(ge
     async def get_stream():
         client = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0))
         range_header = request.headers.get("Range")
-        headers = {"Range": range_header} if range_header else {}
+        headers = {
+            "User-Agent": "Monteeq-Backend-Proxy/1.0",
+        }
+        if range_header:
+            headers["Range"] = range_header
         
         try:
             req = client.build_request("GET", target_url, headers=headers)
