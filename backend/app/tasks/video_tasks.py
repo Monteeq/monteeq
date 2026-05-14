@@ -104,7 +104,7 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
                 # Cleanup cloud storage on final failure
                 try:
                     logger.info(f"Cleaning up storage after final failure for task {task_id}")
-                    storage.delete_file(source_key)
+                    storage.delete_prefix(f"uploads/{task_id}/")
                     storage.delete_prefix(f"videos/{task_id}/")
                 except Exception as cleanup_err:
                     logger.warning(f"Storage cleanup failed: {cleanup_err}")
@@ -176,10 +176,10 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
             
             # Phase 3: Cleanup
             try:
-                logger.info(f"Phase 3: Deleting raw source file {source_key}")
-                storage.delete_file(source_key)
+                logger.info(f"Phase 3: Deleting raw source directory uploads/{task_id}/")
+                storage.delete_prefix(f"uploads/{task_id}/")
             except Exception as e:
-                logger.warning(f"Failed to delete source file {source_key}: {e}")
+                logger.warning(f"Failed to delete source directory uploads/{task_id}/: {e}")
                 
             return {"status": "success", "video_id": video_id}
 
@@ -209,7 +209,7 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
                  
                  # Cleanup cloud storage on failure
                  logger.info(f"Cleaning up storage after phase 2 failure for task {task_id}")
-                 storage.delete_file(source_key)
+                 storage.delete_prefix(f"uploads/{task_id}/")
                  storage.delete_prefix(f"videos/{task_id}/")
         except: pass
 
