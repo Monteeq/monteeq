@@ -74,30 +74,30 @@ const JoinPro = () => {
       const resp = await verifyProSubscription(reference.reference, token);
       
       if (resp.status === 'success') {
-        showNotification('Welcome to Monteeq Pro!', 'success');
+        showNotification('success', 'Welcome to Monteeq Pro!');
         await refreshUser(); // Refresh user state
         setView('SUCCESS');
       } else {
-        showNotification(resp.message || 'Verification failed.', 'error');
+        showNotification('error', resp.message || 'Verification failed.');
       }
     } catch (err) {
-      showNotification('Verification failed. Please contact support.', 'error');
+      showNotification('error', err?.message || 'Verification failed. Please contact support.');
     } finally {
       setLoading(false);
     }
   };
 
   const handlePaystackClose = () => {
-    showNotification('Payment cancelled.', 'info');
+    showNotification('info', 'Payment cancelled.');
   };
 
   const handleJoinPro = () => {
     if (!token) {
-      showNotification('Please log in to join Monteeq Pro', 'info');
+      showNotification('info', 'Please log in to join Monteeq Pro');
       return;
     }
     if (user?.is_premium) {
-      showNotification('You are already a Pro member!', 'info');
+      showNotification('info', 'You are already a Pro member!');
       return;
     }
     initializePayment({ onSuccess: handlePaystackSuccess, onClose: handlePaystackClose });

@@ -350,7 +350,7 @@ const Flash = () => {
     // ─────────────────────────────────────────────────────────────────────────
     const handleLike = async (id) => {
         if (!token) {
-            showNotification('Please log in to like videos', 'info');
+            showNotification('info', 'Please log in to like videos');
             return;
         }
         setClips(prev => prev.map(c =>
@@ -366,7 +366,7 @@ const Flash = () => {
                     ? { ...c, liked: !c.liked, likes_count: c.liked ? c.likes_count - 1 : c.likes_count + 1 }
                     : c
             ));
-            showNotification('Failed to like video', 'error');
+            showNotification('error', err?.message || 'Failed to like video');
         }
     };
 
@@ -377,7 +377,7 @@ const Flash = () => {
                 await navigator.share({ title: 'Check this out on Monteeq', url });
             } else {
                 await navigator.clipboard.writeText(url);
-                showNotification('Link copied to clipboard!', 'success');
+                showNotification('success', 'Link copied to clipboard!');
             }
             shareVideo(id).catch(() => {});
         } catch {}

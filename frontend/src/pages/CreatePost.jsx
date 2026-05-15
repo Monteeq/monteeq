@@ -33,7 +33,7 @@ const CreatePost = () => {
         const file = e.target.files[0];
         if (file) {
             if (!file.type.startsWith('image/')) {
-                showNotification('error', "Only images are supported for posts.");
+                showNotification('error', err?.message || "Only images are supported for posts.");
                 return;
             }
             setImage(file);
@@ -43,7 +43,7 @@ const CreatePost = () => {
 
     const handlePublish = async () => {
         if (!content.trim()) {
-            showNotification('error', "Post content cannot be empty.");
+            showNotification('error', err?.message || "Post content cannot be empty.");
             return;
         }
 

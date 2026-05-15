@@ -58,7 +58,7 @@ const Following = () => {
             fetchRecs();
             refetch();
         } catch (err) {
-            showNotification('error', 'Failed to follow');
+            showNotification('error', err?.message || 'Failed to follow');
         }
     };
 

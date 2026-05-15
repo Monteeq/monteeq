@@ -49,7 +49,7 @@ const Posts = () => {
             }
         } catch (error) {
             console.error("Error fetching posts:", error);
-            showNotification('error', 'Failed to load community feed');
+            showNotification('error', err?.message || 'Failed to load community feed');
         } finally {
             if (isInitial) setLoading(false);
             else setLoadingMore(false);
@@ -80,7 +80,7 @@ const Posts = () => {
 
     const handleLike = async (id) => {
         if (!token) {
-            showNotification('error', 'Please login to like');
+            showNotification('error', err?.message || 'Please login to like');
             return;
         }
         try {
@@ -103,7 +103,7 @@ const Posts = () => {
 
     const handleRepost = async (id) => {
         if (!token) {
-            showNotification('error', 'Please login to repost');
+            showNotification('error', err?.message || 'Please login to repost');
             return;
         }
         try {
@@ -116,10 +116,10 @@ const Posts = () => {
                 setSkip(0);
                 fetchPosts(true);
             } else {
-                showNotification('error', 'Failed to repost');
+                showNotification('error', err?.message || 'Failed to repost');
             }
         } catch (error) {
-            showNotification('error', 'Something went wrong while reposting');
+            showNotification('error', err?.message || 'Something went wrong while reposting');
         }
     };
 

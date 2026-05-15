@@ -75,12 +75,12 @@ export default function PaymentCallback() {
           setState(STATES.SUCCESS);
           setMessage('Welcome to Monteeq Pro! 🎉');
           setDetail('Your Pro membership is now active. Enjoy 4K uploads, Gold Challenges, and 0% commission.');
-          showNotification('Upgraded to Monteeq Pro!', 'success');
+          showNotification('success', 'Upgraded to Monteeq Pro!');
         } else {
           setState(STATES.SUCCESS);
           setMessage('Wallet Funded!');
           setDetail(`₦${Number(resp.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })} has been added to your wallet.`);
-          showNotification('Wallet funded successfully!', 'success');
+          showNotification('success', 'Wallet funded successfully!');
         }
       } else {
         // Server returned an error body

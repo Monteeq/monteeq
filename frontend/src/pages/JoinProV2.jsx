@@ -9,7 +9,7 @@ import {
 import { usePaystackPayment } from 'react-paystack';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { verifyProSubscription } from '../api';
+import { verifyProSubscription, initializeProSubscription } from '../api';
 import './JoinProV2.css';
 
 // Asset paths - using placeholders that feel premium
@@ -28,11 +28,14 @@ const JoinProV2 = () => {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('features');
 
+    const [dynamicReference, setDynamicReference] = useState(null);
+    const [triggerPayment, setTriggerPayment] = useState(false);
+
     // Memoize amount and config to prevent unnecessary re-renders of the Paystack hook
     const amount = useMemo(() => (isYearly ? 22800 : 2500), [isYearly]);
     
     const config = useMemo(() => ({
-        reference: `PRO_${Date.now()}_${user?.id || 'anon'}`,
+        reference: dynamicReference || `PRO_FALLBACK_${Date.now()}`,
         email: user?.email || '',
         amount: amount * 100,
         publicKey: PAYSTACK_PUBLIC_KEY,
@@ -45,38 +48,58 @@ const JoinProV2 = () => {
                 { display_name: 'Billing Cycle', variable_name: 'billing_cycle', value: isYearly ? 'yearly' : 'monthly' }
             ],
         },
-    }), [user?.id, user?.email, amount, isYearly]);
+    }), [user?.id, user?.email, amount, isYearly, dynamicReference]);
 
     const initializePayment = usePaystackPayment(config);
+
+    useEffect(() => {
+        if (triggerPayment && dynamicReference) {
+            initializePayment({ 
+                onSuccess: handleSuccess, 
+                onClose: () => {
+                    showNotification('info', 'Payment cancelled.');
+                    setTriggerPayment(false);
+                    setDynamicReference(null);
+                } 
+            });
+            setTriggerPayment(false);
+        }
+    }, [triggerPayment, dynamicReference, initializePayment]);
 
     const handleSuccess = async (reference) => {
         setLoading(true);
         try {
             const resp = await verifyProSubscription(reference.reference, token);
             if (resp.status === 'success' || resp.is_premium) {
-                showNotification('Welcome to Monteeq Pro!', 'success');
+                showNotification('success', 'Welcome to Monteeq Pro!');
                 if (refreshUser) await refreshUser();
             } else {
-                showNotification(resp.message || 'Verification failed.', 'error');
+                showNotification('error', resp.message || 'Verification failed.');
             }
         } catch (err) {
             console.error('Pro Verification Error:', err);
-            showNotification('Verification failed. Please contact support.', 'error');
+            showNotification('error', err?.message || 'Verification failed. Please contact support.');
         } finally {
             setLoading(false);
+            setDynamicReference(null);
         }
     };
 
-    const handleJoinPro = () => {
+    const handleJoinPro = async () => {
         if (!token) {
-            showNotification('Please log in to join Monteeq Pro', 'info');
+            showNotification('info', 'Please log in to join Monteeq Pro');
             navigate('/login');
             return;
         }
-        initializePayment({ 
-            onSuccess: handleSuccess, 
-            onClose: () => showNotification('Payment cancelled.', 'info') 
-        });
+        setLoading(true);
+        try {
+            const data = await initializeProSubscription(isYearly, token);
+            setDynamicReference(data.reference);
+            setTriggerPayment(true);
+        } catch (err) {
+            showNotification('error', err?.message || 'Failed to initialize payment.');
+            setLoading(false);
+        }
     };
 
     /* ── Renderers ────────────────────────────────────────────────── */

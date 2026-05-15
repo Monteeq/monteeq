@@ -158,7 +158,7 @@ const ManageContent = () => {
             showNotification('success', `${deleteTarget.type === 'video' ? 'Video' : 'Post'} deleted successfully`);
         } catch (err) {
             console.error("Error deleting content:", err);
-            showNotification('error', "Failed to delete content");
+            showNotification('error', err?.message || "Failed to delete content");
         } finally {
             setIsDeleting(false);
         }

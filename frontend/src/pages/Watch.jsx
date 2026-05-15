@@ -106,7 +106,7 @@ const Watch = () => {
             setComments([added, ...comments]);
             setNewComment("");
         } catch (err) {
-            showNotification('error', "Failed to post comment");
+            showNotification('error', err?.message || "Failed to post comment");
         }
     };
 

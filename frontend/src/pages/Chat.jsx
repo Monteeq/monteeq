@@ -334,7 +334,7 @@ const Chat = () => {
             }
 
             if (!user.public_key) {
-                showNotification('error', "Workspace key missing. Please refresh or regenerate keys.");
+                showNotification('error', err?.message || "Workspace key missing. Please refresh or regenerate keys.");
                 return;
             }
 
@@ -360,7 +360,7 @@ const Chat = () => {
             }
         } catch (error) {
             console.error('Failed to send message', error);
-            showNotification('error', 'Transmission failed. Check connection or recipient keys.');
+            showNotification('error', err?.message || 'Transmission failed. Check connection or recipient keys.');
         }
     };
 

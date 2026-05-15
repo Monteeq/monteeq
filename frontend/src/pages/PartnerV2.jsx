@@ -43,7 +43,7 @@ const PartnerV2 = () => {
       setFormData({ brand_name: '', contact_email: '', campaign_type: '', details: '' });
     } catch (err) {
       console.error("Brief submission failed:", err);
-      showNotification('error', 'Failed to submit brief. Please try again.');
+      showNotification('error', err?.message || 'Failed to submit brief. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -18,7 +18,7 @@ def upgrade():
     # Video performance indices
     op.create_index('idx_videos_created_at_desc', 'videos', [sa.text('created_at DESC')])
     op.create_index('idx_videos_views_desc', 'videos', [sa.text('views DESC')])
-    op.create_index('idx_videos_category_created', 'videos', ['category', sa.text('created_at DESC')])
+    # op.create_index('idx_videos_category_created', 'videos', ['category', sa.text('created_at DESC')])
     
     # Comments optimization
     op.create_index('idx_comments_video_id_created', 'comments', ['video_id', sa.text('created_at DESC')])

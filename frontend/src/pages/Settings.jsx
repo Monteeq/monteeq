@@ -168,9 +168,9 @@ const Settings = () => {
                 }
             });
             setUser(prev => ({ ...prev, profile_pic: res.data.profile_pic }));
-            showNotification('Avatar updated successfully', 'success');
+            showNotification('success', 'Avatar updated successfully');
         } catch (err) {
-            showNotification('Failed to upload avatar', 'error');
+            showNotification('error', err?.message || 'Failed to upload avatar');
             setAvatarPreview(user.profile_pic);
         } finally {
             setUploadingAvatar(false);
@@ -188,9 +188,9 @@ const Settings = () => {
             if (access_token) updateAuthToken(access_token);
             setUser(updatedUser);
             setHasChanges(false);
-            showNotification('All changes saved successfully', 'success');
+            showNotification('success', 'All changes saved successfully');
         } catch (err) {
-            showNotification(err.response?.data?.detail || 'Failed to update settings', 'error');
+            showNotification('error', err.response?.data?.detail || 'Failed to update settings');
         } finally {
             setLoading(false);
         }
@@ -199,7 +199,7 @@ const Settings = () => {
     const handlePasswordSave = async (e) => {
         e.preventDefault();
         if (passwordData.new_password !== passwordData.confirm_password) {
-            showNotification('New passwords do not match', 'error');
+            showNotification('error', err?.message || 'New passwords do not match');
             return;
         }
 
@@ -211,11 +211,11 @@ const Settings = () => {
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            showNotification('Password updated successfully', 'success');
+            showNotification('success', 'Password updated successfully');
             setIsPasswordExpanded(false);
             setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
         } catch (err) {
-            showNotification(err.response?.data?.detail || 'Failed to update password', 'error');
+            showNotification('error', err.response?.data?.detail || 'Failed to update password');
         } finally {
             setPasswordLoading(false);
         }
@@ -230,7 +230,7 @@ const Settings = () => {
             setQrCodeData(res.data);
             setShow2FAModal(true);
         } catch (err) {
-            showNotification('Failed to initialize 2FA setup', 'error');
+            showNotification('error', err?.message || 'Failed to initialize 2FA setup');
         } finally {
             setTwoFactorLoading(false);
         }
@@ -245,10 +245,10 @@ const Settings = () => {
             });
             setUser(prev => ({ ...prev, two_factor_enabled: true }));
             setFormData(prev => ({ ...prev, two_factor_enabled: true }));
-            showNotification('Shield Active: TOTP 2FA enabled', 'success');
+            showNotification('success', 'Shield Active: TOTP 2FA enabled');
             setShow2FAModal(false);
         } catch (err) {
-            showNotification('Invalid verification code', 'error');
+            showNotification('error', err?.message || 'Invalid verification code');
         } finally {
             setTwoFactorLoading(false);
         }
@@ -262,9 +262,9 @@ const Settings = () => {
             });
             setUser(prev => ({ ...prev, two_factor_enabled: false }));
             setFormData(prev => ({ ...prev, two_factor_enabled: false }));
-            showNotification('2FA has been disabled', 'info');
+            showNotification('info', '2FA has been disabled');
         } catch (err) {
-            showNotification('Failed to disable 2FA', 'error');
+            showNotification('error', err?.message || 'Failed to disable 2FA');
         } finally {
             setTwoFactorLoading(false);
         }
@@ -279,9 +279,9 @@ const Settings = () => {
             setRecoveryCodes(res.data);
             setRecoveryCodeCount(res.data.length);
             setShowRecoveryModal(true);
-            showNotification('Recovery codes generated', 'success');
+            showNotification('success', 'Recovery codes generated');
         } catch (err) {
-            showNotification('Failed to generate recovery codes', 'error');
+            showNotification('error', err?.message || 'Failed to generate recovery codes');
         } finally {
             setGeneratingRecovery(false);
         }
@@ -303,9 +303,9 @@ const Settings = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setSessions(prev => prev.filter(s => s.id !== sessionId));
-            showNotification('Session revoked successfully', 'success');
+            showNotification('success', 'Session revoked successfully');
         } catch (err) {
-            showNotification('Failed to revoke session', 'error');
+            showNotification('error', err?.message || 'Failed to revoke session');
         }
     };
 
@@ -314,10 +314,10 @@ const Settings = () => {
             await axios.post(`${API_BASE_URL}/users/me/deactivate`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            showNotification('Account deactivated. Logging out...', 'info');
+            showNotification('info', 'Account deactivated. Logging out...');
             setTimeout(() => window.location.href = '/', 2000);
         } catch (err) {
-            showNotification('Deactivation failed', 'error');
+            showNotification('error', err?.message || 'Deactivation failed');
         }
     };
 
@@ -327,10 +327,10 @@ const Settings = () => {
             await axios.delete(`${API_BASE_URL}/users/me/delete`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            showNotification('Account deleted forever. Goodbye.', 'error');
+            showNotification('error', err?.message || 'Account deleted forever. Goodbye.');
             setTimeout(() => window.location.href = '/', 2000);
         } catch (err) {
-            showNotification('Deletion failed', 'error');
+            showNotification('error', err?.message || 'Deletion failed');
         }
     };
 
@@ -339,7 +339,7 @@ const Settings = () => {
         navigator.clipboard.writeText(qrCodeData.secret);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        showNotification('Secret key copied to clipboard', 'success');
+        showNotification('success', 'Secret key copied to clipboard');
     };
 
     const handleGoogleLink = useGoogleLogin({
@@ -365,10 +365,10 @@ const Settings = () => {
                 const linkRes = await linkGoogleAccount(tokenResponse.access_token, token);
                 if (linkRes.google_id) {
                     setUser(linkRes);
-                    showNotification('Google Account linked successfully', 'success');
+                    showNotification('success', 'Google Account linked successfully');
                 }
             } catch (err) {
-                showNotification('Failed to link Google account', 'error');
+                showNotification('error', err?.message || 'Failed to link Google account');
             }
         },
         scope: 'https://www.googleapis.com/auth/drive.file email profile',

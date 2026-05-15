@@ -41,7 +41,7 @@ const Verify = () => {
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail || 'Verification failed');
 
-            showNotification('Email verified successfully!', 'success');
+            showNotification('success', 'Email verified successfully!');
             
             // Navigate based on onboarding status
             const updatedUser = await refreshUser();
@@ -52,7 +52,7 @@ const Verify = () => {
             }
         } catch (err) {
             setError(err.message || 'Verification failed');
-            showNotification(err.message || 'Verification failed', 'error');
+            showNotification('error', err.message || 'Verification failed');
         } finally {
             setIsLoading(false);
         }
@@ -70,10 +70,10 @@ const Verify = () => {
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail || 'Failed to resend code');
-            showNotification('A new verification code has been sent!', 'success');
+            showNotification('success', 'A new verification code has been sent!');
         } catch (err) {
             setError(err.message || 'Failed to resend code');
-            showNotification(err.message || 'Failed to resend code', 'error');
+            showNotification('error', err.message || 'Failed to resend code');
         } finally {
             setIsResending(false);
         }

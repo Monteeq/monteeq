@@ -46,7 +46,7 @@ const ManageVideos = () => {
             showNotification('success', 'Video deleted successfully');
         } catch (err) {
             console.error("Error deleting video:", err);
-            showNotification('error', "Failed to delete video");
+            showNotification('error', err?.message || "Failed to delete video");
         } finally {
             setIsDeleting(false);
         }

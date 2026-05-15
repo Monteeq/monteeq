@@ -65,7 +65,7 @@ const Upload = () => {
     const handleFileSelect = (selectedFile) => {
         if (!selectedFile) return;
         if (!selectedFile.type.startsWith('video/')) {
-            showNotification('error', "Only video files are supported.");
+            showNotification('error', err?.message || "Only video files are supported.");
             return;
         }
         setFile(selectedFile);
@@ -131,7 +131,7 @@ const Upload = () => {
                         } else if (statusData.status === 'error') {
                             clearInterval(interval);
                             setProcessingStatus('error');
-                            showNotification('error', 'Processing failed.');
+                            showNotification('error', err?.message || 'Processing failed.');
                         } else {
                             setProcessingProgress(statusData.progress || 0);
                             setCurrentStatusMessage(statusData.message || 'Transcoding...');

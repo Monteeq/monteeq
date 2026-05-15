@@ -43,7 +43,7 @@ const Profile = () => {
             setIsFollowing(data.is_following);
         } catch (err) {
             console.error("Profile error:", err);
-            showNotification('error', 'Failed to load profile');
+            showNotification('error', err?.message || 'Failed to load profile');
         } finally {
             setLoading(false);
         }
@@ -70,7 +70,7 @@ const Profile = () => {
             }));
         } catch (err) {
             console.error("Follow error:", err);
-            showNotification('error', 'Follow action failed');
+            showNotification('error', err?.message || 'Follow action failed');
         }
     };
 
@@ -89,7 +89,7 @@ const Profile = () => {
             }
         } catch (err) {
             if (err.name !== 'AbortError') {
-                showNotification('error', 'Failed to share profile');
+                showNotification('error', err?.message || 'Failed to share profile');
             }
         }
     };
