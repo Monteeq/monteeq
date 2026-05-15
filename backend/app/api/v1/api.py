@@ -23,5 +23,6 @@ api_router.include_router(history.router, prefix="/history", tags=["history"])
 api_router.include_router(watch_later.router, prefix="/watch-later", tags=["watch-later"])
 api_router.include_router(liked.router, prefix="/liked", tags=["liked"])
 api_router.include_router(following.router, prefix="/following", tags=["following"])
+api_router.include_router(monetization.router, prefix="/monetization", tags=["monetization"])
 
 
