@@ -33,6 +33,11 @@ const Upload = () => {
     const navigate = useNavigate();
     const { showNotification } = useNotification();
 
+    // Wake up the video engine on Render to mitigate cold starts
+    useEffect(() => {
+        fetch('https://engine.monteeq.com/', { mode: 'no-cors' }).catch(() => {});
+    }, []);
+
     // Workflow State: 'select' | 'details'
     const [step, setStep] = useState('select');
     const [uploading, setUploading] = useState(false);
