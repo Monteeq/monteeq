@@ -187,7 +187,7 @@ function AppContent() {
                   
                   {/* Protected App Routes */}
                   <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
-                  <Route path="/profile/:username" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                  <Route path="/profile/:username" element={<Profile />} />
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/following" element={<ProtectedRoute><Following /></ProtectedRoute>} />
                   <Route path="/posts" element={<Posts />} />
