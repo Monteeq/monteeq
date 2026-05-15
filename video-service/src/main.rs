@@ -78,14 +78,11 @@ async fn main() {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let port: u16 = env::var("PORT")
-        .unwrap_or_else(|_| "8081".to_string())
-        .parse()
-        .expect("PORT must be a valid number");
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let port = env::var("PORT").expect("PORT environment variable must be set");
+    let addr = format!("0.0.0.0:{}", port);
     println!("Monteeq High-Performance Video Service listening on {}", addr);
     
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
