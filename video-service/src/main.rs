@@ -3,7 +3,7 @@ use axum::{
     routing::{post, get},
     extract::{Json, Path, State}, Router,
 };
-use std::net::SocketAddr;
+// use std::net::SocketAddr; // Removed unused import
 use tower_http::cors::CorsLayer;
 use dotenvy::dotenv;
 use std::env;
@@ -37,6 +37,12 @@ struct AppState {
 
 #[tokio::main]
 async fn main() {
+    // We bind the port first so Render doesn't time out while we connect to Redis
+    let port = env::var("PORT").expect("PORT environment variable must be set");
+    let addr = format!("0.0.0.0:{}", port);
+    let listener = tokio::net::TcpListener::bind(&addr).await.expect("Failed to bind to PORT");
+    println!("Monteeq High-Performance Video Service listening on {}", addr);
+
     dotenv().ok();
 
     // Redis Setup - Highly optimized for limited connections
@@ -56,8 +62,10 @@ async fn main() {
     // Use a connection pool for higher concurrency
     let pool = RedisPool::new(config, Some(perf), None, Some(policy), 16).unwrap();
     
+    println!("[DEBUG] Connecting to Redis at {}...", redis_url);
     pool.connect();
     pool.wait_for_connect().await.expect("Failed to connect to Redis Cloud");
+    println!("[DEBUG] Connected to Redis successfully.");
 
     let scheduler = WeightedScheduler::new(pool);
     let worker_pool = WorkerPool::new(scheduler.clone());
@@ -78,11 +86,6 @@ async fn main() {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let port = env::var("PORT").expect("PORT environment variable must be set");
-    let addr = format!("0.0.0.0:{}", port);
-    println!("Monteeq High-Performance Video Service listening on {}", addr);
-    
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
