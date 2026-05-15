@@ -480,6 +480,13 @@ class PayoutRequestSchema(BaseModel):
 class PaymentVerify(BaseModel):
     reference: str
 
+class PaymentInitialize(BaseModel):
+    is_yearly: bool = False
+
+class PaymentInitializeResponse(BaseModel):
+    status: str
+    reference: str
+
 class ProUpgradeResponse(BaseModel):
     status: str
     message: str

@@ -553,6 +553,17 @@ export const createChallenge = async (challengeData, token) => {
     return response.json();
 };
 
+export const initializeProSubscription = async (isYearly, token) => {
+    return await apiFetch(`/monetization/pro/initialize`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ is_yearly: isYearly })
+    });
+};
+
 export const verifyProSubscription = async (reference, token) => {
     const response = await fetch(`${API_BASE_URL}/monetization/verify-pro`, {
         method: 'POST',

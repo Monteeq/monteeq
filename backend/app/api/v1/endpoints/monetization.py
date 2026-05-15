@@ -150,6 +150,15 @@ def admin_list_payouts(
         q = q.filter(PayoutRequest.status == status)
     return q.order_by(PayoutRequest.requested_at.desc()).all()
 
+@router.get("/admin/transactions")
+def admin_list_transactions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Admin: view all transactions including pending and failed."""
+    _require_admin(current_user)
+    return db.query(Transaction).order_by(Transaction.created_at.desc()).all()
+
 @router.put("/admin/payouts/{payout_id}", response_model=schemas.PayoutRequestSchema)
 def admin_update_payout(
     payout_id: int,
@@ -182,6 +191,39 @@ def admin_update_payout(
     db.refresh(payout)
     return payout
 
+import uuid
+@router.post("/pro/initialize", response_model=schemas.PaymentInitializeResponse)
+def initialize_pro_subscription(
+    payload: schemas.PaymentInitialize,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Initializes a Paystack transaction reference for Pro Subscription
+    and saves it as pending in the database.
+    """
+    if current_user.is_premium:
+        raise HTTPException(status_code=400, detail="You are already a Pro member")
+    
+    wallet = get_or_create_wallet(db, current_user.id)
+    
+    reference = f"PRO_{int(datetime.datetime.now().timestamp())}_{current_user.id}_{uuid.uuid4().hex[:6]}"
+    amount = 22800.0 if payload.is_yearly else 2500.0
+    
+    transaction = Transaction(
+        wallet_id=wallet.id,
+        amount=amount,
+        transaction_type='pro_subscription',
+        status='pending',
+        reference_id=reference,
+        description="Monteeq Pro Subscription Upgrade (Pending)"
+    )
+    db.add(transaction)
+    db.commit()
+    db.refresh(transaction)
+    
+    return {"reference": reference, "status": "success"}
+
 @router.post("/verify-pro", response_model=schemas.ProUpgradeResponse)
 async def verify_pro_subscription(
     payload: schemas.PaymentVerify,
@@ -208,6 +250,10 @@ async def verify_pro_subscription(
 
     if not data.get("status") or data.get("data", {}).get("status") != "success":
         logger.error(f"Paystack verification failed: {data}")
+        existing = db.query(Transaction).filter(Transaction.reference_id == payload.reference).first()
+        if existing and existing.status == "pending":
+            existing.status = "failed"
+            db.commit()
         error_msg = data.get("data", {}).get("gateway_response") or data.get("message", "Unknown error")
         raise HTTPException(status_code=400, detail=f"Payment verification failed: {error_msg}")
 
@@ -224,12 +270,17 @@ async def verify_pro_subscription(
     
     # 4. Record Transaction (Idempotency)
     existing = db.query(Transaction).filter(Transaction.reference_id == payload.reference).first()
-    if not existing:
+    if existing:
+        if existing.status != "success":
+            existing.status = "success"
+            existing.amount = amount
+    else:
         wallet = get_or_create_wallet(db, current_user.id)
         transaction = Transaction(
             wallet_id=wallet.id,
             amount=amount,
             transaction_type='pro_subscription',
+            status='success',
             reference_id=payload.reference,
             description="Monteeq Pro Subscription Upgrade"
         )
@@ -369,13 +420,21 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
         if payment_type == "pro_subscription":
             if not user.is_premium:
                 user.is_premium = True
-            db.add(Transaction(
-                wallet_id=wallet.id,
-                amount=amount_ngn,
-                transaction_type="pro_subscription",
-                reference_id=reference,
-                description="Monteeq Pro Subscription (Paystack webhook)"
-            ))
+            
+            existing_tx = db.query(Transaction).filter(Transaction.reference_id == reference).first()
+            if existing_tx:
+                if existing_tx.status != "success":
+                    existing_tx.status = "success"
+                    existing_tx.amount = amount_ngn
+            else:
+                db.add(Transaction(
+                    wallet_id=wallet.id,
+                    amount=amount_ngn,
+                    transaction_type="pro_subscription",
+                    status="success",
+                    reference_id=reference,
+                    description="Monteeq Pro Subscription (Paystack webhook)"
+                ))
             db.commit()
             logger.info(f"Paystack webhook: user {user.id} upgraded to Pro via ref={reference}")
 

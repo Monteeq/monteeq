@@ -434,6 +434,7 @@ class Transaction(Base):
     wallet_id = Column(Integer, ForeignKey("wallets.id"), index=True)
     amount = Column(Numeric(12, 2)) 
     transaction_type = Column(String, index=True) # 'view_milestone', 'tip', 'subscription', 'payout'
+    status = Column(String, default="success", index=True) # 'pending', 'success', 'failed'
     reference_id = Column(String, nullable=True, index=True) # Stores 'video_34', 'user_1', etc.
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=func.now(), index=True)
