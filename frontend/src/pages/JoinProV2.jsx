@@ -156,9 +156,9 @@ const JoinProV2 = () => {
                         <p>Upload files up to 2GB and serve them in full 4K resolution.</p>
                     </div>
                     <div className="proFeatureItem">
-                        <Lock size={24} color="#ff3b30" />
-                        <h4>Encrypted Messages</h4>
-                        <p>End-to-end encryption for all your direct messages.</p>
+                        <LayoutGrid size={24} color="#ff3b30" />
+                        <h4>Ad-Free Experience</h4>
+                        <p>Enjoy uninterrupted browsing and streaming without any ads.</p>
                     </div>
                     <div className="proFeatureItem">
                         <Rocket size={24} color="#ff3b30" />
