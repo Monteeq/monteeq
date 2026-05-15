@@ -40,6 +40,12 @@ async def get_current_user(
             detail="Account is deactivated"
         )
     
+    from datetime import datetime, timezone
+    if user.is_premium and user.premium_expires_at:
+        if user.premium_expires_at < datetime.now(timezone.utc):
+            user.is_premium = False
+            db.commit()
+            
     return user
 
 async def get_current_user_optional(
@@ -58,6 +64,14 @@ async def get_current_user_optional(
     
     # Fetch user from DB
     user = db.query(User).filter(User.username == username).first()
+    
+    if user:
+        from datetime import datetime, timezone
+        if user.is_premium and user.premium_expires_at:
+            if user.premium_expires_at < datetime.now(timezone.utc):
+                user.is_premium = False
+                db.commit()
+                
     return user
 
 

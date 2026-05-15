@@ -191,6 +191,11 @@ def admin_update_payout(
     db.refresh(payout)
     return payout
 
+@router.get("/pro/pricing", response_model=schemas.ProPricingResponse)
+def get_pro_pricing():
+    """Returns the current pricing for Monteeq Pro."""
+    return {"monthly_price": 2500.0, "yearly_price": 26400.0}
+
 import uuid
 @router.post("/pro/initialize", response_model=schemas.PaymentInitializeResponse)
 def initialize_pro_subscription(
@@ -208,7 +213,7 @@ def initialize_pro_subscription(
     wallet = get_or_create_wallet(db, current_user.id)
     
     reference = f"PRO_{int(datetime.datetime.now().timestamp())}_{current_user.id}_{uuid.uuid4().hex[:6]}"
-    amount = 22800.0 if payload.is_yearly else 2500.0
+    amount = 26400.0 if payload.is_yearly else 2500.0
     
     transaction = Transaction(
         wallet_id=wallet.id,
@@ -266,7 +271,12 @@ async def verify_pro_subscription(
         logger.error(f"Could not extract amount for pro verify ref={payload.reference}")
 
     # 3. Upgrade User
+    from datetime import datetime, timedelta, timezone
     current_user.is_premium = True
+    if amount >= 20000:
+        current_user.premium_expires_at = datetime.now(timezone.utc) + timedelta(days=365)
+    else:
+        current_user.premium_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
     
     # 4. Record Transaction (Idempotency)
     existing = db.query(Transaction).filter(Transaction.reference_id == payload.reference).first()
@@ -418,8 +428,14 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
         wallet = get_or_create_wallet(db, user.id)
 
         if payment_type == "pro_subscription":
+            from datetime import datetime, timedelta, timezone
             if not user.is_premium:
                 user.is_premium = True
+            
+            if amount_ngn >= 20000:
+                user.premium_expires_at = datetime.now(timezone.utc) + timedelta(days=365)
+            else:
+                user.premium_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
             
             existing_tx = db.query(Transaction).filter(Transaction.reference_id == reference).first()
             if existing_tx:

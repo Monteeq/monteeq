@@ -487,6 +487,10 @@ class PaymentInitializeResponse(BaseModel):
     status: str
     reference: str
 
+class ProPricingResponse(BaseModel):
+    monthly_price: float
+    yearly_price: float
+
 class ProUpgradeResponse(BaseModel):
     status: str
     message: str

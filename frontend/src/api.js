@@ -553,6 +553,10 @@ export const createChallenge = async (challengeData, token) => {
     return response.json();
 };
 
+export const fetchProPricing = async () => {
+    return await apiFetch(`/monetization/pro/pricing`);
+};
+
 export const initializeProSubscription = async (isYearly, token) => {
     return await apiFetch(`/monetization/pro/initialize`, {
         method: 'POST',

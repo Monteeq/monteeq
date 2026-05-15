@@ -33,6 +33,7 @@ class User(Base):
     google_id = Column(String, unique=True, nullable=True)
     role = Column(String, default=UserRole.USER)
     is_premium = Column(Boolean, default=False)
+    premium_expires_at = Column(DateTime(timezone=True), nullable=True)
     is_verified = Column(Boolean, default=False)
     is_onboarded = Column(Boolean, default=False)
     profile_pic = Column(String, nullable=True) # Will use dynamic UI-Avatars if null

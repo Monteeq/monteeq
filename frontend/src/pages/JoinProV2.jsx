@@ -9,7 +9,7 @@ import {
 import { usePaystackPayment } from 'react-paystack';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
-import { verifyProSubscription, initializeProSubscription } from '../api';
+import { verifyProSubscription, initializeProSubscription, fetchProPricing } from '../api';
 import './JoinProV2.css';
 
 // Asset paths - using placeholders that feel premium
@@ -29,9 +29,19 @@ const JoinProV2 = () => {
 
     const [dynamicReference, setDynamicReference] = useState(null);
     const [triggerPayment, setTriggerPayment] = useState(false);
+    
+    const [pricing, setPricing] = useState({ monthly_price: 2500, yearly_price: 26400 });
+
+    useEffect(() => {
+        fetchProPricing().then(data => {
+            if (data && data.monthly_price) {
+                setPricing(data);
+            }
+        }).catch(err => console.error("Failed to fetch pricing:", err));
+    }, []);
 
     // Memoize amount and config to prevent unnecessary re-renders of the Paystack hook
-    const amount = useMemo(() => (isYearly ? 22800 : 2500), [isYearly]);
+    const amount = useMemo(() => (isYearly ? pricing.yearly_price : pricing.monthly_price), [isYearly, pricing]);
     
     const config = useMemo(() => ({
         reference: dynamicReference || `PRO_FALLBACK_${Date.now()}`,
@@ -195,7 +205,7 @@ const JoinProV2 = () => {
                     <div className="mostPopular">MOST POPULAR</div>
                     <div className="planName">Monteeq Pro</div>
                     <div className="planPrice">
-                        ₦{isYearly ? '1,900' : '2,500'}
+                        ₦{isYearly ? (pricing.yearly_price / 12).toLocaleString() : pricing.monthly_price.toLocaleString()}
                         <span>/mo</span>
                     </div>
                     <ul className="featureList">
