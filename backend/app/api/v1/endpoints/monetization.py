@@ -206,25 +206,35 @@ async def verify_pro_subscription(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Paystack verification failed: {str(e)}")
 
-    if not data.get("status") or data["data"]["status"] != "success":
+    if not data.get("status") or data.get("data", {}).get("status") != "success":
         logger.error(f"Paystack verification failed: {data}")
-        raise HTTPException(status_code=400, detail="Payment verification failed or transaction not successful.")
+        error_msg = data.get("data", {}).get("gateway_response") or data.get("message", "Unknown error")
+        raise HTTPException(status_code=400, detail=f"Payment verification failed: {error_msg}")
 
     logger.info(f"Paystack verification success for reference: {payload.reference}")
+
+    try:
+        amount = data["data"]["amount"] / 100
+    except (KeyError, TypeError):
+        amount = 0.0
+        logger.error(f"Could not extract amount for pro verify ref={payload.reference}")
 
     # 3. Upgrade User
     current_user.is_premium = True
     
-    # 4. Record Transaction
-    wallet = get_or_create_wallet(db, current_user.id)
-    transaction = Transaction(
-        wallet_id=wallet.id,
-        amount=data["data"]["amount"] / 100,
-        transaction_type='pro_subscription',
-        reference_id=payload.reference,
-        description="Monteeq Pro Subscription Upgrade"
-    )
-    db.add(transaction)
+    # 4. Record Transaction (Idempotency)
+    existing = db.query(Transaction).filter(Transaction.reference_id == payload.reference).first()
+    if not existing:
+        wallet = get_or_create_wallet(db, current_user.id)
+        transaction = Transaction(
+            wallet_id=wallet.id,
+            amount=amount,
+            transaction_type='pro_subscription',
+            reference_id=payload.reference,
+            description="Monteeq Pro Subscription Upgrade"
+        )
+        db.add(transaction)
+        
     db.commit()
     db.refresh(current_user)
 
