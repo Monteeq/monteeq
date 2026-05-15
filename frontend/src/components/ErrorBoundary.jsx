@@ -16,8 +16,18 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo });
-    // Log to console (replace with Sentry/LogRocket in production)
     console.error('[Monteeq ErrorBoundary]', error, errorInfo);
+    
+    // Stale chunk after a new deployment — force a hard reload once
+    const isChunkError = (
+      error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Importing a module script failed') ||
+      error?.name === 'ChunkLoadError'
+    );
+    if (isChunkError && !sessionStorage.getItem('chunk_reload_attempted')) {
+      sessionStorage.setItem('chunk_reload_attempted', 'true');
+      window.location.reload();
+    }
   }
 
   handleReset = () => {
