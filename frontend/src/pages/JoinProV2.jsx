@@ -26,7 +26,6 @@ const JoinProV2 = () => {
     
     const [isYearly, setIsYearly] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState('features');
 
     const [dynamicReference, setDynamicReference] = useState(null);
     const [triggerPayment, setTriggerPayment] = useState(false);
@@ -139,65 +138,29 @@ const JoinProV2 = () => {
                 </div>
             </div>
 
-            <div className="proTabs">
-                <button 
-                    className={`proTab ${activeTab === 'features' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('features')}
-                >
-                    <LayoutGrid size={18} /> Exclusive Tools
-                </button>
-                <button 
-                    className={`proTab ${activeTab === 'perks' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('perks')}
-                >
-                    <Award size={18} /> Membership Perks
-                </button>
-            </div>
-
             <div className="proTabContent">
-                {activeTab === 'features' ? (
-                    <div className="proFeatureGrid">
-                        <div className="proFeatureItem">
-                            <Maximize2 size={24} color="#ff3b30" />
-                            <h4>4K Rendering Engine</h4>
-                            <p>Upload files up to 2GB and serve them in full cinematic 4K resolution.</p>
-                        </div>
-                        <div className="proFeatureItem">
-                            <Lock size={24} color="#ff3b30" />
-                            <h4>E2EE Direct Messaging</h4>
-                            <p>Military-grade encryption for all your collaboration chats.</p>
-                        </div>
-                        <div className="proFeatureItem">
-                            <Rocket size={24} color="#ff3b30" />
-                            <h4>Engagement Boost</h4>
-                            <p>Pro content is prioritized in the discovery algorithm.</p>
-                        </div>
-                        <div className="proFeatureItem">
-                            <Headphones size={24} color="#ff3b30" />
-                            <h4>Lossless Audio</h4>
-                            <p>Keep your edits crisp with high-fidelity audio streams.</p>
-                        </div>
+                <div className="proFeatureGrid">
+                    <div className="proFeatureItem">
+                        <Maximize2 size={24} color="#ff3b30" />
+                        <h4>4K Video Quality</h4>
+                        <p>Upload files up to 2GB and serve them in full 4K resolution.</p>
                     </div>
-                ) : (
-                    <div className="proPerkGrid">
-                        <div className="proPerkItem">
-                            <div className="perkIconWrap"><Download size={20} /></div>
-                            <div className="perkText">
-                                <h5>Creator Asset Pack</h5>
-                                <p>Exclusive overlays, LUTs, and sound effects for Pro members.</p>
-                            </div>
-                            <button className="perkBtn">DOWNLOAD</button>
-                        </div>
-                        <div className="proPerkItem">
-                            <div className="perkIconWrap"><Users size={20} /></div>
-                            <div className="perkText">
-                                <h5>VIP Challenge Access</h5>
-                                <p>Enter "Gold-Only" challenges with exclusive recognition.</p>
-                            </div>
-                            <button className="perkBtn active">ENTER NOW</button>
-                        </div>
+                    <div className="proFeatureItem">
+                        <Lock size={24} color="#ff3b30" />
+                        <h4>Encrypted Messages</h4>
+                        <p>End-to-end encryption for all your direct messages.</p>
                     </div>
-                )}
+                    <div className="proFeatureItem">
+                        <Rocket size={24} color="#ff3b30" />
+                        <h4>Priority Discovery</h4>
+                        <p>Pro content ranks higher in the algorithm.</p>
+                    </div>
+                    <div className="proFeatureItem">
+                        <Headphones size={24} color="#ff3b30" />
+                        <h4>High-Fidelity Audio</h4>
+                        <p>Keep your audio clear with high-bitrate streaming.</p>
+                    </div>
+                </div>
             </div>
         </section>
     );
@@ -236,12 +199,12 @@ const JoinProV2 = () => {
                         <span>/mo</span>
                     </div>
                     <ul className="featureList">
-                        <li className="featureItem"><Sparkles size={18} className="sparkIcon" /> <strong>4K Cinematic HD Uploads</strong></li>
-                        <li className="featureItem"><Flame size={18} className="sparkIcon" /> <strong>Unrestricted Upload Limits</strong></li>
-                        <li className="featureItem"><Award size={18} className="sparkIcon" /> <strong>Gold-Only Elite Recognition</strong></li>
-                        <li className="featureItem"><Users size={18} className="sparkIcon" /> <strong>Pro Profile Verification</strong></li>
-                        <li className="featureItem"><Rocket size={18} className="sparkIcon" /> <strong>Priority Support Response</strong></li>
-                        <li className="featureItem"><LayoutGrid size={18} className="sparkIcon" /> <strong>No Interruptive Ads</strong></li>
+                        <li className="featureItem"><Sparkles size={18} className="sparkIcon" /> <strong>4K Video Playback</strong></li>
+                        <li className="featureItem"><Flame size={18} className="sparkIcon" /> <strong>Unlimited Uploads</strong></li>
+                        <li className="featureItem"><Award size={18} className="sparkIcon" /> <strong>Access to Gold Challenges</strong></li>
+                        <li className="featureItem"><Users size={18} className="sparkIcon" /> <strong>Pro Profile Badge</strong></li>
+                        <li className="featureItem"><Rocket size={18} className="sparkIcon" /> <strong>Priority Support</strong></li>
+                        <li className="featureItem"><LayoutGrid size={18} className="sparkIcon" /> <strong>Ad-Free Browsing</strong></li>
                     </ul>
                     <button 
                         className="ctaBtn proCta" 
@@ -263,15 +226,15 @@ const JoinProV2 = () => {
             <div className="contentWrapper">
                 <header className="hero">
                     <div className="heroTag">
-                        <Crown size={12} fill="currentColor" /> Premium Platform
+                        <Crown size={12} fill="currentColor" /> Monteeq Pro
                     </div>
                     <h1 className="heroTitle">
-                        The Future of <br/>
-                        <span className="textGradient">Creative Control</span>
+                        Share your best work in <br/>
+                        <span className="textGradient">highest quality.</span>
                     </h1>
                     <p className="heroSubtitle">
-                        Join the elite tier of editors who are maximizing their reach, 
-                        clarity, and impact on Monteeq.
+                        Get 4K playback, unlimited uploads, and priority support. 
+                        Everything you need to grow on Monteeq.
                     </p>
                 </header>
 
@@ -302,18 +265,18 @@ const JoinProV2 = () => {
                         <section className="benefitsGrid">
                             <div className="benefitItem">
                                 <div className="benefitIcon"><Zap size={24} /></div>
-                                <h3 className="benefitTitle">Pure Speed</h3>
-                                <p className="benefitDesc">Your videos are prioritized in our ultra-fast transcoding clusters for instant publishing.</p>
+                                <h3 className="benefitTitle">Faster Processing</h3>
+                                <p className="benefitDesc">Your videos process instantly on our dedicated transcoding servers.</p>
                             </div>
                             <div className="benefitItem">
                                 <div className="benefitIcon"><Target size={24} /></div>
-                                <h3 className="benefitTitle">Gold Access</h3>
-                                <p className="benefitDesc">Gain exclusive entry to "Gold" challenges with elite prizes and massive recognition.</p>
+                                <h3 className="benefitTitle">Challenge Access</h3>
+                                <p className="benefitDesc">Enter Gold-only challenges and compete for bigger prizes.</p>
                             </div>
                             <div className="benefitItem">
                                 <div className="benefitIcon"><ShieldCheck size={24} /></div>
-                                <h3 className="benefitTitle">Elite Badge</h3>
-                                <p className="benefitDesc">Your profile features the Pro badge for instant credibility.</p>
+                                <h3 className="benefitTitle">Pro Badge</h3>
+                                <p className="benefitDesc">Get the Pro badge on your profile to stand out in the feed.</p>
                             </div>
                         </section>
                     </>
