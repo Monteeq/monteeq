@@ -232,7 +232,7 @@ from app.utils.push import notify_user_push
 from app.schemas.notification import NotificationCreate
 
 def toggle_follow(db: Session, follower_id: int, following_id: int):
-    if follower_id == followed_id:
+    if follower_id == following_id:
         return False
     
     existing = db.query(Follow).filter(Follow.follower_id == follower_id, Follow.following_id == following_id).first()
@@ -253,11 +253,11 @@ def handle_follow_side_effects(db: Session, follower_id: int, following_id: int)
     follower_count = db.query(func.count(Follow.follower_id)).filter(Follow.following_id == following_id).scalar()
     
     if follower_count == 1:
-        crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="FIRST_FOLLOWER")
+        crud_achievement.create_achievement(db, user_id=following_id, milestone_name="FIRST_FOLLOWER")
     elif follower_count == 100:
-        crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="100_FOLLOWERS")
+        crud_achievement.create_achievement(db, user_id=following_id, milestone_name="100_FOLLOWERS")
     elif follower_count == 1000:
-        crud_achievement.create_achievement(db, user_id=followed_id, milestone_name="1K_FOLLOWERS")
+        crud_achievement.create_achievement(db, user_id=following_id, milestone_name="1K_FOLLOWERS")
         
     # 2. Notify user
     try:

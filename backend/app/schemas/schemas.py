@@ -30,6 +30,9 @@ class UserBase(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class UserPublic(UserBase):
+    id: int
+
 class UserCreate(UserBase):
     password: Optional[str] = None
 
@@ -190,7 +193,7 @@ class Video(VideoBase):
     thumbnail_url: str
     status: str
     owner_id: int
-    owner: Optional[UserBase] = None
+    owner: Optional[UserPublic] = None
     views: int
     earnings: float
     shares: int = 0
@@ -238,7 +241,7 @@ class PostCreate(PostBase):
 class Post(PostBase):
     id: int
     owner_id: int
-    owner: Optional[UserBase] = None
+    owner: Optional[UserPublic] = None
     created_at: Optional[datetime] = None
     likes_count: int = 0
     comments_count: int = 0
@@ -246,7 +249,7 @@ class Post(PostBase):
     original_post_id: Optional[int] = None
     original_post: Optional["Post"] = None
     views_count: int = 0
-    reposted_by: Optional[UserBase] = None
+    reposted_by: Optional[UserPublic] = None
 
     @field_validator('likes_count', 'comments_count', 'views_count', mode='before')
     @classmethod
@@ -293,7 +296,7 @@ class Comment(CommentBase):
     post_id: Optional[int] = None
     parent_id: Optional[int] = None
     owner_id: int
-    owner: Optional[UserBase] = None
+    owner: Optional[UserPublic] = None
     created_at: Optional[datetime] = None
     replies: List["Comment"] = []
 
@@ -374,9 +377,10 @@ class Conversation(BaseModel):
     id: int
     user1_id: int
     user2_id: int
-    user1: UserBase
-    user2: UserBase
+    user1: UserPublic
+    user2: UserPublic
     created_at: datetime
+    messages: List[ChatMessage] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -408,7 +412,7 @@ class ChallengeEntry(BaseModel):
     video_id: int
     is_winner: bool = False
     created_at: datetime
-    user: Optional[UserBase] = None
+    user: Optional[UserPublic] = None
     video: Optional[Video] = None
     challenge: Optional["Challenge"] = None
 
@@ -470,7 +474,7 @@ class PayoutRequestSchema(BaseModel):
     admin_note: Optional[str] = None
     requested_at: datetime
     processed_at: Optional[datetime] = None
-    user: Optional[UserBase] = None
+    user: Optional[UserPublic] = None
     model_config = ConfigDict(from_attributes=True)
 
 class PaymentVerify(BaseModel):

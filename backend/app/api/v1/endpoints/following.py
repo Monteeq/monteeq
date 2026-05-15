@@ -83,7 +83,7 @@ async def get_following_feed(
     
     return items[:limit]
 
-@router.get("/recommendations", response_model=List[schemas.UserBase])
+@router.get("/recommendations", response_model=List[schemas.UserPublic])
 async def get_recommended_creators(
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user)
