@@ -62,10 +62,11 @@ async fn main() {
     // Use a connection pool for higher concurrency
     let pool = RedisPool::new(config, Some(perf), None, Some(policy), 16).unwrap();
     
-    println!("[DEBUG] Connecting to Redis at {}...", redis_url);
+    println!("[DEBUG] Initiating Redis connection to {}...", redis_url);
     pool.connect();
-    pool.wait_for_connect().await.expect("Failed to connect to Redis Cloud");
-    println!("[DEBUG] Connected to Redis successfully.");
+    // We don't wait_for_connect() here to avoid blocking Render's port detection.
+    // Fred will automatically queue commands until the connection is established.
+    println!("[DEBUG] Redis connection task initiated.");
 
     let scheduler = WeightedScheduler::new(pool);
     let worker_pool = WorkerPool::new(scheduler.clone());
