@@ -24,4 +24,5 @@ redis
 boto3
 orjson
 brotli
-fastapi-cache2[redis]tenacity
+fastapi-cache2[redis]
+tenacity
