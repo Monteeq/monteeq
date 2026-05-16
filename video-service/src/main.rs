@@ -37,13 +37,13 @@ struct AppState {
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
+
     // We bind the port first so Render doesn't time out while we connect to Redis
-    let port = env::var("PORT").expect("PORT environment variable must be set");
+    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
     let addr = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&addr).await.expect("Failed to bind to PORT");
     println!("Monteeq High-Performance Video Service listening on {}", addr);
-
-    dotenv().ok();
 
     // Redis Setup - Highly optimized for limited connections
     let redis_url = env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
