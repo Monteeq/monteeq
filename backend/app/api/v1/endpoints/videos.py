@@ -380,8 +380,10 @@ async def upload_video(
     try:
         storage.upload_file_obj(file.file, source_key)
     except Exception as e:
-        logger.error(f"Failed to upload video file to storage: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to upload video file to storage")
+        import traceback
+        error_detail = f"Storage upload failed: {str(e)}"
+        logger.error(f"{error_detail}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=error_detail)
 
     # Initial DB record
     video_create_data = schemas.VideoCreate(
