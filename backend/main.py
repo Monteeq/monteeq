@@ -47,12 +47,13 @@ app.add_middleware(RequestIDMiddleware)
 
 # ── Anti-Bot Middleware ───────────────────────────────────────────────────────
 class AntiBotMiddleware(BaseHTTPMiddleware):
-    """Identify and block malicious bots globally."""
+    """Identify and block malicious bots globally with CORS support."""
     async def dispatch(self, request: Request, call_next):
         from app.core import security
         
-        # 1. Skip check for static files, health, and SEO/Sitemaps
-        if (request.url.path.startswith("/static") or 
+        # 1. Skip check for OPTIONS (CORS preflight), static files, health, and SEO/Sitemaps
+        if (request.method == "OPTIONS" or
+            request.url.path.startswith("/static") or 
             request.url.path == "/health" or
             "/seo/" in request.url.path or
             "sitemap" in request.url.path):
@@ -60,10 +61,23 @@ class AntiBotMiddleware(BaseHTTPMiddleware):
             
         # 2. Heuristic check
         if security.is_bot(request):
-            return JSONResponse(
+            ua = request.headers.get("User-Agent", "Unknown")
+            logger.warning(f"Bot detected and blocked: {ua} from {request.client.host if request.client else 'unknown'}")
+            
+            response = JSONResponse(
                 status_code=403,
-                content={"detail": "Access denied. Automated traffic detected."}
+                content={"detail": "Access denied. Automated traffic detected.", "ua": ua}
             )
+            
+            # Manually add CORS headers to ensure the browser doesn't throw a generic 'Failed to fetch'
+            origin = request.headers.get("Origin")
+            if origin:
+                # Basic validation: only allow our known domains
+                if any(domain in origin for domain in ["monteeq.com", "localhost"]):
+                    response.headers["Access-Control-Allow-Origin"] = origin
+                    response.headers["Access-Control-Allow-Credentials"] = "true"
+            
+            return response
             
         return await call_next(request)
 

@@ -23,17 +23,24 @@ def process_video_task(self, source_key: str, video_type: str, title: str, video
         # Phase 1: Communication with Rust Service
         try:
             logger.info(f"Phase 1: POST to Rust service at {config.RUST_SERVICE_URL}/process with source {source_key}")
-            rust_response = requests.post(
-                f"{config.RUST_SERVICE_URL}/process",
-                json={
-                    "video_id": source_key,
-                    "target_format": video_type,
-                    "skip_thumbnail": thumbnail_provided,
-                    "task_id": task_id
-                },
-                timeout=10.0 # Rust should accept/queue immediately
-            )
-            rust_response.raise_for_status()
+            try:
+                rust_response = requests.post(
+                    f"{config.RUST_SERVICE_URL}/process",
+                    json={
+                        "video_id": source_key,
+                        "target_format": video_type,
+                        "skip_thumbnail": thumbnail_provided,
+                        "task_id": task_id
+                    },
+                    timeout=30.0 # Increased timeout to 30s to allow for Render cold starts
+                )
+                logger.info(f"Rust service responded with status {rust_response.status_code}")
+                rust_response.raise_for_status()
+            except requests.exceptions.RequestException as re:
+                logger.error(f"Failed to communicate with Rust service: {str(re)}")
+                if hasattr(re, 'response') and re.response is not None:
+                    logger.error(f"Rust error response: {re.response.text}")
+                raise Exception(f"Rust service unreachable or returned error: {re}")
             logger.info(f"Rust service accepted task. Starting polling for task_id={task_id}")
             max_retries = 300 # 10 minutes with 2s sleep
             retries = 0

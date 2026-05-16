@@ -35,7 +35,7 @@ const Upload = () => {
 
     // Wake up the video engine on Render to mitigate cold starts
     useEffect(() => {
-        fetch('https://engine.monteeq.com/', { mode: 'no-cors' }).catch(() => {});
+        fetch('https://engine.monteeq.com/health', { mode: 'no-cors' }).catch(() => {});
     }, []);
 
     // Workflow State: 'select' | 'details'
