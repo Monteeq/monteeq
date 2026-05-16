@@ -15,7 +15,7 @@ import { API_BASE_URL } from '../api';
  */
 export function getStreamUrl(src, videoId) {
     if (videoId && src && src.startsWith('http')) {
-        return `${API_BASE_URL}/videos/${videoId}/stream`;
+        return `${API_BASE_URL}/videos/${videoId}/stream/master.m3u8`;
     }
     return src;
 }

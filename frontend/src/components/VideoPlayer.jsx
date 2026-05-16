@@ -50,12 +50,7 @@ const VideoPlayer = ({
   const controlsTimeout = useRef(null);
 
   // Use Proxy Stream to bypass CORS
-  const streamUrl = useMemo(() => {
-    if (videoId && src && src.startsWith('http')) {
-      return `${API_BASE_URL}/videos/${videoId}/stream`;
-    }
-    return src;
-  }, [src, videoId]);
+  const streamUrl = useMemo(() => getStreamUrl(src, videoId), [src, videoId]);
 
   // Initialize HLS
   useEffect(() => {
