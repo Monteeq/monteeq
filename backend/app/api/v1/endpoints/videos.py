@@ -144,15 +144,26 @@ async def stream_video(video_id: int, request: Request, db: Session = Depends(ge
             await client.aclose()
             raise HTTPException(status_code=error_status, detail=f"Video source returned {error_status}")
         
+        # Build headers dynamically, filtering out None values to prevent Starlette/ASGI crash
+        response_headers = {
+            "Accept-Ranges": "bytes",
+        }
+        content_type = resp.headers.get("Content-Type")
+        if content_type:
+            response_headers["Content-Type"] = content_type
+            
+        content_length = resp.headers.get("Content-Length")
+        if content_length:
+            response_headers["Content-Length"] = content_length
+            
+        content_range = resp.headers.get("Content-Range")
+        if content_range:
+            response_headers["Content-Range"] = content_range
+        
         return StreamingResponse(
             resp.aiter_bytes(),
             status_code=resp.status_code,
-            headers={
-                "Content-Type": resp.headers.get("Content-Type", "video/mp4"),
-                "Content-Length": resp.headers.get("Content-Length"),
-                "Content-Range": resp.headers.get("Content-Range"),
-                "Accept-Ranges": "bytes",
-            },
+            headers=response_headers,
             background=BackgroundTasks([resp.aclose, client.aclose])
         )
 

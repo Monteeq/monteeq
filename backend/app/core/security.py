@@ -60,12 +60,9 @@ def is_bot(request) -> bool:
             return False
         return True
     
-    # 2. Headless Detection: Headless browsers often omit certain headers
-    # Legitimate browsers usually have Sec-CH-UA or Accept-Language
-    # Note: This might block very old browsers, but for Monteeq it's acceptable.
-    if not request.headers.get("Accept-Language") and not request.headers.get("Sec-CH-UA"):
-        # Very suspicious for a real user
-        return True
+    # 2. Heuristic check: removed overly aggressive header check for real users.
+    # We rely on User-Agent blacklist and other layers for now.
+    return False
         
     # 3. Automation-specific headers
     if request.headers.get("X-Selenium-Driver") or request.headers.get("X-Puppeteer-Session"):

@@ -348,7 +348,7 @@ const Flash = () => {
     }, [activeClip?.title]);
 
     // ─────────────────────────────────────────────────────────────────────────
-    const handleLike = async (id) => {
+    const handleLike = useCallback(async (id) => {
         if (!token) {
             showNotification('info', 'Please log in to like videos');
             return;
@@ -360,7 +360,7 @@ const Flash = () => {
         ));
         try {
             await likeVideo(id, token);
-        } catch {
+        } catch (err) {
             setClips(prev => prev.map(c =>
                 c.id === id
                     ? { ...c, liked: !c.liked, likes_count: c.liked ? c.likes_count - 1 : c.likes_count + 1 }
@@ -368,9 +368,9 @@ const Flash = () => {
             ));
             showNotification('error', err?.message || 'Failed to like video');
         }
-    };
+    }, [token, showNotification]);
 
-    const handleShare = async (id) => {
+    const handleShare = useCallback(async (id) => {
         const url = `${window.location.origin}/watch/${id}`;
         try {
             if (navigator.share) {
@@ -381,7 +381,15 @@ const Flash = () => {
             }
             shareVideo(id).catch(() => {});
         } catch {}
-    };
+    }, [showNotification]);
+
+    const handleComment = useCallback((id) => {
+        setActiveCommentVideoId(id);
+    }, []);
+
+    const handleToggleMute = useCallback(() => {
+        setMuted(m => !m);
+    }, []);
 
     const scrollNext = () => containerRef.current?.scrollBy({ top: containerRef.current.clientHeight, behavior: 'smooth' });
     const scrollPrev = () => containerRef.current?.scrollBy({ top: -containerRef.current.clientHeight, behavior: 'smooth' });
@@ -458,10 +466,10 @@ const Flash = () => {
                                     video={clip}
                                     isActive={activeVideoId === clip.id}
                                     onLike={handleLike}
-                                    onComment={id => setActiveCommentVideoId(id)}
+                                    onComment={handleComment}
                                     onShare={handleShare}
                                     muted={muted}
-                                    toggleMute={() => setMuted(m => !m)}
+                                    toggleMute={handleToggleMute}
                                     shouldRender={clip.shouldRender}
                                 />
                             </div>

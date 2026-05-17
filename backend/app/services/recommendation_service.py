@@ -208,10 +208,12 @@ def update_user_profile_background(
 # ─── Query helpers ────────────────────────────────────────────────────────────
 
 def _base_query(db: Session, video_type: str):
-    """Return a base query filtered to the given video_type, excluding failed videos."""
+    """Return a base query filtered to the given video_type, excluding failed or empty/corrupted videos."""
     return db.query(Video).options(joinedload(Video.owner)).filter(
         Video.video_type == video_type,
         Video.status == "approved",
+        Video.video_url != "",
+        Video.video_url.isnot(None),
     )
 
 

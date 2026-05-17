@@ -32,17 +32,37 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
     }, []);
 
     useEffect(() => {
-        if (showPreview && videoRef.current) {
-            videoRef.current.play().catch(err => {
-                console.warn("Preview autoplay failed:", err);
-            });
-        } else if (!showPreview && videoRef.current) {
+        if (!showPreview || !videoRef.current) {
             if (hlsRef.current) {
                 hlsRef.current.destroy();
                 hlsRef.current = null;
             }
-            videoRef.current.pause();
-            videoRef.current.currentTime = 0;
+            if (videoRef.current) {
+                videoRef.current.pause();
+                videoRef.current.src = '';
+                videoRef.current.currentTime = 0;
+            }
+            return;
+        }
+
+        const streamUrl = getStreamUrl(video.video_url, video.id);
+        if (!streamUrl) return;
+
+        if (Hls.isSupported() && streamUrl.includes('.m3u8')) {
+            const hls = new Hls({
+                capLevelToPlayerSize: true,
+                autoStartLoad: true
+            });
+            hls.loadSource(streamUrl);
+            hls.attachMedia(videoRef.current);
+            hlsRef.current = hls;
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                videoRef.current?.play().catch(() => {});
+            });
+        } else {
+            videoRef.current.src = streamUrl;
+            videoRef.current.play().catch(() => {});
         }
 
         return () => {
@@ -50,8 +70,12 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                 hlsRef.current.destroy();
                 hlsRef.current = null;
             }
+            if (videoRef.current) {
+                videoRef.current.pause();
+                videoRef.current.src = '';
+            }
         };
-    }, [showPreview]);
+    }, [showPreview, video.video_url, video.id]);
 
     const formatDuration = (seconds) => {
         if (!seconds) return "";

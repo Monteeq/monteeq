@@ -18,13 +18,17 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
         if current_user_id:
             query = query.filter(
                 or_(
-                    Video.status == "approved",
+                    (Video.status == "approved") & (Video.video_url != "") & (Video.video_url.isnot(None)),
                     (Video.status == "pending") & (Video.owner_id == current_user_id),
                     (Video.status == "failed") & (Video.failed_at >= twenty_four_hours_ago) & (Video.owner_id == current_user_id)
                 )
             )
         else:
-            query = query.filter(Video.status == "approved")
+            query = query.filter(
+                Video.status == "approved",
+                Video.video_url != "",
+                Video.video_url.isnot(None)
+            )
     elif filter_status:
         query = query.filter(Video.status == filter_status)
     else:

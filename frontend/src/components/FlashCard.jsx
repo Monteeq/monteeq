@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import Hls from 'hls.js';
 import { Heart, MessageCircle, Share2, Trophy, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -42,9 +42,31 @@ const FlashCard = ({
     const smartStart = 0.25;
     const smartEnd = 0.85;
 
+    // Stream Proxy URL
+    const streamUrl = useMemo(() => getStreamUrl(video.video_url, video.id), [video.video_url, video.id]);
+
     useEffect(() => {
-        if (!videoRef.current) return;
+        if (!videoRef.current || !shouldRender) return;
         let viewTimer = null;
+
+        // Initialize HLS
+        if (Hls.isSupported() && streamUrl?.includes('.m3u8')) {
+            const hls = new Hls({
+                capLevelToPlayerSize: true,
+                autoStartLoad: true,
+            });
+            hls.loadSource(streamUrl);
+            hls.attachMedia(videoRef.current);
+            hlsRef.current = hls;
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                if (isActive) videoRef.current.play().catch(() => { });
+            });
+        } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+            videoRef.current.src = streamUrl;
+        } else {
+            videoRef.current.src = streamUrl;
+        }
 
         if (isActive) {
             videoRef.current.muted = muted;
@@ -94,8 +116,12 @@ const FlashCard = ({
 
         return () => {
             if (viewTimer) clearTimeout(viewTimer);
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
         };
-    }, [isActive, video.status, video.id, muted]);
+    }, [isActive, video.status, video.id, muted, streamUrl, shouldRender]);
 
     const handleTimeUpdate = (e) => {
         const { currentTime, duration } = e.target;
@@ -149,22 +175,38 @@ const FlashCard = ({
             >
                 {/* Background Layer (Static fallback if needed) */}
 
-                <video
-                    ref={videoRef}
-                    loop={!isSmartMode}
-                    playsInline
-                    autoPlay
-                    muted={muted}
-                    onTimeUpdate={handleTimeUpdate}
-                    onWaiting={() => setIsBuffering(true)}
-                    onPlaying={() => setIsBuffering(false)}
-                    onCanPlay={() => setIsBuffering(false)}
-                    onPlay={() => { setPlaying(true); setIsBuffering(false); }}
-                    onPause={() => setPlaying(false)}
-                    onEnded={() => { if (isActive) trackingManager.markReplayed(video.id); }}
-                    className={s.video}
-                    crossOrigin="anonymous"
-                />
+                {shouldRender ? (
+                    <video
+                        ref={videoRef}
+                        loop={!isSmartMode}
+                        playsInline
+                        autoPlay
+                        muted={muted}
+                        onTimeUpdate={handleTimeUpdate}
+                        onWaiting={() => setIsBuffering(true)}
+                        onPlaying={() => setIsBuffering(false)}
+                        onCanPlay={() => setIsBuffering(false)}
+                        onPlay={() => { setPlaying(true); setIsBuffering(false); }}
+                        onPause={() => setPlaying(false)}
+                        onEnded={() => { if (isActive) trackingManager.markReplayed(video.id); }}
+                        className={s.video}
+                        crossOrigin="anonymous"
+                    />
+                ) : (
+                    <div 
+                        style={{ 
+                            backgroundImage: `url(${video.thumbnail_url})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            width: '100%',
+                            height: '100%',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            zIndex: 1
+                        }} 
+                    />
+                )}
 
                 {isBuffering && (
                     <div className={s.bufferingOverlay}>
@@ -241,4 +283,4 @@ const FlashCard = ({
     );
 };
 
-export default FlashCard;
+export default React.memo(FlashCard);

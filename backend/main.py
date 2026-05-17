@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, ORJSONResponse
+from fastapi.responses import JSONResponse
 from app.api.v1.api import api_router
 from app.api.v1.endpoints import seo
 from app.core import dependencies
@@ -27,7 +27,6 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
-    default_response_class=ORJSONResponse,
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
