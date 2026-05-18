@@ -89,7 +89,7 @@ function AppContent() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const isFlashPage = location.pathname === '/flash';
+  const isFlashPage = location.pathname.startsWith('/flash');
   const isHomePage = location.pathname === '/home' || (location.pathname === '/' && token);
 
   const isOnboardingPage = location.pathname === '/onboarding';
@@ -109,7 +109,7 @@ function AppContent() {
     '/admin', '/following'
 
   ];
-  const isDynamicPath = location.pathname.startsWith('/watch/') || location.pathname.startsWith('/profile/');
+  const isDynamicPath = location.pathname.startsWith('/watch/') || location.pathname.startsWith('/profile/') || location.pathname.startsWith('/flash/');
   const isNotFound = !knownPaths.includes(location.pathname) && !isDynamicPath;
 
   const isImmersive = isAuthPage || isFlashPage || isPaymentPage || isNotFound;
@@ -173,6 +173,7 @@ function AppContent() {
                   <Route path="/" element={token ? <Home /> : <Landing />} />
                   <Route path="/home" element={<Home />} />
                   <Route path="/flash" element={<Flash />} />
+                  <Route path="/flash/:id" element={<Flash />} />
                   <Route path="/watch/:id" element={<Watch />} />
 
                   <Route path="/login" element={token ? <Navigate to="/" replace /> : <Login />} />

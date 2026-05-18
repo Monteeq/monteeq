@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { likeVideo, shareVideo, getCategories, getCategoryVideos } from '../api';
+import { useParams } from 'react-router-dom';
+import { likeVideo, shareVideo, getCategories, getCategoryVideos, getVideoById } from '../api';
 import FlashCard from '../components/FlashCard';
 import AmbientBackdrop from '../components/AmbientBackdrop';
 import DesktopSidebar from '../components/DesktopSidebar';
@@ -41,6 +42,7 @@ const dedupeById = (existing, incoming) => {
 const Flash = () => {
     const { showNotification } = useNotification();
     const { token, user } = useAuth();
+    const { id: urlVideoId } = useParams();
 
     // ── Feed state ────────────────────────────────────────────────────────────
     const [clips, setClips] = useState([]);
@@ -189,6 +191,42 @@ const Flash = () => {
     const fetchInitialFeed = useCallback(async () => {
         setLoading(true);
 
+        // YouTube Shorts Style - Fetch specific video by ID first if specified in URL
+        if (urlVideoId) {
+            try {
+                const targetId = parseInt(urlVideoId, 10);
+                const targetVid = await getVideoById(targetId, token);
+                if (targetVid) {
+                    const formattedTarget = {
+                        ...targetVid,
+                        liked: targetVid.liked_by_user,
+                        owner_followed: targetVid.owner?.is_following || false
+                    };
+
+                    feedManager.configure({ 
+                        token, 
+                        videoType: 'flash', 
+                        mood: activeCategory, 
+                        feedType 
+                    });
+
+                    const recommendedRaw = await feedManager.fetchFeed(15, activeCategory);
+                    const formattedRecommended = formatClips(recommendedRaw || [], layerResponseRef.current);
+                    const filteredRecommended = formattedRecommended.filter(v => v.id !== targetId);
+
+                    const combined = [formattedTarget, ...filteredRecommended];
+                    setClips(combined);
+                    setActiveVideoId(targetId);
+                    setLoading(false);
+                    feedManager.resetConsumption();
+                    return;
+                }
+            } catch (err) {
+                console.error('[Flash] Specific video fetch failed:', err.message);
+                // Fallback to normal loading if dynamic video fetch fails
+            }
+        }
+
         // If a category is active, use semantic category endpoint
         if (activeCategory) {
             try {
@@ -243,7 +281,7 @@ const Flash = () => {
         }
 
         feedManager.resetConsumption();
-    }, [activeCategory, feedType, token]);
+    }, [activeCategory, feedType, token, urlVideoId]);
 
     useEffect(() => {
         fetchInitialFeed();
@@ -346,6 +384,17 @@ const Flash = () => {
             window.dispatchEvent(new CustomEvent('monteeq:update-title', { detail: activeClip.title }));
         }
     }, [activeClip?.title]);
+
+    // Dynamic URL Sync (YouTube Shorts behavior)
+    useEffect(() => {
+        if (activeVideoId) {
+            const currentPath = window.location.pathname;
+            const expectedPath = `/flash/${activeVideoId}`;
+            if (currentPath.startsWith('/flash') && currentPath !== expectedPath) {
+                window.history.replaceState(null, '', expectedPath);
+            }
+        }
+    }, [activeVideoId]);
 
     // ─────────────────────────────────────────────────────────────────────────
     const handleLike = useCallback(async (id) => {

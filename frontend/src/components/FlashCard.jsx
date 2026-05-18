@@ -26,12 +26,16 @@ const FlashCard = ({
     const navigate = useNavigate();
     const videoRef = useRef(null);
     const trackHistory = useTrackHistory();
+    const progressBarRef = useRef(null);
+    const videoWasPlayingRef = useRef(false);
     const [playing, setPlaying] = useState(false);
     const [progress, setProgress] = useState(0);
     const [hookProgress, setHookProgress] = useState(0);
     const [isEngaged, setIsEngaged] = useState(false);
     const [showHaptic, setShowHaptic] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
+    const [isScrubbing, setIsScrubbing] = useState(false);
+    const [hearts, setHearts] = useState([]);
     const hlsRef = useRef(null);
 
     // Interaction Tracking
@@ -124,24 +128,92 @@ const FlashCard = ({
     }, [isActive, video.status, video.id, muted, streamUrl, shouldRender]);
 
     const handleTimeUpdate = (e) => {
-        const { currentTime, duration } = e.target;
-        if (duration > 0) {
-            const ratio = currentTime / duration;
-            setProgress(ratio * 100);
-            setHookProgress(Math.min(currentTime / 3, 1) * 100);
+        const { currentTime: curTime, duration: dur } = e.target;
+        if (!isScrubbing) {
+            if (dur > 0) {
+                const ratio = curTime / dur;
+                setProgress(ratio * 100);
+                setHookProgress(Math.min(curTime / 3, 1) * 100);
 
-            if (!isEngaged && ratio > 0.5) setIsEngaged(true);
+                if (!isEngaged && ratio > 0.5) setIsEngaged(true);
 
-            if (isSmartMode && currentTime >= duration * smartEnd) {
-                const startTime = duration * smartStart;
-                videoRef.current.currentTime = startTime;
+                if (isSmartMode && curTime >= dur * smartEnd) {
+                    const startTime = dur * smartStart;
+                    videoRef.current.currentTime = startTime;
+                }
             }
+        }
+    };
+
+    const handlePointerDown = (e) => {
+        if (!videoRef.current || !progressBarRef.current) return;
+        const dur = videoRef.current.duration;
+        if (!dur || dur === Infinity) return;
+
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setIsScrubbing(true);
+        videoWasPlayingRef.current = !videoRef.current.paused;
+        videoRef.current.pause();
+
+        const rect = progressBarRef.current.getBoundingClientRect();
+        let ratio = (e.clientX - rect.left) / rect.width;
+        ratio = Math.max(0, Math.min(1, ratio));
+        videoRef.current.currentTime = ratio * dur;
+        setProgress(ratio * 100);
+    };
+
+    const handlePointerMove = (e) => {
+        if (!isScrubbing || !videoRef.current || !progressBarRef.current) return;
+        const dur = videoRef.current.duration;
+        if (!dur || dur === Infinity) return;
+
+        const rect = progressBarRef.current.getBoundingClientRect();
+        let ratio = (e.clientX - rect.left) / rect.width;
+        ratio = Math.max(0, Math.min(1, ratio));
+        videoRef.current.currentTime = ratio * dur;
+        setProgress(ratio * 100);
+    };
+
+    const handlePointerUp = (e) => {
+        if (!isScrubbing) return;
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch (err) {
+            console.error("Pointer capture release error", err);
+        }
+        setIsScrubbing(false);
+        if (videoWasPlayingRef.current && videoRef.current) {
+            videoRef.current.play().catch(() => {});
         }
     };
 
     const triggerHaptic = () => {
         setShowHaptic(true);
         setTimeout(() => setShowHaptic(false), 400);
+    };
+
+    const triggerDoubleTapLike = (e) => {
+        if (!video.liked) {
+            onLike(video.id);
+        }
+
+        const id = Date.now() + Math.random();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        const newHeart = {
+            id,
+            x,
+            y,
+            rotation: Math.random() * 40 - 20
+        };
+
+        setHearts((prev) => [...prev, newHeart]);
+
+        setTimeout(() => {
+            setHearts((prev) => prev.filter((h) => h.id !== id));
+        }, 800);
     };
 
     const tapRef = useRef(0);
@@ -151,7 +223,7 @@ const FlashCard = ({
         const now = Date.now();
         if (now - tapRef.current < 300) {
             triggerHaptic();
-            if (!video.liked) onLike(video.id);
+            triggerDoubleTapLike(e);
         } else {
             if (videoRef.current) {
                 if (videoRef.current.paused) {
@@ -216,6 +288,20 @@ const FlashCard = ({
 
                 <div className={`${s.hapticFlash} ${showHaptic ? s.flashActive : ''}`} />
 
+                {hearts.map((h) => (
+                    <div
+                        key={h.id}
+                        className={s.doubleTapHeart}
+                        style={{
+                            left: `${h.x}px`,
+                            top: `${h.y}px`,
+                            transform: `translate(-50%, -50%) rotate(${h.rotation}deg)`
+                        }}
+                    >
+                        <Heart size={80} fill="var(--accent-primary)" color="var(--accent-primary)" />
+                    </div>
+                ))}
+
                 {video.status === 'pending' && (
                     <div className={s.statusOverlay}>
                         <Loader2 className="animate-spin" size={40} color="var(--accent-primary)" />
@@ -267,13 +353,27 @@ const FlashCard = ({
                 )}
             </div>
 
-            {/* Premium Progress Bar */}
-            <div className={s.progressBar}>
-                <div
-                    className={`${s.progressFill} ${isEngaged ? s.progressEngaged : ''}`}
-                    style={{ width: `${progress}%` }}
-                />
+            {/* Premium Progress Bar & Scrubbing Zone */}
+            <div 
+                ref={progressBarRef}
+                className={`${s.progressBarContainer} ${isScrubbing ? s.scrubbing : ''}`}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+            >
+                <div className={s.progressBar}>
+                    <div
+                        className={`${s.progressFill} ${isEngaged ? s.progressEngaged : ''}`}
+                        style={{ width: `${progress}%` }}
+                    />
+                    <div 
+                        className={s.progressKnob} 
+                        style={{ left: `${progress}%` }}
+                    />
+                </div>
             </div>
+
+
 
             {/* Desktop Mute Control */}
             <button className={s.muteToggle} onClick={(e) => { e.stopPropagation(); toggleMute(); }}>
