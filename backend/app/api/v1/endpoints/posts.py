@@ -24,7 +24,7 @@ def get_posts(
     
     if current_user:
         # Get IDs of people user follows
-        following_ids = db.query(Follow.followed_id).filter(Follow.follower_id == current_user.id).all()
+        following_ids = db.query(Follow.following_id).filter(Follow.follower_id == current_user.id).all()
         following_ids = [f[0] for f in following_ids]
         
         if following_ids:

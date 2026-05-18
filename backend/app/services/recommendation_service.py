@@ -386,7 +386,7 @@ def _following_videos(
 
     # Get IDs of followed users
     followed_user_ids = [
-        f.followed_id for f in db.query(Follow.followed_id).filter(Follow.follower_id == user_id).all()
+        f.following_id for f in db.query(Follow.following_id).filter(Follow.follower_id == user_id).all()
     ]
     if not followed_user_ids:
         return []
