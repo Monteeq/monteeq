@@ -1,8 +1,6 @@
 import React from 'react';
-import * as reactWindow from 'react-window';
-const { FixedSizeList } = reactWindow;
-import * as autoSizer from 'react-virtualized-auto-sizer';
-const { AutoSizer } = autoSizer;
+import { List } from 'react-window';
+import { AutoSizer } from 'react-virtualized-auto-sizer';
 import VideoPreviewCard from './VideoPreviewCard';
 
 const VirtualizedFeed = ({ videos, onVideoClick }) => {
@@ -41,14 +39,14 @@ const VirtualizedFeed = ({ videos, onVideoClick }) => {
         <div style={{ height: '80vh', width: '100%' }}>
             <AutoSizer>
                 {({ height, width }) => (
-                    <FixedSizeList
+                    <List
                         height={height}
                         itemCount={rowCount}
                         itemSize={itemHeight}
                         width={width}
                     >
                         {Row}
-                    </FixedSizeList>
+                    </List>
                 )}
             </AutoSizer>
         </div>

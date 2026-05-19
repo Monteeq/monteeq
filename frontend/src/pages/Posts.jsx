@@ -27,7 +27,7 @@ const Posts = () => {
         if (observer.current) observer.current.disconnect();
         observer.current = new IntersectionObserver(entries => {
             if (entries[0].isIntersecting && hasMore) {
-                setSkip(prevSkip => prevSkip + 10);
+                setSkip(prevSkip => prevSkip + 3);
             }
         });
         if (node) observer.current.observe(node);
@@ -38,14 +38,14 @@ const Posts = () => {
         else setLoadingMore(true);
 
         try {
-            const data = await getPosts(token, isInitial ? 0 : skip, 10);
+            const data = await getPosts(token, isInitial ? 0 : skip, 3);
             if (Array.isArray(data)) {
                 if (isInitial) {
                     setPosts(data);
                 } else {
                     setPosts(prev => [...prev, ...data]);
                 }
-                setHasMore(data.length === 10);
+                setHasMore(data.length === 3);
             }
         } catch (error) {
             console.error("Error fetching posts:", error);

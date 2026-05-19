@@ -20,6 +20,7 @@ def get_posts(
     db: Session = Depends(get_db),
     current_user: Optional[dict] = Depends(get_current_user_optional)
 ):
+    limit = min(limit, 3)
     query = db.query(Post)
     
     if current_user:

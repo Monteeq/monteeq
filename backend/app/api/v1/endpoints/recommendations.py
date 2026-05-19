@@ -180,6 +180,8 @@ def get_recommended_feed(
     if not (1 <= limit <= 50):
         raise HTTPException(status_code=400, detail="limit must be between 1 and 50")
 
+    limit = min(limit, 3)
+
     if current_user:
         feed = rs.build_feed(
             db,
