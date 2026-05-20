@@ -4,9 +4,7 @@ import { AutoSizer } from 'react-virtualized-auto-sizer';
 import VideoPreviewCard from './VideoPreviewCard';
 
 const VirtualizedFeed = ({ videos, onVideoClick }) => {
-    // We assume a grid layout. For a list layout, we'd need a different approach or multiple items per row.
-    // In Monteeq, feeds are typically grids. react-window's FixedSizeGrid is better for grids.
-    
+
     const columnCount = window.innerWidth > 1200 ? 4 : window.innerWidth > 768 ? 3 : window.innerWidth > 480 ? 2 : 1;
     const rowCount = Math.ceil(videos.length / columnCount);
     const itemHeight = 320; // Estimated height of a video card
