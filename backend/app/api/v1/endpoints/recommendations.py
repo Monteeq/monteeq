@@ -1,10 +1,3 @@
-"""
-recommendations.py – FastAPI router
-────────────────────────────────────
-POST /api/v1/recommend/track              – ingest a user interaction event
-GET  /api/v1/recommend/feed?video_type=   – ranked feed for flash OR home
-"""
-
 import logging
 from datetime import datetime
 from typing import List, Literal, Optional
