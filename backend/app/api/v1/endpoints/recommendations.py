@@ -56,20 +56,7 @@ def track_event(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """
-    Ingest a single interaction event.
-
-    Works for both flash and home videos — the video_type is inferred from
-    the video record so the client doesn't need to specify it.
-
-    Steps:
-      1. Validate video exists and fetch its duration.
-      2. Compute interaction score (synchronous, <1 ms).
-      3. Persist VideoInteraction row.
-      4. Update in-memory skip-streak counter.
-      5. Invalidate ALL cached feeds for this user (flash + home).
-      6. Queue background task to update tag-affinity profile.
-    """
+   
     user_id: int = current_user.id
 
     # Fetch only the columns we need for a fast existence check
