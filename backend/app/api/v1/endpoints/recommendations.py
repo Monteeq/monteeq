@@ -136,22 +136,7 @@ def get_recommended_feed(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_optional),
 ):
-    """
-    Return a ranked recommendation feed.
-
-    **video_type**: `flash` (short vertical clips) or `home` (long-form videos).
-    **feed_type**: `foryou` (default), `trending`, or `following`.
-
-    Authenticated users receive:
-      • 70% personalised  — tag-affinity × discovery score
-      • 20% trending      — highest avg completion rate last 7 days
-      • 10% exploration   — low-view / unseen videos
-
-    Unauthenticated users receive trending + exploration only.
-
-    Skip-streak >= 3 activates short-video preference (flash only).
-    Results cached 45 s per (user, video_type); invalidated on track events.
-    """
+   
     if video_type not in VALID_TYPES:
         raise HTTPException(
             status_code=400,
