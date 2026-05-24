@@ -13,24 +13,18 @@ const Home = () => {
     const navigate = useNavigate();
     const { token, user } = useAuth();
     const [activeCategory, setActiveCategory] = useState("All");
-    
-    const { 
-        data, 
-        fetchNextPage, 
-        hasNextPage, 
-        isFetchingNextPage, 
-        isLoading, 
+
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading,
         isError,
         refetch
     } = useHomeFeed(token, activeCategory);
 
     const { data: flashData, isLoading: flashLoading } = useFlashFeed(token);
-
-    const featured = {
-        title: "Origins of the Peak",
-        desc: "A Home for Editors.",
-        image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=80"
-    };
 
     const handleVideoClick = (id) => {
         navigate(`/watch/${id}`);
@@ -49,41 +43,45 @@ const Home = () => {
 
     return (
         <div className="home-container page-container">
-            <SEO 
+            <SEO
                 title="Home"
                 description="Experience the best creative video content on Monteeq. Watch, share, and discover amazing videos from creators worldwide."
                 canonical={`${window.location.origin}/`}
             />
-            
-            {/* Hero Section */}
-            <section className="hero-section">
-                <img src={featured.image} alt="Featured" className="hero-image" fetchpriority="high" />
-                <div className="hero-content">
-                    <div className="hero-badge">
-                        <Flame size={14} /> <span>FEATURED</span>
-                    </div>
-                    <h1 className="hero-title">{featured.title}</h1>
-                    <p className="hero-desc">{featured.desc}</p>
-                    <button
-                        className="btn-active hero-btn"
-                        onClick={() => navigate(`/watch/${allVideos[0]?.id || 1}`)}
-                    >
-                        <Play fill="white" size={18} /> WATCH NOW
-                    </button>
-                </div>
-            </section>
 
             {/* Category Chips Bar */}
             <div className="category-chips-container">
                 {CATEGORIES.map((cat) => (
-                    <button 
-                        key={cat} 
+                    <button
+                        key={cat}
                         className={`category-chip ${activeCategory === cat ? 'active' : ''}`}
                         onClick={() => setActiveCategory(cat)}
                     >
                         {cat}
                     </button>
                 ))}
+            </div>
+
+            {/* Main Video Feed */}
+            <div className="feed-section">
+                {allVideos.length > 0 ? (
+                    <div className="video-grid">
+                        {allVideos.map(video => (
+                            <VideoPreviewCard
+                                key={video.id}
+                                video={video}
+                                variant="grid"
+                                onClick={() => handleVideoClick(video.id)}
+                            />
+                        ))}
+                    </div>
+                ) : !isLoading ? (
+                    <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)', background: 'var(--bg-raised)', borderRadius: '32px', margin: '2rem 0', border: '1px solid var(--border-glass)' }}>
+                        <Play size={48} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
+                        <h2 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No videos found</h2>
+                        <p>We couldn't find any videos in the "{activeCategory}" category. Try another one!</p>
+                    </div>
+                ) : null}
             </div>
 
             {/* Flash Section */}
@@ -118,28 +116,6 @@ const Home = () => {
                 </div>
             )}
 
-            {/* Main Video Feed */}
-            <div className="feed-section">
-                {allVideos.length > 0 ? (
-                    <div className="video-grid">
-                        {allVideos.map(video => (
-                            <VideoPreviewCard
-                                key={video.id}
-                                video={video}
-                                variant="grid"
-                                onClick={() => handleVideoClick(video.id)}
-                            />
-                        ))}
-                    </div>
-                ) : !isLoading ? (
-                    <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)', background: 'var(--bg-raised)', borderRadius: '32px', margin: '2rem 0', border: '1px solid var(--border-glass)' }}>
-                        <Play size={48} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
-                        <h2 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No videos found</h2>
-                        <p>We couldn't find any videos in the "{activeCategory}" category. Try another one!</p>
-                    </div>
-                ) : null}
-            </div>
-
             {/* Loading more skeletons */}
             {isFetchingNextPage && (
                 <div className="video-grid" style={{ marginTop: '2rem' }}>
@@ -157,8 +133,8 @@ const Home = () => {
             {/* Load More Button or Observer Trigger */}
             {hasNextPage && (
                 <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <button 
-                        className="btn-secondary" 
+                    <button
+                        className="btn-secondary"
                         onClick={() => fetchNextPage()}
                         disabled={isFetchingNextPage}
                     >
