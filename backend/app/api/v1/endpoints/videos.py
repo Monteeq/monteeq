@@ -83,7 +83,7 @@ async def read_videos(
     db: Session = Depends(get_db), 
     current_user: Optional[dict] = Depends(get_current_user_optional)
 ):
-    limit = min(limit, 3)
+    limit = min(limit, 50)
     user_id = current_user.id if current_user else None
     videos = crud_video.get_videos(db, video_type=video_type, filter_status=status, current_user_id=user_id, skip=skip, limit=limit, mood=mood, feed_mode=feed_mode)
     return videos

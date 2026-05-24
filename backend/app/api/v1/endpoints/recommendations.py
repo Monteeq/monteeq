@@ -24,8 +24,8 @@ VALID_TYPES = {"flash", "home"}
 class TrackEventIn(BaseModel):
     """Payload for a single user-video interaction event."""
     video_id: int
-    watch_time: float           # seconds watched
-    duration: float = 0.0      # 0 → use stored video duration
+    watch_time: float
+    duration: float = 0.0 
     liked: bool = False
     skipped: bool = False
     replayed: bool = False

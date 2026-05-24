@@ -9,10 +9,6 @@ import string
 import httpx
 
 def get_country_from_ip(ip: str):
-    """
-    Automated country detection from IP address.
-    Uses ipapi.co (free tier) for silent collection.
-    """
     if not ip or ip in ["127.0.0.1", "localhost"]:
         return "Unknown"
     try:
