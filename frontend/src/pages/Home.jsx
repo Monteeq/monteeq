@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Play, Flame, Zap, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNotification } from '../context/NotificationContext';
 import { useHomeFeed, useFlashFeed } from '../hooks/useFeed';
 import VideoPreviewCard from '../components/VideoPreviewCard';
-import VirtualizedFeed from '../components/VirtualizedFeed';
-import AdSenseAd from '../components/ads/AdSenseAd';
 import { HomeSkeleton, VideoSkeleton } from '../components/Skeleton';
 import SEO from '../components/SEO';
 
@@ -121,13 +118,19 @@ const Home = () => {
                 </div>
             )}
 
-            {/* Main Video Feed with Virtualization */}
+            {/* Main Video Feed */}
             <div className="feed-section">
                 {allVideos.length > 0 ? (
-                    <VirtualizedFeed 
-                        videos={allVideos} 
-                        onVideoClick={handleVideoClick} 
-                    />
+                    <div className="video-grid">
+                        {allVideos.map(video => (
+                            <VideoPreviewCard
+                                key={video.id}
+                                video={video}
+                                variant="grid"
+                                onClick={() => handleVideoClick(video.id)}
+                            />
+                        ))}
+                    </div>
                 ) : !isLoading ? (
                     <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)', background: 'var(--bg-raised)', borderRadius: '32px', margin: '2rem 0', border: '1px solid var(--border-glass)' }}>
                         <Play size={48} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
