@@ -61,13 +61,6 @@ const Challenges = () => {
             return;
         }
 
-        // Check free user limit locally first for better UX
-        if (user && !user.is_premium) {
-            // we'd need a way to check total entries easily, 
-            // but for now we'll rely on the backend error 
-            // or we can fetch a specific 'can_enter' status.
-        }
-
         setSelectedChallenge(challenge);
         setUploadTitle(challenge.title + " Entry");
         setUploadFile(null);
