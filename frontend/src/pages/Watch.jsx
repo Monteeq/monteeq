@@ -148,6 +148,11 @@ const Watch = () => {
                         isCinematic={isCinematic}
                         toggleTheaterMode={() => setIsTheaterMode(!isTheaterMode)}
                         toggleCinematic={() => setIsCinematic(!isCinematic)}
+                        url_480p={video.url_480p}
+                        url_720p={video.url_720p}
+                        url_1080p={video.url_1080p}
+                        url_2k={video.url_2k}
+                        url_4k={video.url_4k}
                     />
                 </div>
 

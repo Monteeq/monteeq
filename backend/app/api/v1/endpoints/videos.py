@@ -119,7 +119,9 @@ async def stream_video(video_id: int, request: Request, db: Session = Depends(ge
         target_url = f"{base_dir}/{sub_path}"
 
     async def get_stream():
-        client = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0))
+        # read_timeout=None: video files can be large; no upper bound on read time.
+        # connect_timeout=10s: fail fast if CDN is unreachable.
+        client = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=10.0))
         range_header = request.headers.get("Range")
         headers = {
             "User-Agent": "Monteeq-Backend-Proxy/1.0",
@@ -145,9 +147,11 @@ async def stream_video(video_id: int, request: Request, db: Session = Depends(ge
             await client.aclose()
             raise HTTPException(status_code=error_status, detail=f"Video source returned {error_status}")
         
-        # Build headers dynamically, filtering out None values to prevent Starlette/ASGI crash
+        # Build headers — Content-Encoding: identity tells GZip middleware to skip
+        # buffering this response (critical for large video streams).
         response_headers = {
             "Accept-Ranges": "bytes",
+            "Content-Encoding": "identity",
         }
         content_type = resp.headers.get("Content-Type")
         if content_type:
@@ -162,13 +166,99 @@ async def stream_video(video_id: int, request: Request, db: Session = Depends(ge
             response_headers["Content-Range"] = content_range
         
         return StreamingResponse(
-            resp.aiter_bytes(),
+            resp.aiter_bytes(chunk_size=65536),
             status_code=resp.status_code,
             headers=response_headers,
             background=BackgroundTasks([resp.aclose, client.aclose])
         )
 
     return await get_stream()
+
+
+@router.get("/{video_id}/stream-res")
+async def stream_video_resolution(
+    video_id: int,
+    quality: str,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Proxy a specific resolution stream (480p, 720p, 1080p, 2k, 4k) for a video."""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    quality_map = {
+        "480p":  video.url_480p,
+        "720p":  video.url_720p,
+        "1080p": video.url_1080p,
+        "2k":    video.url_2k,
+        "4k":    video.url_4k,
+    }
+
+    target_url = quality_map.get(quality.lower())
+    if not target_url:
+        raise HTTPException(status_code=404, detail=f"No {quality} stream available for this video")
+
+    # Resolve CDN URL if needed
+    if "amazonaws.com" in target_url or "monteeq.s3" in target_url or "cdn.monteeq.com" in target_url:
+        try:
+            from app.core.storage import storage
+            if ".com/" in target_url:
+                parts = target_url.split(".com/")
+                if len(parts) > 1:
+                    target_url = storage.get_url(parts[1])
+        except Exception as e:
+            logger.warning(f"Failed to resolve CDN URL for resolution stream: {e}")
+
+    async def get_res_stream():
+        # read_timeout=None: no upper bound on read — video files can be large.
+        client = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=10.0))
+        range_header = request.headers.get("Range")
+        headers = {"User-Agent": "Monteeq-Backend-Proxy/1.0"}
+        if range_header:
+            headers["Range"] = range_header
+
+        try:
+            req = client.build_request("GET", target_url, headers=headers)
+            resp = await client.send(req, stream=True)
+        except httpx.TimeoutException:
+            await client.aclose()
+            raise HTTPException(status_code=504, detail="Upstream stream timed out")
+        except Exception as e:
+            await client.aclose()
+            logger.error(f"Resolution stream proxy failed for video {video_id} @ {quality}: {e}")
+            raise HTTPException(status_code=502, detail="Failed to connect to video source")
+
+        if resp.status_code >= 400:
+            error_status = resp.status_code
+            await resp.aclose()
+            await client.aclose()
+            raise HTTPException(status_code=error_status, detail=f"Video source returned {error_status}")
+
+        # Content-Encoding: identity prevents GZip middleware from buffering the stream.
+        response_headers = {
+            "Accept-Ranges": "bytes",
+            "Content-Encoding": "identity",
+        }
+        content_type = resp.headers.get("Content-Type")
+        if content_type:
+            response_headers["Content-Type"] = content_type
+        content_length = resp.headers.get("Content-Length")
+        if content_length:
+            response_headers["Content-Length"] = content_length
+        content_range = resp.headers.get("Content-Range")
+        if content_range:
+            response_headers["Content-Range"] = content_range
+
+        return StreamingResponse(
+            resp.aiter_bytes(chunk_size=65536),
+            status_code=resp.status_code,
+            headers=response_headers,
+            background=BackgroundTasks([resp.aclose, client.aclose])
+        )
+
+    return await get_res_stream()
+
 
 @router.get("/search", response_model=List[schemas.Video])
 async def search_videos(

@@ -21,14 +21,6 @@ const AchievementPopup = ({ achievement, onClose }) => {
         onClose();
     };
 
-    // Parse milestone name to find badge details
-    // Notification message format: "You earned a new badge: [Name]!"
-    // We can also try to find by ID if we pass it, but for now let's match by name or just show generic
-
-    // Better strategy: The notification object might not have the raw ID. 
-    // But we can try to match the message content or just show a generic trophy if not found.
-    // However, if we can find the badge by matching names, that's better.
-
     const badge = BADGES.find(b => achievement.message.includes(b.name)) || {
         icon: Trophy,
         name: 'Achievement Unlocked!',

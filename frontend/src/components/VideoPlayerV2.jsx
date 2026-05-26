@@ -1,13 +1,23 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Square, Monitor, Settings, RotateCcw, RotateCw, AlertCircle, Loader2 } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Square, Monitor, Settings, RotateCcw, RotateCw, AlertCircle, Loader2, Crown } from 'lucide-react';
 import './VideoPlayerV2.css';
-import { initView, sendHeartbeat } from '../api';
+import { initView, sendHeartbeat, API_BASE_URL } from '../api';
 import { getStreamUrl } from '../utils/streamUrl';
 import { useAuth } from '../context/AuthContext';
 import PreRollPlayer from './ads/PreRollPlayer';
 import PauseOverlayAd from './ads/PauseOverlayAd';
 import { useTrackHistory } from '../hooks/useLibrary';
+
+// Resolution definitions: label, quality key for /stream-res, isPro gating
+// 'src' key means use the master HLS stream (default)
+const RESOLUTION_DEFS = [
+  { label: '4K',    quality: '4k',    key: 'url_4k',    pro: true  },
+  { label: '2K',    quality: '2k',    key: 'url_2k',    pro: true  },
+  { label: '1080p', quality: '1080p', key: 'url_1080p', pro: true  },
+  { label: '720p',  quality: '720p',  key: 'url_720p',  pro: false },
+  { label: '480p',  quality: '480p',  key: 'url_480p',  pro: false },
+];
 
 const VideoPlayerV2 = ({
   src,
@@ -19,7 +29,13 @@ const VideoPlayerV2 = ({
   isTheaterMode = false,
   isCinematic = false,
   toggleTheaterMode,
-  toggleCinematic
+  toggleCinematic,
+  // Resolution URLs
+  url_480p,
+  url_720p,
+  url_1080p,
+  url_2k,
+  url_4k,
 }) => {
   const { token, user } = useAuth();
   const videoRef = useRef(null);
@@ -49,6 +65,24 @@ const VideoPlayerV2 = ({
   const isPremium = user?.is_premium;
   const [isPreRollActive, setIsPreRollActive] = useState(false);
 
+  // Quality selector state — null means "Auto" (master HLS)
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [selectedQuality, setSelectedQuality] = useState(null); // null = Auto/master
+  const qualityMenuRef = useRef(null);
+  const pendingSeekRef = useRef(null); // stores time to seek after quality switch
+
+  // Build list of available resolutions from provided URLs (only show those with actual URLs)
+  const availableResolutions = useMemo(() => {
+    const urlMap = { url_480p, url_720p, url_1080p, url_2k, url_4k };
+    return RESOLUTION_DEFS.filter(r => !!urlMap[r.key]);
+  }, [url_480p, url_720p, url_1080p, url_2k, url_4k]);
+
+  // Determine the label to show on the settings button
+  const selectedLabel = useMemo(() => {
+    if (!selectedQuality) return 'Auto';
+    return RESOLUTION_DEFS.find(r => r.quality === selectedQuality)?.label || 'Auto';
+  }, [selectedQuality]);
+
   useEffect(() => {
     if (isPremium) setIsPreRollActive(false);
   }, [isPremium]);
@@ -64,36 +98,73 @@ const VideoPlayerV2 = ({
     }
   }, []);
 
-  // Initialize HLS / Video Source
+  // Close quality menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (qualityMenuRef.current && !qualityMenuRef.current.contains(e.target)) {
+        setShowQualityMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  // Initialize HLS / Video Source — reacts to quality changes
   useEffect(() => {
     if (!videoRef.current || !src) return;
     setError(null);
 
-    const playVideo = () => {
-      if (autoPlay && !isPreRollActive) {
+    // Save playback state before switching
+    const savedTime = videoRef.current.currentTime || 0;
+    const wasPlaying = !videoRef.current.paused;
+
+    // Store pending seek time; will be applied after loadedmetadata
+    if (savedTime > 0) {
+      pendingSeekRef.current = savedTime;
+    }
+
+    // Build the stream URL:
+    // - If a specific resolution is selected, use the /stream-res proxy endpoint
+    // - Otherwise fall through to the master HLS proxy
+    let streamSrc;
+    if (selectedQuality) {
+      // Use the dedicated resolution proxy (avoids CORS, streams the specific quality file)
+      streamSrc = `${API_BASE_URL}/videos/${videoId}/stream-res?quality=${selectedQuality}`;
+    } else {
+      streamSrc = getStreamUrl(src, videoId);
+    }
+
+    const srcToUse = streamSrc || src;
+    let recoveryAttempts = 0;
+
+    const playAfterLoad = () => {
+      if (!videoRef.current) return;
+      if (pendingSeekRef.current !== null) {
+        videoRef.current.currentTime = pendingSeekRef.current;
+        pendingSeekRef.current = null;
+      }
+      if ((autoPlay && !isPreRollActive) || wasPlaying) {
         videoRef.current.play().catch(err => {
-          console.log("Autoplay blocked or failed:", err);
+          console.log('Autoplay blocked or failed:', err);
         });
       }
     };
 
-    const streamSrc = getStreamUrl(src, videoId);
-
-    if (Hls.isSupported() && src.endsWith('.m3u8')) {
+    if (Hls.isSupported() && srcToUse.includes('.m3u8')) {
       if (hlsRef.current) hlsRef.current.destroy();
-      const hls = new Hls({ capLevelToPlayerSize: true });
-      hls.loadSource(src);
+      const hls = new Hls({ capLevelToPlayerSize: false, startLevel: -1 });
+      hls.loadSource(srcToUse);
       hls.attachMedia(videoRef.current);
       hlsRef.current = hls;
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        playVideo();
+        playAfterLoad();
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
           if (recoveryAttempts >= 3) {
-            setError("Failed to load video stream.");
+            setError('Failed to load video stream.');
             return;
           }
           recoveryAttempts++;
@@ -107,7 +178,7 @@ const VideoPlayerV2 = ({
               hls.recoverMediaError();
               break;
             default:
-              setError("Failed to load video stream.");
+              setError('Failed to load video stream.');
               break;
           }
         }
@@ -115,10 +186,17 @@ const VideoPlayerV2 = ({
 
       return () => hls.destroy();
     } else {
-      videoRef.current.src = src;
-      playVideo();
+      // Direct MP4 / non-HLS stream
+      videoRef.current.src = srcToUse;
+      const onMeta = () => {
+        playAfterLoad();
+        videoRef.current.removeEventListener('loadedmetadata', onMeta);
+      };
+      videoRef.current.addEventListener('loadedmetadata', onMeta);
+      videoRef.current.load();
+      return () => videoRef.current?.removeEventListener('loadedmetadata', onMeta);
     }
-  }, [src, autoPlay, isPreRollActive]);
+  }, [selectedQuality, src, autoPlay, isPreRollActive, videoId]);
 
   // Analytics: View & Heartbeat + History Tracking
   useEffect(() => {
@@ -438,6 +516,65 @@ const VideoPlayerV2 = ({
           </div>
 
           <div className="group">
+            {/* Quality Selector */}
+            {availableResolutions.length > 1 && (
+              <div className="qualitySelector" ref={qualityMenuRef}>
+                <button
+                  className="controlBtn qualityBtn"
+                  onClick={(e) => { e.stopPropagation(); setShowQualityMenu(prev => !prev); }}
+                  title="Video Quality"
+                  id="quality-settings-btn"
+                >
+                  <Settings size={20} />
+                  <span className="qualityLabel">
+                    {selectedLabel}
+                  </span>
+                </button>
+
+                {showQualityMenu && (
+                  <div className="qualityMenu" onClick={e => e.stopPropagation()}>
+                    <div className="qualityMenuHeader">
+                      <Settings size={14} />
+                      <span>Video Quality</span>
+                    </div>
+                    {availableResolutions.map(res => {
+                      const isLocked = res.pro && !isPremium;
+                      const isActive = selectedQuality === res.quality;
+                      return (
+                        <button
+                          key={res.quality}
+                          className={`qualityOption ${isActive ? 'qualityOptionActive' : ''} ${isLocked ? 'qualityOptionLocked' : ''}`}
+                          onClick={() => {
+                            if (isLocked) return;
+                            setSelectedQuality(res.quality);
+                            setShowQualityMenu(false);
+                          }}
+                          title={isLocked ? 'Pro membership required' : ''}
+                        >
+                          <span className="qualityOptionLabel">{res.label}</span>
+                          <span className={`qualityBadge ${res.pro ? 'qualityBadgePro' : ''}`}>{res.label}</span>
+                          {isLocked ? (
+                            <span className="qualityLockWrap">
+                              <Crown size={13} className="qualityCrownIcon" />
+                              <span className="qualityProTag">PRO</span>
+                            </span>
+                          ) : isActive ? (
+                            <span className="qualityCheckmark">✓</span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                    {!isPremium && (
+                      <div className="qualityUpgradeBanner">
+                        <Crown size={14} />
+                        <span>Upgrade for 1080p, 2K & 4K</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <button className="controlBtn" onClick={toggleTheaterMode} title="Theater Mode">
               {isTheaterMode ? <Square size={20} /> : <Monitor size={20} />}
             </button>

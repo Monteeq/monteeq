@@ -297,3 +297,174 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ──────────────────────────────────────────────
+   Quality Selector
+────────────────────────────────────────────── */
+.qualitySelector {
+  position: relative;
+}
+
+.qualityBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.qualityBtn:hover {
+  background: rgba(255, 59, 48, 0.18);
+  border-color: rgba(255, 59, 48, 0.4);
+  color: #fff;
+  transform: scale(1);
+}
+
+.qualityLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Dropdown panel */
+.qualityMenu {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  background: rgba(14, 14, 18, 0.96);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  min-width: 190px;
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 59, 48, 0.08);
+  animation: qualityMenuSlideIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 200;
+}
+
+@keyframes qualityMenuSlideIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.qualityMenuHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Individual quality option */
+.qualityOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.qualityOption:hover:not(.qualityOptionLocked) {
+  background: rgba(255, 59, 48, 0.14);
+  color: #fff;
+}
+
+.qualityOptionActive {
+  background: rgba(255, 59, 48, 0.18) !important;
+  color: #ff3b30 !important;
+}
+
+.qualityOptionLocked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qualityOptionLabel {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* Resolution badge pill */
+.qualityBadge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.04em;
+}
+
+.qualityBadgePro {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.2));
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.25);
+}
+
+/* Lock / Crown wrapper */
+.qualityLockWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.qualityCrownIcon {
+  color: #ffd700;
+}
+
+.qualityProTag {
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: linear-gradient(90deg, #ffd700, #ff9800);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Active checkmark */
+.qualityCheckmark {
+  color: #ff3b30;
+  font-size: 0.95rem;
+  font-weight: 900;
+  margin-left: auto;
+}
+
+/* Upgrade banner at the bottom of the menu */
+.qualityUpgradeBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  margin: 0.3rem 0.5rem 0.5rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 140, 0, 0.08));
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: default;
+}
+
