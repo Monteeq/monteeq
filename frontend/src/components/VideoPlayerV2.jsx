@@ -517,7 +517,7 @@ const VideoPlayerV2 = ({
 
           <div className="group">
             {/* Quality Selector */}
-            {availableResolutions.length > 1 && (
+            {availableResolutions.length >= 1 && (
               <div className="qualitySelector" ref={qualityMenuRef}>
                 <button
                   className="controlBtn qualityBtn"
@@ -552,7 +552,9 @@ const VideoPlayerV2 = ({
                           title={isLocked ? 'Pro membership required' : ''}
                         >
                           <span className="qualityOptionLabel">{res.label}</span>
-                          <span className={`qualityBadge ${res.pro ? 'qualityBadgePro' : ''}`}>{res.label}</span>
+                          {res.pro && (
+                            <span className="qualityBadge qualityBadgePro">{res.label}</span>
+                          )}
                           {isLocked ? (
                             <span className="qualityLockWrap">
                               <Crown size={13} className="qualityCrownIcon" />
@@ -564,7 +566,7 @@ const VideoPlayerV2 = ({
                         </button>
                       );
                     })}
-                    {!isPremium && (
+                    {!isPremium && availableResolutions.some(r => r.pro) && (
                       <div className="qualityUpgradeBanner">
                         <Crown size={14} />
                         <span>Upgrade for 1080p, 2K & 4K</span>
