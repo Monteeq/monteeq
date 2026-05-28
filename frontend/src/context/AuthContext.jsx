@@ -4,6 +4,7 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 import { API_BASE_URL } from '../api';
+import { registerPushSubscription } from '../utils/pushSubscription';
 
 
 export const AuthProvider = ({ children }) => {
@@ -49,7 +50,10 @@ export const AuthProvider = ({ children }) => {
         const { access_token } = response.data;
         localStorage.setItem('token', access_token);
         setToken(access_token);
-        return await fetchUser(access_token);
+        const loggedInUser = await fetchUser(access_token);
+        // Fire-and-forget — silently ask for push permission after login
+        registerPushSubscription(access_token);
+        return loggedInUser;
     };
 
     const signup = async (userData) => {
@@ -70,7 +74,10 @@ export const AuthProvider = ({ children }) => {
         if (access_token) {
             localStorage.setItem('token', access_token);
             setToken(access_token);
-            return await fetchUser(access_token);
+            const loggedInUser = await fetchUser(access_token);
+            // Fire-and-forget push subscription
+            registerPushSubscription(access_token);
+            return loggedInUser;
         }
         return response.data;
         } catch (error) {
@@ -84,7 +91,10 @@ export const AuthProvider = ({ children }) => {
         const { access_token } = response.data;
         localStorage.setItem('token', access_token);
         setToken(access_token);
-        return await fetchUser(access_token);
+        const loggedInUser = await fetchUser(access_token);
+        // Fire-and-forget push subscription
+        registerPushSubscription(access_token);
+        return loggedInUser;
     };
 
     const logout = () => {

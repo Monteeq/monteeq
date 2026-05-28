@@ -7,8 +7,18 @@ from app.crud import notification as crud_notification
 from app.models.models import User
 from app.schemas import notification as schemas
 from app.schemas import push as push_schemas
+import os
 
 router = APIRouter()
+
+@router.get("/vapid-public-key")
+def get_vapid_public_key():
+    """Return the VAPID public key so the frontend can subscribe to push notifications."""
+    key = os.getenv("VAPID_PUBLIC_KEY", "")
+    if not key:
+        raise HTTPException(status_code=503, detail="Push notifications not configured")
+    return {"public_key": key}
+
 
 @router.get("/unread", response_model=List[schemas.Notification])
 def get_unread_notifications(
