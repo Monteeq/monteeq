@@ -67,6 +67,7 @@ def notify_user_push(db: Session, user_id: int, title: str, body: str, link: str
     elif n_type == "achievement" and user.notif_challenge_win: should_email = True
     elif n_type == "comment" and user.notif_comments: should_email = True
     elif n_type == "status_change": should_email = True # Vital status changes always email
+    elif n_type == "morning" and user.email_marketing: should_email = True
     
     if should_email and user.email:
         send_email(
