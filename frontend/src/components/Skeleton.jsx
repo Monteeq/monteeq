@@ -303,15 +303,6 @@ export const ChatSkeleton = () => (
 
 export const HomeSkeleton = () => (
     <div className="home-container page-container">
-        <div className="hero-section skeleton" style={{ height: '400px', borderRadius: '24px', marginBottom: '1rem', display: 'flex', alignItems: 'center', padding: '3rem' }}>
-            <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="skeleton" style={{ width: '150px', height: '24px', borderRadius: '50px', background: 'rgba(255,255,255,0.1)' }} />
-                <div className="skeleton skeleton-text" style={{ width: '100%', height: '3.5rem', borderRadius: '8px', background: 'rgba(255,255,255,0.1)' }} />
-                <div className="skeleton skeleton-text" style={{ width: '80%', height: '1.2rem', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }} />
-                <div className="skeleton" style={{ width: '180px', height: '48px', borderRadius: '12px', marginTop: '1rem', background: 'rgba(255,255,255,0.1)' }} />
-            </div>
-        </div>
-        
         <div className="category-chips-container" style={{ marginBottom: '1rem' }}>
             {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                 <div key={i} className="skeleton" style={{ width: '80px', height: '32px', borderRadius: '8px', flexShrink: 0 }} />
@@ -325,6 +316,7 @@ export const HomeSkeleton = () => (
         </div>
     </div>
 );
+
 
 export const AchievementSkeleton = () => (
     <div className="page-container">
