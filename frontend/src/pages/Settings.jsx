@@ -92,7 +92,16 @@ const Settings = () => {
                 two_factor_enabled: user.two_factor_enabled ?? false,
                 interests: user.interests || '',
                 goals: user.goals || '',
-                referral_source: user.referral_source || ''
+                referral_source: user.referral_source || '',
+                // Notification preferences — read from user so toggles reflect saved state
+                notif_new_follower: user.notif_new_follower ?? true,
+                notif_likes: user.notif_likes ?? false,
+                notif_comments: user.notif_comments ?? true,
+                notif_challenge_win: user.notif_challenge_win ?? true,
+                email_weekly: user.email_weekly ?? true,
+                email_challenges: user.email_challenges ?? true,
+                email_payouts: user.email_payouts ?? true,
+                email_marketing: user.email_marketing ?? false,
             });
             setAvatarPreview(user.profile_pic);
         }
@@ -726,13 +735,13 @@ const Settings = () => {
                             Push Notifications
                         </div>
                         <div className="settings-group-box">
-                            <p style={{ color: '#888', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
                                 Control what alerts you receive directly on the platform and mobile apps.
                             </p>
-                            <ToggleSwitch name="notif_new_follower" label="New Followers" checked={formData.notif_new_follower} onChange={handleFormChange} />
-                            <ToggleSwitch name="notif_likes" label="Video Likes" checked={formData.notif_likes} onChange={handleFormChange} />
-                            <ToggleSwitch name="notif_comments" label="Video Comments" checked={formData.notif_comments} onChange={handleFormChange} />
-                            <ToggleSwitch name="notif_challenge_win" label="Challenge Wins & Trophies" checked={formData.notif_challenge_win} onChange={handleFormChange} />
+                            <ToggleSwitch name="notif_new_follower" label="New Followers" checked={!!formData.notif_new_follower} onChange={handleFormChange} />
+                            <ToggleSwitch name="notif_likes" label="Video Likes" checked={!!formData.notif_likes} onChange={handleFormChange} />
+                            <ToggleSwitch name="notif_comments" label="Video Comments" checked={!!formData.notif_comments} onChange={handleFormChange} />
+                            <ToggleSwitch name="notif_challenge_win" label="Challenge Wins & Trophies" checked={!!formData.notif_challenge_win} onChange={handleFormChange} />
                         </div>
                     </section>
 
@@ -742,12 +751,13 @@ const Settings = () => {
                             Email Preferences
                         </div>
                         <div className="settings-group-box">
-                            <p style={{ color: '#888', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
                                 Manage the communications sent to your registered email address.
                             </p>
-                            <ToggleSwitch name="email_weekly" label="Weekly Performance Summary" checked={formData.email_weekly} onChange={handleFormChange} />
-                            <ToggleSwitch name="email_challenges" label="New Trending Challenges" checked={formData.email_challenges} onChange={handleFormChange} />
-                            <ToggleSwitch name="email_marketing" label="Monteeq News & Offers" checked={formData.email_marketing} onChange={handleFormChange} />
+                            <ToggleSwitch name="email_weekly" label="Weekly Performance Summary" checked={!!formData.email_weekly} onChange={handleFormChange} />
+                            <ToggleSwitch name="email_challenges" label="New Trending Challenges" checked={!!formData.email_challenges} onChange={handleFormChange} />
+                            <ToggleSwitch name="email_payouts" label="Payout & Earnings Updates" checked={!!formData.email_payouts} onChange={handleFormChange} />
+                            <ToggleSwitch name="email_marketing" label="Monteeq News & Offers" checked={!!formData.email_marketing} onChange={handleFormChange} />
                         </div>
                     </section>
                 </>
