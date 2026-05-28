@@ -188,28 +188,8 @@ const ManageContent = () => {
 
     return (
         <div className="manage-content-page page-container" style={{ padding: '2rem 1rem', maxWidth: '1200px', margin: '0 auto', minHeight: '100vh' }}>
-            {/* Header section with back button and breadcrumb */}
             <div className="manage-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="glass hover-scale"
-                        style={{
-                            width: '48px',
-                            height: '48px',
-                            borderRadius: '50%',
-                            color: 'white',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            border: '1px solid var(--border-glass)',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            transition: 'all 0.3s ease'
-                        }}
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>
                             <span>Studio</span>
