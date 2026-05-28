@@ -79,6 +79,7 @@ const Settings = () => {
     const [generatingRecovery, setGeneratingRecovery] = useState(false);
 
     const [avatarPreview, setAvatarPreview] = useState(null);
+    const [googleLinking, setGoogleLinking] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -344,34 +345,25 @@ const Settings = () => {
 
     const handleGoogleLink = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
+            setGoogleLinking(true);
             try {
-                // Get ID token or just access token (backend expects id_token usually for auth, 
-                // but let's see if we can get it from the response or if we need a different flow)
-                // useGoogleLogin with default implicit flow gives access_token.
-                // For linking, we might need a code flow or fetch profile info.
-                // Actually, let's use the access_token to fetch user info if id_token isn't available.
-                // OR better, use the auth-code flow for the backend to get the token.
-
-                // For simplicity and matching my plan, I'll use the access_token 
-                // and the backend will verify it via google-auth (which also supports access_token verification).
-                // Wait, verify_oauth2_token usually expects an ID token.
-                // I'll adjust the backend in a moment if needed, or get the ID token here.
-
-                // Assuming we want to stay simple:
-                const res = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
-                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                });
-
                 const linkRes = await linkGoogleAccount(tokenResponse.access_token, token);
                 if (linkRes.google_id) {
                     setUser(linkRes);
                     showNotification('success', 'Google Account linked successfully');
                 }
             } catch (err) {
-                showNotification('error', err?.message || 'Failed to link Google account');
+                const detail = err?.response?.data?.detail;
+                if (detail && detail.includes('already linked')) {
+                    showNotification('error', 'This Google account is already linked to another Monteeq profile. Please use a different Google account.');
+                } else {
+                    showNotification('error', detail || 'Failed to link Google account');
+                }
+            } finally {
+                setGoogleLinking(false);
             }
         },
-        scope: 'https://www.googleapis.com/auth/drive.file email profile',
+        scope: 'email profile',
     });
 
     const SidebarItem = ({ id, icon: Icon, label }) => (
@@ -517,7 +509,16 @@ const Settings = () => {
                                     {user?.google_id ? (
                                         <span className="status-badge-hero">CONNECTED</span>
                                     ) : (
-                                        <button className="save-btn" onClick={() => handleGoogleLink()}>Connect</button>
+                                        <button
+                                            className="save-btn"
+                                            onClick={() => handleGoogleLink()}
+                                            disabled={googleLinking}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.4rem' }}
+                                        >
+                                            {googleLinking ? (
+                                                <><Loader2 size={16} className="animate-spin" /> Connecting...</>
+                                            ) : 'Connect'}
+                                        </button>
                                     )}
                                 </div>
                             </div>
