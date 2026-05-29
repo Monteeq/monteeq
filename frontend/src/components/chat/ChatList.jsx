@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MessageSquare } from 'lucide-react';
+import logo from '../../assets/images/logo.png';
 
 const ChatList = ({
     conversations,
@@ -20,6 +21,9 @@ const ChatList = ({
             className="chatSidebar"
         >
             <div className="sidebarHeader">
+                <div className="chat-sidebar-logo" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <img src={logo} alt="Monteeq" style={{ height: '28px', width: 'auto' }} />
+                </div>
                 <h2 style={{ marginBottom: '1.2rem' }}>
                     {isDiscoveryMode ? 'Discover' : 'Sessions'}
                 </h2>

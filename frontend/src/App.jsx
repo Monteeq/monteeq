@@ -114,7 +114,7 @@ function AppContent() {
 
   const isImmersive = isAuthPage || isFlashPage || isPaymentPage || isNotFound;
   const hideSidebar = isLandingPage || isImmersive || isMarketingPage || location.pathname === '/chat';
-  const hideHeader = isImmersive || isLandingPage;
+  const hideHeader = isImmersive || isLandingPage || location.pathname === '/chat';
 
   // Auto-logout when backend returns 401
   React.useEffect(() => {
