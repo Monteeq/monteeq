@@ -167,16 +167,10 @@
   width: 34px;
   height: 34px;
   min-width: 34px;
-  background: var(--neon-red);
-  border-radius: 9px;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #fff;
-  box-shadow: 0 0 18px rgba(235, 0, 0, 0.3);
 }
 
 .nav-rail-logo-text {

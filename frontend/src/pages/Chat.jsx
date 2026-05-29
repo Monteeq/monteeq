@@ -16,11 +16,12 @@ import {
     getFollowing,
     linkGoogleAccount
 } from '../api';
-import { Key, Home, MessageSquare, UserPlus, Zap, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Key, Cloud, Home, MessageSquare, UserPlus, Zap, ShieldCheck, ShieldAlert } from 'lucide-react';
 import ChatList from '../components/chat/ChatList';
 import ChatWindow from '../components/chat/ChatWindow';
 import { useGoogleLogin } from '@react-oauth/google';
 import './Chat.css';
+import logo from '../assets/images/logo.png';
 
 const Chat = () => {
     const { user, token, setUser } = useAuth();
@@ -512,7 +513,9 @@ const Chat = () => {
             <div className="nav-rail">
                 <div className="nav-rail-top">
                     <div className="nav-rail-logo">
-                        <div className="nav-rail-logo-mark">M</div>
+                        <div className="nav-rail-logo-mark">
+                            <img src={logo} alt="Monteeq" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        </div>
                         <span className="nav-rail-logo-text">Monteeq</span>
                     </div>
 
