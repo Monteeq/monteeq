@@ -885,27 +885,44 @@
 }
 
 .v3-play-btn-large {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  background: var(--neon-red);
+  background: transparent;
   border: none;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 0 12px rgba(235, 0, 0, 0.4);
-  color: white;
-  transition: transform 0.2s, background 0.2s;
+  color: var(--neon-red);
+  transition: transform 0.2s, color 0.2s;
+  padding: 0;
 }
 
 .v3-play-btn-large:hover {
-  transform: scale(1.08);
-  background: #ff3333;
+  transform: scale(1.1);
+  color: #ff4d4d;
 }
 
 .v3-play-btn-large:active {
+  transform: scale(0.95);
+}
+
+.header-more-btn {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.6);
+  transition: transform 0.2s, color 0.2s;
+  padding: 0;
+}
+
+.header-more-btn:hover {
+  transform: scale(1.1);
+  color: #fff;
+}
+
+.header-more-btn:active {
   transform: scale(0.95);
 }
 

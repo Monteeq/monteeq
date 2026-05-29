@@ -159,7 +159,7 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
                             </div>
 
                             <button className="v3-play-btn-large" onClick={handlePlayVoice}>
-                                {isVoicePlaying ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" style={{ marginLeft: '2px' }} />}
+                                {isVoicePlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" style={{ marginLeft: '3px' }} />}
                             </button>
                             
                             <div className="v3-waveform-area">

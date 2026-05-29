@@ -96,7 +96,7 @@ const ChatWindow = ({
                     </div>
                 </div>
                     <div className="headerActions">
-                        <MoreVertical size={28} className="actionBtn" />
+                        <MoreVertical size={32} className="header-more-btn" />
                     </div>
             </div>
 
