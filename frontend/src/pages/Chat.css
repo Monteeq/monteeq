@@ -552,6 +552,19 @@
   background: #1a1a20;
 }
 
+.message-bubble-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.message-bubble-wrapper.sent {
+  justify-content: flex-end;
+}
+
+.message-bubble-wrapper.received {
+  justify-content: flex-start;
+}
+
 /* Bubbles */
 .messageBubble {
   max-width: 75%;

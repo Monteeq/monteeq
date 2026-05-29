@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { FileIcon, Download, Play, Pause, Shield, Lock, CheckCheck, FileText, FileArchive, Image as ImageIcon, Video } from 'lucide-react';
+import ChatVideoPlayer from './ChatVideoPlayer';
 
 const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFile, decryptBinary }) => {
     const [isVoicePlaying, setIsVoicePlaying] = useState(false);
@@ -210,9 +211,9 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
                 );
             case 'video':
                 return (
-                    <div className="video-player-v2">
+                    <div className="media-attachment-container">
                         {mediaUrl ? (
-                            <video src={mediaUrl} controls className="media-preview" />
+                            <ChatVideoPlayer src={mediaUrl} />
                         ) : (
                             <div className="media-placeholder">
                                 <Video size={32} className="spinning" />

@@ -108,6 +108,7 @@ const ChatWindow = ({
                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             transition={{ duration: 0.2 }}
+                            className={`message-bubble-wrapper ${msg.sender_id === user.id ? 'sent' : 'received'}`}
                         >
                             <MessageBubble 
                                 message={msg}
