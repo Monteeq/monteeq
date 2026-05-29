@@ -16,7 +16,7 @@ import {
     getFollowing,
     linkGoogleAccount
 } from '../api';
-import { Key, Link, Cloud, Home, MessageSquare, UserPlus, Zap, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Key, Home, MessageSquare, UserPlus, Zap, ShieldCheck, ShieldAlert } from 'lucide-react';
 import ChatList from '../components/chat/ChatList';
 import ChatWindow from '../components/chat/ChatWindow';
 import { useGoogleLogin } from '@react-oauth/google';
@@ -658,33 +658,7 @@ const Chat = () => {
                 )}
             </AnimatePresence>
 
-            <div className="chatInfo">
-                {selectedConv && (
-                   <div className="info-panel-content">
-                        <h3>Session Security</h3>
-                        <p>Fully End-to-End Encrypted</p>
-                        <div className="drive-status">
-                            {user.google_id && (
-                                <>
-                                    <span>Sync Status:</span>
-                                    {drive.isSyncing ? 'Syncing...' : (drive.isAuthenticated ? 'Protected by Google' : 'Cloud Backup Pending')}
-                                    {!user.google_id ? (
-                                        <button className="primary-btn-mini" onClick={() => handleGoogleLink()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Link size={14} />
-                                            Link Google
-                                        </button>
-                                    ) : (!drive.isAuthenticated && (
-                                        <button className="primary-btn-mini" onClick={() => drive.login()} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <Cloud size={14} />
-                                            Enable Drive Sync
-                                        </button>
-                                    ))}
-                                </>
-                            )}
-                        </div>
-                   </div>
-                )}
-            </div>
+
         </div>
     );
 };

@@ -113,7 +113,7 @@ function AppContent() {
   const isNotFound = !knownPaths.includes(location.pathname) && !isDynamicPath;
 
   const isImmersive = isAuthPage || isFlashPage || isPaymentPage || isNotFound;
-  const hideSidebar = isLandingPage || isImmersive || isMarketingPage;
+  const hideSidebar = isLandingPage || isImmersive || isMarketingPage || location.pathname === '/chat';
   const hideHeader = isImmersive || isLandingPage;
 
   // Auto-logout when backend returns 401
@@ -219,7 +219,7 @@ function AppContent() {
                   {/* 404 catch-all */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-                {!isImmersive && <Footer />}
+                {!isImmersive && location.pathname !== '/chat' && <Footer />}
               </React.Suspense>
             </div>
           </div>
