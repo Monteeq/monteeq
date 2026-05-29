@@ -125,6 +125,18 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    const waveformHeights = React.useMemo(() => {
+        const idStr = String(message.id || '');
+        let hash = 0;
+        for (let i = 0; i < idStr.length; i++) {
+            hash = idStr.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return [...Array(20)].map((_, i) => {
+            const h = Math.abs(Math.sin(hash + i) * 60) + 20;
+            return h;
+        });
+    }, [message.id]);
+
     const renderContent = () => {
         if (!decryptedContent) return (
             <div className="deciphering-mode">
@@ -138,30 +150,36 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
                 return (
                     <div className="voice-message-v3">
                         <div className="v3-voice-main">
-                            <div className="v3-avatar-play">
-                                <div className="v3-mini-avatar">
-                                    {sender?.profile_pic ? (
-                                        <img src={sender.profile_pic} alt="" />
-                                    ) : (
-                                        <div className="v3-initials">{sender?.username?.[0]?.toUpperCase()}</div>
-                                    )}
-                                    <button className="v3-play-btn" onClick={handlePlayVoice}>
-                                        {isVoicePlaying ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" style={{ marginLeft: '2px' }} />}
-                                    </button>
-                                </div>
+                            <div className="v3-mini-avatar">
+                                {sender?.profile_pic ? (
+                                    <img src={sender.profile_pic} alt="" />
+                                ) : (
+                                    <div className="v3-initials">{sender?.username?.[0]?.toUpperCase()}</div>
+                                )}
                             </div>
+
+                            <button className="v3-play-btn-large" onClick={handlePlayVoice}>
+                                {isVoicePlaying ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" style={{ marginLeft: '2px' }} />}
+                            </button>
                             
                             <div className="v3-waveform-area">
                                 <div className="v3-waveform-bg">
-                                    <div 
-                                        className="v3-waveform-progress" 
-                                        style={{ width: `${progress}%` }} 
-                                    />
                                     {/* Stylized waveform bars */}
                                     <div className="v3-bars">
-                                        {[...Array(20)].map((_, i) => (
-                                            <span key={i} style={{ height: `${20 + Math.random() * 60}%` }} />
-                                        ))}
+                                        {waveformHeights.map((h, i) => {
+                                            const isPlayed = progress >= (i / 20) * 100;
+                                            return (
+                                                <span 
+                                                    key={i} 
+                                                    style={{ 
+                                                        height: `${h}%`,
+                                                        backgroundColor: isPlayed ? 'var(--neon-red)' : 'rgba(255, 255, 255, 0.25)',
+                                                        boxShadow: isPlayed ? '0 0 6px var(--neon-red)' : 'none',
+                                                        transition: 'background-color 0.1s ease, box-shadow 0.1s ease'
+                                                    }} 
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 </div>
                                 <div className="v3-meta">
