@@ -127,7 +127,7 @@ const ChatWindow = ({
             <div className="inputArea">
                 <div className="inputWrapper">
                     <label className="actionBtn">
-                        <Paperclip size={24} />
+                        <Paperclip size={28} />
                         <input 
                             type="file" 
                             style={{ display: 'none' }} 
@@ -150,7 +150,7 @@ const ChatWindow = ({
                             className="btn-primary-neon" 
                             onClick={handleSendText}
                         >
-                            <Send size={24} />
+                            <Send size={28} />
                         </motion.button>
                     </div>
                 </div>

@@ -25,7 +25,7 @@ const ChatList = ({
                 </h2>
 
                 <div className="searchBox">
-                    <Search size={22} className="search-icon" />
+                    <Search size={26} className="search-icon" />
                     <input 
                         type="text" 
                         placeholder={isDiscoveryMode ? "FIND CREATORS..." : "SEARCH SESSIONS..."}

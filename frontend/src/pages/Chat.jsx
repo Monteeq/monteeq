@@ -523,7 +523,7 @@ const Chat = () => {
                         className={`nav-rail-btn ${!isDiscoveryMode ? 'active' : ''}`}
                         onClick={() => { setIsDiscoveryMode(false); setSelectedConv(null); }}
                     >
-                        <MessageSquare size={20} />
+                        <MessageSquare size={26} />
                         Sessions
                     </button>
 
@@ -531,7 +531,7 @@ const Chat = () => {
                         className={`nav-rail-btn ${isDiscoveryMode ? 'active' : ''}`}
                         onClick={() => { setIsDiscoveryMode(true); fetchDiscoveryUsers(); }}
                     >
-                        <UserPlus size={20} />
+                        <UserPlus size={26} />
                         Discover
                     </button>
 
@@ -541,7 +541,7 @@ const Chat = () => {
                         className={`nav-rail-btn ${hasKeyMismatch ? 'security-alert' : 'security-ok'}`}
                         onClick={() => setShowSecurityPortal(true)}
                     >
-                        {hasKeyMismatch ? <ShieldAlert size={20} /> : <ShieldCheck size={20} />}
+                        {hasKeyMismatch ? <ShieldAlert size={26} /> : <ShieldCheck size={26} />}
                         {hasKeyMismatch ? 'Key Desync' : 'Encrypted'}
                     </button>
                 </div>

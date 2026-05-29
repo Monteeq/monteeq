@@ -121,29 +121,29 @@ const VoiceRecorder = ({ onSendVoice }) => {
         <div className="voice-recorder-overlay">
             {!isRecording && !audioBlob ? (
                 <button className="btn-primary-neon" onClick={startRecording}>
-                    <Mic size={24} />
+                    <Mic size={28} />
                 </button>
             ) : isRecording ? (
                 <div className="recording-status">
                     <span className="rec-indicator"></span>
                     <span className="time">{formatTime(recordingTime)}</span>
                     <button className="btn-primary-neon" onClick={stopRecording}>
-                        <Square size={24} fill="white" />
+                        <Square size={28} fill="white" />
                     </button>
                 </div>
             ) : (
                 <div className="review-status">
                     <button className="actionBtn" onClick={handleDiscard}>
-                        <Trash2 size={24} />
+                        <Trash2 size={28} />
                     </button>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button className="actionBtn" onClick={handlePreviewPlay}>
-                            {isPreviewPlaying ? <Pause size={24} /> : <Play size={24} />}
+                            {isPreviewPlaying ? <Pause size={28} /> : <Play size={28} />}
                         </button>
                         <span className="time">{formatTime(recordingTime)} (Review)</span>
                     </div>
                     <button className="btn-primary-neon" onClick={handleSend}>
-                        <Send size={24} />
+                        <Send size={28} />
                     </button>
                 </div>
             )}
