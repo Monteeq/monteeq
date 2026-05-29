@@ -455,6 +455,21 @@ export const getRecipientPrekeyBundles = async (username, token) => {
     return response.json();
 };
 
+export const listDevices = async (token) => {
+    const response = await fetch(`${API_BASE_URL}/chat/keys/devices`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+};
+
+export const revokeDevice = async (deviceId, token) => {
+    const response = await fetch(`${API_BASE_URL}/chat/keys/devices/${deviceId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+};
+
 export const sendChatMessage = async (messageData, token) => {
     const response = await fetch(`${API_BASE_URL}/chat/messages`, {
         method: 'POST',
@@ -483,6 +498,18 @@ export const getConversations = async (token) => {
 export const getChatMessages = async (conversationId, token) => {
     const response = await fetch(`${API_BASE_URL}/chat/messages/${conversationId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+};
+
+export const acknowledgeMessages = async (messageIds, token) => {
+    const response = await fetch(`${API_BASE_URL}/chat/messages/ack`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(messageIds)
     });
     return response.json();
 };

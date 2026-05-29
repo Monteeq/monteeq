@@ -4,6 +4,8 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCrypto } from '../hooks/useCrypto';
 import { useGoogleDrive } from '../hooks/useGoogleDrive';
+import { useChatDB } from '../hooks/useChatDB';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { useNotification } from '../context/NotificationContext';
 import { 
     getConversations, 
@@ -16,7 +18,8 @@ import {
     getFollowing,
     linkGoogleAccount,
     uploadPrekeyBundle,
-    getRecipientPrekeyBundles
+    getRecipientPrekeyBundles,
+    acknowledgeMessages
 } from '../api';
 import { Key, Cloud, Home, MessageSquare, UserPlus, Zap, ShieldCheck, ShieldAlert } from 'lucide-react';
 import ChatList from '../components/chat/ChatList';
@@ -28,6 +31,7 @@ import logo from '../assets/images/logo.png';
 const Chat = () => {
     const { user, token, setUser } = useAuth();
     const { showNotification } = useNotification();
+    const { saveMessage, getMessagesForConversation, saveConversation, getLocalConversations } = useChatDB();
     const location = useLocation();
     const deviceId = useMemo(() => {
         let devId = localStorage.getItem('monteeq_device_id');
@@ -171,14 +175,25 @@ const Chat = () => {
 
     const fetchConversations = useCallback(async () => {
         try {
+            const cached = await getLocalConversations();
+            if (cached && cached.length > 0) {
+                setConversations(cached);
+                setIsConvsLoaded(true);
+            }
             const data = await getConversations(token);
-            setConversations(data);
-            setIsConvsLoaded(true);
+            if (Array.isArray(data)) {
+                setConversations(data);
+                setIsConvsLoaded(true);
+                for (const c of data) {
+                    await saveConversation(c);
+                }
+            } else {
+                console.error('Invalid conversations data:', data);
+            }
         } catch (error) {
             console.error('Failed to fetch conversations', error);
-            setIsConvsLoaded(true); // Set to true even on error so we can proceed with virtual chat
         }
-    }, [token]);
+    }, [token, getLocalConversations, saveConversation]);
 
     const fetchDiscoveryUsers = useCallback(async () => {
         try {
@@ -304,28 +319,67 @@ const Chat = () => {
     const fetchMessages = useCallback(async (convId) => {
         if (!convId || String(convId).startsWith('virtual-')) return;
         try {
-            const data = await getChatMessages(convId, token);
-            if (Array.isArray(data)) {
-                setMessages(data);
-                decryptAll(data);
-            } else {
-                setMessages([]);
+            const localMsgs = await getMessagesForConversation(convId);
+            setMessages(localMsgs);
+            decryptAll(localMsgs);
+
+            const remoteMsgs = await getChatMessages(convId, token);
+            if (Array.isArray(remoteMsgs) && remoteMsgs.length > 0) {
+                for (const msg of remoteMsgs) {
+                    await saveMessage(msg);
+                }
+                const updatedMsgs = await getMessagesForConversation(convId);
+                setMessages(updatedMsgs);
+                decryptAll(updatedMsgs);
+
+                const incomingIds = remoteMsgs
+                    .filter(m => String(m.sender_id) !== String(user.id))
+                    .map(m => m.id);
+                    
+                if (incomingIds.length > 0) {
+                    try {
+                        await acknowledgeMessages(incomingIds, token);
+                    } catch (ackErr) {
+                        console.error("Failed to acknowledge messages", ackErr);
+                    }
+                }
             }
         } catch (error) {
             console.error('Failed to fetch messages', error);
-            setMessages([]);
         }
-    }, [token, decryptAll]);
+    }, [token, decryptAll, getMessagesForConversation, saveMessage, user.id]);
+
+    // WebSocket real-time message handler
+    const handleWsMessage = useCallback((data) => {
+        if (data.type === 'new_message' && data.message) {
+            const msg = data.message;
+            // Save to local DB
+            saveMessage(msg).catch(() => {});
+            // If it's for the currently selected conversation, append it
+            setMessages(prev => {
+                if (prev.some(m => m.id === msg.id)) return prev;
+                const updated = [...prev, msg];
+                updated.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                return updated;
+            });
+            // Trigger decryption
+            decryptAll([msg]);
+        }
+    }, [saveMessage, decryptAll]);
+
+    const { isConnected: wsConnected } = useWebSocket(token, handleWsMessage);
 
     useEffect(() => {
         if (selectedConv && !selectedConv.isVirtual) {
             fetchMessages(selectedConv.id);
-            const interval = setInterval(() => fetchMessages(selectedConv.id), 5000);
+            // Polling fallback: 15s if WS connected, 5s if not
+            const pollInterval = wsConnected ? 15000 : 5000;
+            const interval = setInterval(() => fetchMessages(selectedConv.id), pollInterval);
             return () => clearInterval(interval);
         } else if (selectedConv?.isVirtual) {
             setMessages([]);
         }
-    }, [selectedConv, fetchMessages]);
+    }, [selectedConv, fetchMessages, wsConnected]);
 
     const handleNukeKeys = async () => {
         if (window.confirm("WARNING: This will permanently delete your local workspace keys. If you don't have a backup on Google Drive, all your old messages will become unreadable. Proceed?")) {
@@ -402,11 +456,15 @@ const Chat = () => {
                 encrypted = await encryptMessage(text, recipientKeys.public_key, user.public_key);
             }
             
-            await sendChatMessage({
+            const sentMsg = await sendChatMessage({
                 ...encrypted,
                 recipient_username: recipient.username,
                 message_type: 'text'
             }, token);
+
+            if (sentMsg) {
+                await saveMessage(sentMsg);
+            }
             
             if (selectedConv.isVirtual) {
                 await fetchConversations();
@@ -463,7 +521,7 @@ const Chat = () => {
             const encryptedBlob = new Blob([base64ToArrayBuffer(encrypted.encrypted_content)], { type: 'application/octet-stream' });
             const uploadRes = await uploadChatAttachment(encryptedBlob, token);
             
-            await sendChatMessage({
+            const sentMsg = await sendChatMessage({
                 ...encrypted,
                 encrypted_content: 'ENCRYPTED_VOICE',
                 recipient_username: recipient.username,
@@ -471,6 +529,10 @@ const Chat = () => {
                 attachment_url: uploadRes.url,
                 file_metadata: JSON.stringify({ size: blob.size, type: blob.type })
             }, token);
+            
+            if (sentMsg) {
+                await saveMessage(sentMsg);
+            }
             
             fetchMessages(selectedConv.id);
         } catch (err) {
@@ -494,7 +556,7 @@ const Chat = () => {
             if (file.type.startsWith('image/')) message_type = 'image';
             else if (file.type.startsWith('video/')) message_type = 'video';
 
-            await sendChatMessage({
+            const sentMsg = await sendChatMessage({
                 ...encrypted,
                 encrypted_content: 'ENCRYPTED_FILE',
                 recipient_username: recipient.username,
@@ -502,6 +564,10 @@ const Chat = () => {
                 attachment_url: uploadRes.url,
                 file_metadata: JSON.stringify({ name: file.name, size: file.size, type: file.type })
             }, token);
+            
+            if (sentMsg) {
+                await saveMessage(sentMsg);
+            }
             
             fetchMessages(selectedConv.id);
         } catch (err) {

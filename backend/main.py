@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.api.v1.api import api_router
@@ -102,6 +102,47 @@ register_exception_handlers(app)
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(seo.router)
+
+
+# ── WebSocket Chat Endpoint ───────────────────────────────────────────────────
+from app.core.ws_manager import manager as ws_manager
+
+@app.websocket("/ws/chat")
+async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
+    """Authenticated WebSocket for real-time chat message push."""
+    from jose import jwt, JWTError
+    from app.core.config import SECRET_KEY, ALGORITHM
+    from app.db.session import SessionLocal
+    from app.models.models import User
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            await websocket.close(code=4001)
+            return
+    except JWTError:
+        await websocket.close(code=4001)
+        return
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            await websocket.close(code=4001)
+            return
+    finally:
+        db.close()
+
+    await ws_manager.connect(user.id, websocket)
+    try:
+        while True:
+            # Keep-alive: client sends periodic pings, we just read and discard
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(user.id, websocket)
+    except Exception:
+        ws_manager.disconnect(user.id, websocket)
 
 
 # ── Initialization ────────────────────────────────────────────────────────────
