@@ -334,7 +334,7 @@ const Chat = () => {
             }
 
             if (!user.public_key) {
-                showNotification('error', err?.message || "Workspace key missing. Please refresh or regenerate keys.");
+                showNotification('error', "Workspace key missing. Please refresh or regenerate keys.");
                 return;
             }
 
@@ -360,7 +360,7 @@ const Chat = () => {
             }
         } catch (error) {
             console.error('Failed to send message', error);
-            showNotification('error', err?.message || 'Transmission failed. Check connection or recipient keys.');
+            showNotification('error', error?.message || 'Transmission failed. Check connection or recipient keys.');
         }
     };
 
@@ -507,7 +507,7 @@ const Chat = () => {
     const failedCount = Object.values(decryptedMessages).filter(v => v === '[Secure Message]').length;
 
     return (
-        <div className="chatWorkspace">
+        <div className={`chatWorkspace ${selectedConv ? 'chat-open' : ''}`}>
             {/* Primary Navigation Rail */}
             <div className="nav-rail">
                 <div className="nav-rail-top">

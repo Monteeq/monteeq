@@ -598,7 +598,7 @@ export const uploadChatAttachment = async (file, token) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/chat/attachment`, {
+    const response = await fetch(`${API_BASE_URL}/chat/upload`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search } from 'lucide-react';
+import { Search, MessageSquare } from 'lucide-react';
 
 const ChatList = ({
     conversations,
