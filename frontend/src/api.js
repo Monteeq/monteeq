@@ -436,6 +436,25 @@ export const getUserPublicKey = async (username, token) => {
     return response.json();
 };
 
+export const uploadPrekeyBundle = async (bundle, token) => {
+    const response = await fetch(`${API_BASE_URL}/chat/keys/prekey-bundle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(bundle)
+    });
+    return response.json();
+};
+
+export const getRecipientPrekeyBundles = async (username, token) => {
+    const response = await fetch(`${API_BASE_URL}/chat/keys/prekey-bundle/${username}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return response.json();
+};
+
 export const sendChatMessage = async (messageData, token) => {
     const response = await fetch(`${API_BASE_URL}/chat/messages`, {
         method: 'POST',

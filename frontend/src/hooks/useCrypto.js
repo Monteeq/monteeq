@@ -154,6 +154,77 @@ export const useCrypto = () => {
         return encryptBinary(data, recipientPublicKeyBase64, senderPublicKeyBase64);
     }, [encryptBinary]);
 
+    const encryptMultiDevice = useCallback(async (data, recipientDeviceBundles, senderDeviceBundles) => {
+        const aesKey = await window.crypto.subtle.generateKey(
+            { name: 'AES-GCM', length: 256 },
+            true,
+            ['encrypt', 'decrypt', 'wrapKey']
+        );
+
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encryptedContent = await window.crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            aesKey,
+            data
+        );
+
+        const importKey = (base64) => {
+            const bytes = base64ToArrayBuffer(base64);
+            return window.crypto.subtle.importKey(
+                'spki',
+                bytes,
+                { name: 'RSA-OAEP', hash: 'SHA-256' },
+                true,
+                ['wrapKey']
+            );
+        };
+
+        const recipientKeysMap = {};
+        for (const rBundle of recipientDeviceBundles) {
+            try {
+                const keyObj = await importKey(rBundle.identity_key);
+                const wrapped = await window.crypto.subtle.wrapKey(
+                    'raw',
+                    aesKey,
+                    keyObj,
+                    'RSA-OAEP'
+                );
+                recipientKeysMap[rBundle.device_id] = arrayBufferToBase64(wrapped);
+            } catch (err) {
+                console.error(`Failed to wrap key for recipient device ${rBundle.device_id}:`, err);
+            }
+        }
+
+        const senderKeysMap = {};
+        for (const sBundle of senderDeviceBundles) {
+            try {
+                const keyObj = await importKey(sBundle.identity_key);
+                const wrapped = await window.crypto.subtle.wrapKey(
+                    'raw',
+                    aesKey,
+                    keyObj,
+                    'RSA-OAEP'
+                );
+                senderKeysMap[sBundle.device_id] = arrayBufferToBase64(wrapped);
+            } catch (err) {
+                console.error(`Failed to wrap key for sender device ${sBundle.device_id}:`, err);
+            }
+        }
+
+        return {
+            encrypted_content: arrayBufferToBase64(encryptedContent),
+            iv: arrayBufferToBase64(iv),
+            recipient_key: JSON.stringify(recipientKeysMap),
+            sender_key: JSON.stringify(senderKeysMap),
+        };
+    }, []);
+
+    const encryptMessageMultiDevice = useCallback(async (text, recipientDeviceBundles, senderDeviceBundles) => {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(text);
+        return encryptMultiDevice(data, recipientDeviceBundles, senderDeviceBundles);
+    }, [encryptMultiDevice]);
+
     const decryptBinary = useCallback(async (encryptedContentB64, ivB64, wrappedKeyB64) => {
         try {
             const privateKey = await loadPrivateKey();
@@ -165,7 +236,26 @@ export const useCrypto = () => {
 
             const content = base64ToArrayBuffer(encryptedContentB64);
             const iv = base64ToArrayBuffer(ivB64);
-            const wrappedKey = base64ToArrayBuffer(wrappedKeyB64);
+
+            let finalWrappedKeyB64 = wrappedKeyB64;
+            try {
+                const parsed = JSON.parse(wrappedKeyB64);
+                if (parsed && typeof parsed === 'object') {
+                    const devId = localStorage.getItem('monteeq_device_id');
+                    if (devId && parsed[devId]) {
+                        finalWrappedKeyB64 = parsed[devId];
+                    } else {
+                        const keys = Object.values(parsed);
+                        if (keys.length > 0) {
+                            finalWrappedKeyB64 = keys[0];
+                        }
+                    }
+                }
+            } catch (_) {
+                // Fallback to raw string if it is not JSON
+            }
+
+            const wrappedKey = base64ToArrayBuffer(finalWrappedKeyB64);
 
             // 1. Unwrap AES Key
             let aesKey;
@@ -251,6 +341,8 @@ export const useCrypto = () => {
         decryptMessage,
         encryptBinary,
         decryptBinary,
+        encryptMultiDevice,
+        encryptMessageMultiDevice,
         exportPrivateKey,
         importPrivateKey,
         nukeKeys,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -14,7 +14,9 @@ import {
     uploadChatAttachment,
     searchUnified,
     getFollowing,
-    linkGoogleAccount
+    linkGoogleAccount,
+    uploadPrekeyBundle,
+    getRecipientPrekeyBundles
 } from '../api';
 import { Key, Cloud, Home, MessageSquare, UserPlus, Zap, ShieldCheck, ShieldAlert } from 'lucide-react';
 import ChatList from '../components/chat/ChatList';
@@ -27,12 +29,22 @@ const Chat = () => {
     const { user, token, setUser } = useAuth();
     const { showNotification } = useNotification();
     const location = useLocation();
+    const deviceId = useMemo(() => {
+        let devId = localStorage.getItem('monteeq_device_id');
+        if (!devId) {
+            devId = 'device_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+            localStorage.setItem('monteeq_device_id', devId);
+        }
+        return devId;
+    }, []);
     const { 
         generateKeyPair, 
         encryptMessage, 
         decryptMessage, 
         encryptBinary, 
         decryptBinary,
+        encryptMessageMultiDevice,
+        encryptMultiDevice,
         exportPrivateKey,
         importPrivateKey,
         nukeKeys,
@@ -103,6 +115,22 @@ const Chat = () => {
                 if (localPub && user.public_key && localPub !== user.public_key) {
                     console.warn("Local key mismatch detected!");
                     setHasKeyMismatch(true);
+                }
+                if (localPub && token) {
+                    try {
+                        await uploadPrekeyBundle({
+                            device_id: deviceId,
+                            identity_key: localPub,
+                            signed_prekey: localPub,
+                            signature: "self-signed",
+                            one_time_prekeys: [
+                                "otk_" + Math.random().toString(36).substring(2, 15),
+                                "otk_" + Math.random().toString(36).substring(2, 15)
+                            ]
+                        }, token);
+                    } catch (_) {
+                        // Background execution fallback
+                    }
                 }
             } else if (user.google_id && drive.isAuthenticated) {
                 const synced = await performDriveSync();
@@ -312,7 +340,20 @@ const Chat = () => {
     const handleSetupKeys = async () => {
         const pubKey = await generateKeyPair();
         await uploadPublicKey(pubKey, token);
-        // Update local user state so we have the public key for sending
+        try {
+            await uploadPrekeyBundle({
+                device_id: deviceId,
+                identity_key: pubKey,
+                signed_prekey: pubKey,
+                signature: "self-signed",
+                one_time_prekeys: [
+                    "otk_" + Math.random().toString(36).substring(2, 15),
+                    "otk_" + Math.random().toString(36).substring(2, 15)
+                ]
+            }, token);
+        } catch (bundleErr) {
+            console.error("Failed to upload prekey bundle", bundleErr);
+        }
         setUser(prev => ({ ...prev, public_key: pubKey }));
         setIsSetup(true);
         
@@ -328,18 +369,38 @@ const Chat = () => {
         const recipient = selectedConv.user1.username === user.username ? selectedConv.user2 : selectedConv.user1;
         
         try {
-            const recipientKeys = await getUserPublicKey(recipient.username, token);
-            if (!recipientKeys || !recipientKeys.public_key) {
-                showNotification('error', `${recipient.username} hasn't initialized their workspace yet. They need to visit the /chat tab once to generate their keys.`);
-                return;
-            }
-
             if (!user.public_key) {
                 showNotification('error', "Workspace key missing. Please refresh or regenerate keys.");
                 return;
             }
 
-            const encrypted = await encryptMessage(text, recipientKeys.public_key, user.public_key);
+            let recipientBundles = [];
+            try {
+                recipientBundles = await getRecipientPrekeyBundles(recipient.username, token);
+            } catch (_) {}
+
+            let senderBundles = [];
+            try {
+                senderBundles = await getRecipientPrekeyBundles(user.username, token);
+            } catch (_) {}
+
+            let encrypted;
+            if (recipientBundles && recipientBundles.length > 0) {
+                if (!senderBundles.some(b => b.device_id === deviceId)) {
+                    senderBundles.push({
+                        device_id: deviceId,
+                        identity_key: user.public_key
+                    });
+                }
+                encrypted = await encryptMessageMultiDevice(text, recipientBundles, senderBundles);
+            } else {
+                const recipientKeys = await getUserPublicKey(recipient.username, token);
+                if (!recipientKeys || !recipientKeys.public_key) {
+                    showNotification('error', `${recipient.username} hasn't initialized their workspace yet.`);
+                    return;
+                }
+                encrypted = await encryptMessage(text, recipientKeys.public_key, user.public_key);
+            }
             
             await sendChatMessage({
                 ...encrypted,
@@ -348,9 +409,7 @@ const Chat = () => {
             }, token);
             
             if (selectedConv.isVirtual) {
-                // If it was virtual, refresh conversations to get the real ID
                 await fetchConversations();
-                // Find the newly created real conversation
                 const newConvs = await getConversations(token);
                 const real = newConvs.find(c => 
                     (c.user1.username === recipient.username) || (c.user2.username === recipient.username)
@@ -365,24 +424,48 @@ const Chat = () => {
         }
     };
 
+    const encryptPayloadMultiDevice = async (arrayBuffer, recipientUsername) => {
+        let recipientBundles = [];
+        try {
+            recipientBundles = await getRecipientPrekeyBundles(recipientUsername, token);
+        } catch (_) {}
+
+        let senderBundles = [];
+        try {
+            senderBundles = await getRecipientPrekeyBundles(user.username, token);
+        } catch (_) {}
+
+        if (recipientBundles && recipientBundles.length > 0) {
+            if (!senderBundles.some(b => b.device_id === deviceId)) {
+                senderBundles.push({
+                    device_id: deviceId,
+                    identity_key: user.public_key
+                });
+            }
+            return encryptMultiDevice(arrayBuffer, recipientBundles, senderBundles);
+        } else {
+            const recipientKeys = await getUserPublicKey(recipientUsername, token);
+            if (!recipientKeys || !recipientKeys.public_key) {
+                throw new Error(`${recipientUsername} hasn't initialized their workspace yet.`);
+            }
+            return encryptBinary(arrayBuffer, recipientKeys.public_key, user.public_key);
+        }
+    };
+
     const handleSendVoice = async (blob) => {
         if (!selectedConv) return;
         const recipient = selectedConv.user1.username === user.username ? selectedConv.user2 : selectedConv.user1;
         
         try {
-            // 1. Upload encrypted attachment
             const arrayBuffer = await blob.arrayBuffer();
-            const recipientKeys = await getUserPublicKey(recipient.username, token);
-            const encrypted = await encryptBinary(arrayBuffer, recipientKeys.public_key, user.public_key);
+            const encrypted = await encryptPayloadMultiDevice(arrayBuffer, recipient.username);
             
-            // 2. Upload file
             const encryptedBlob = new Blob([base64ToArrayBuffer(encrypted.encrypted_content)], { type: 'application/octet-stream' });
             const uploadRes = await uploadChatAttachment(encryptedBlob, token);
             
-            // 3. Send message
             await sendChatMessage({
                 ...encrypted,
-                encrypted_content: 'ENCRYPTED_VOICE', // Real content is in the file
+                encrypted_content: 'ENCRYPTED_VOICE',
                 recipient_username: recipient.username,
                 message_type: 'voice',
                 attachment_url: uploadRes.url,
@@ -392,6 +475,7 @@ const Chat = () => {
             fetchMessages(selectedConv.id);
         } catch (err) {
             console.error("Voice send failed", err);
+            showNotification('error', err?.message || 'Failed to send voice recording');
         }
     };
 
@@ -401,8 +485,7 @@ const Chat = () => {
         
         try {
             const arrayBuffer = await file.arrayBuffer();
-            const recipientKeys = await getUserPublicKey(recipient.username, token);
-            const encrypted = await encryptBinary(arrayBuffer, recipientKeys.public_key, user.public_key);
+            const encrypted = await encryptPayloadMultiDevice(arrayBuffer, recipient.username);
             
             const encryptedBlob = new Blob([base64ToArrayBuffer(encrypted.encrypted_content)], { type: 'application/octet-stream' });
             const uploadRes = await uploadChatAttachment(encryptedBlob, token);
