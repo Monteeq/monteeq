@@ -387,6 +387,27 @@ class Conversation(BaseModel):
 class KeyUpload(BaseModel):
     public_key: str
 
+class PrekeyBundleUpload(BaseModel):
+    device_id: str
+    identity_key: str
+    signed_prekey: str
+    signature: str
+    one_time_prekeys: List[str]
+
+class PrekeyBundleOut(BaseModel):
+    user_id: int
+    device_id: str
+    identity_key: str
+    signed_prekey: str
+    signature: str
+    one_time_prekey: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class OneTimePrekeysUpload(BaseModel):
+    device_id: str
+    keys: List[str]
+
 class ChallengeBase(BaseModel):
     title: str
     description: str

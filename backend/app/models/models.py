@@ -374,6 +374,30 @@ class ChatMessage(Base):
     conversation = relationship("Conversation", back_populates="messages")
     sender = relationship("User")
 
+class UserDevicePrekeyBundle(Base):
+    __tablename__ = "user_device_prekey_bundles"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True)
+    device_id = Column(String, primary_key=True, index=True)
+    identity_key = Column(Text, nullable=False)
+    signed_prekey = Column(Text, nullable=False)
+    signed_prekey_signature = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+
+    user = relationship("User", backref=backref("prekey_bundles", cascade="all, delete-orphan"))
+
+class UserOneTimePrekey(Base):
+    __tablename__ = "user_one_time_prekeys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    device_id = Column(String, index=True)
+    key_value = Column(Text, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+
+    user = relationship("User", backref=backref("one_time_prekeys", cascade="all, delete-orphan"))
+
 class Setting(Base):
     __tablename__ = "settings"
     key = Column(String, primary_key=True, index=True)

@@ -35,6 +35,117 @@ def get_user_public_key(
         raise HTTPException(status_code=404, detail="User not found")
     return {"public_key": user.public_key}
 
+from app.models.models import UserDevicePrekeyBundle, UserOneTimePrekey
+
+@router.post("/keys/prekey-bundle", response_model=schemas.PrekeyBundleOut)
+def upload_prekey_bundle(
+    bundle_in: schemas.PrekeyBundleUpload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Check if bundle already exists for this user and device
+    bundle = db.query(UserDevicePrekeyBundle).filter(
+        UserDevicePrekeyBundle.user_id == current_user.id,
+        UserDevicePrekeyBundle.device_id == bundle_in.device_id
+    ).first()
+    
+    if not bundle:
+        bundle = UserDevicePrekeyBundle(
+            user_id=current_user.id,
+            device_id=bundle_in.device_id,
+            identity_key=bundle_in.identity_key,
+            signed_prekey=bundle_in.signed_prekey,
+            signed_prekey_signature=bundle_in.signature
+        )
+        db.add(bundle)
+    else:
+        bundle.identity_key = bundle_in.identity_key
+        bundle.signed_prekey = bundle_in.signed_prekey
+        bundle.signed_prekey_signature = bundle_in.signature
+        
+    db.commit()
+    db.refresh(bundle)
+    
+    # Store new one-time prekeys
+    for otkey in bundle_in.one_time_prekeys:
+        new_otk = UserOneTimePrekey(
+            user_id=current_user.id,
+            device_id=bundle_in.device_id,
+            key_value=otkey,
+            used=False
+        )
+        db.add(new_otk)
+        
+    db.commit()
+    
+    return schemas.PrekeyBundleOut(
+        user_id=bundle.user_id,
+        device_id=bundle.device_id,
+        identity_key=bundle.identity_key,
+        signed_prekey=bundle.signed_prekey,
+        signature=bundle.signed_prekey_signature,
+        one_time_prekey=None
+    )
+
+@router.get("/keys/prekey-bundle/{username}", response_model=List[schemas.PrekeyBundleOut])
+def get_recipient_prekey_bundles(
+    username: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    recipient = db.query(User).filter(User.username == username).first()
+    if not recipient:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    bundles = db.query(UserDevicePrekeyBundle).filter(UserDevicePrekeyBundle.user_id == recipient.id).all()
+    
+    response_bundles = []
+    for b in bundles:
+        # Get one unused one-time prekey
+        otk = db.query(UserOneTimePrekey).filter(
+            UserOneTimePrekey.user_id == recipient.id,
+            UserOneTimePrekey.device_id == b.device_id,
+            UserOneTimePrekey.used == False
+        ).first()
+        
+        otk_value = None
+        if otk:
+            otk_value = otk.key_value
+            otk.used = True
+            db.add(otk)
+            
+        response_bundles.append(
+            schemas.PrekeyBundleOut(
+                user_id=b.user_id,
+                device_id=b.device_id,
+                identity_key=b.identity_key,
+                signed_prekey=b.signed_prekey,
+                signature=b.signed_prekey_signature,
+                one_time_prekey=otk_value
+            )
+        )
+        
+    db.commit()
+    return response_bundles
+
+@router.post("/keys/one-time-prekeys")
+def upload_one_time_prekeys(
+    keys_in: schemas.OneTimePrekeysUpload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    for key in keys_in.keys:
+        otk = UserOneTimePrekey(
+            user_id=current_user.id,
+            device_id=keys_in.device_id,
+            key_value=key,
+            used=False
+        )
+        db.add(otk)
+        
+    db.commit()
+    return {"status": "ok", "added": len(keys_in.keys)}
+
 @router.post("/messages", response_model=schemas.ChatMessage)
 def send_message(
     message_in: schemas.ChatMessageCreate,
