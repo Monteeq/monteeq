@@ -21,6 +21,8 @@ const ChatWindow = ({
     const messagesEndRef = useRef(null);
     const containerRef = useRef(null);
     const lastScrollConvId = useRef(null);
+    const prevMsgCount = useRef(0);
+    const prevLastMsgId = useRef(null);
 
     const scrollToBottom = (behavior = 'smooth') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
@@ -35,20 +37,31 @@ const ChatWindow = ({
         // Force instant scroll to bottom on initial conversation load
         if (lastScrollConvId.current !== selectedConv.id) {
             lastScrollConvId.current = selectedConv.id;
+            prevMsgCount.current = messages.length;
+            prevLastMsgId.current = messages[messages.length - 1]?.id;
             setTimeout(() => scrollToBottom('auto'), 50);
             return;
         }
 
-        // Only scroll automatically if the user is already looking at the bottom or sent the message
-        const threshold = 150;
-        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
-        
-        const lastMessage = messages[messages.length - 1];
-        const sentByMe = lastMessage && lastMessage.sender_id === user.id;
+        const currentMsgCount = messages.length;
+        const currentLastMsgId = messages[messages.length - 1]?.id;
 
-        if (isNearBottom || sentByMe) {
-            scrollToBottom('smooth');
+        // Only evaluate scrolling if a new message was actually appended
+        if (currentMsgCount > prevMsgCount.current || currentLastMsgId !== prevLastMsgId.current) {
+            const threshold = 150;
+            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+            
+            const lastMessage = messages[messages.length - 1];
+            const sentByMe = lastMessage && lastMessage.sender_id === user.id;
+
+            if (isNearBottom || sentByMe) {
+                scrollToBottom('smooth');
+            }
         }
+
+        // Update refs for next render
+        prevMsgCount.current = currentMsgCount;
+        prevLastMsgId.current = currentLastMsgId;
     }, [messages, selectedConv, user.id]);
 
     const handleSendText = (e) => {
