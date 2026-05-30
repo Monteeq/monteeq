@@ -138,11 +138,17 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
     }, [message.id]);
 
     const renderContent = () => {
+        // Text messages display their content directly in all states (sending, failed, sent)
+        if (message.message_type === 'text') {
+            return <p className="v2-text-content">{decryptedContent || 'Loading message...'}</p>;
+        }
+
+        // Media messages show clean placeholders while uploading
         if (message.status === 'sending') {
             return (
                 <div className="deciphering-mode">
                     <Loader2 className="spinning" size={14} />
-                    <span>UPLOADING SECURE PAYLOAD...</span>
+                    <span>Sending file...</span>
                 </div>
             );
         }
@@ -151,7 +157,7 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
             return (
                 <div className="deciphering-mode" style={{ color: 'var(--neon-red)' }}>
                     <AlertCircle size={14} />
-                    <span>TRANSMISSION FAILED</span>
+                    <span>Failed to send</span>
                 </div>
             );
         }
@@ -159,7 +165,7 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
         if (!decryptedContent) return (
             <div className="deciphering-mode">
                 <Lock size={14} />
-                <span>DECIPHERING ENCRYPTED DATA...</span>
+                <span>Loading message...</span>
             </div>
         );
 
@@ -240,7 +246,7 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
                         ) : (
                             <div className="media-placeholder">
                                 <ImageIcon size={32} className="spinning" />
-                                <span>AUTHENTICATING IMAGE...</span>
+                                <span>Loading image...</span>
                             </div>
                         )}
                     </div>
@@ -253,7 +259,7 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
                         ) : (
                             <div className="media-placeholder">
                                 <Video size={32} className="spinning" />
-                                <span>DECRYPTING VIDEO STREAM...</span>
+                                <span>Loading video...</span>
                             </div>
                         )}
                     </div>
