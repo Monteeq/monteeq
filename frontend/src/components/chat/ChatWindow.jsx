@@ -19,10 +19,37 @@ const ChatWindow = ({
 }) => {
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef(null);
+    const containerRef = useRef(null);
+    const lastScrollConvId = useRef(null);
+
+    const scrollToBottom = (behavior = 'smooth') => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+    };
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        if (!selectedConv) return;
+        
+        const container = containerRef.current;
+        if (!container) return;
+
+        // Force instant scroll to bottom on initial conversation load
+        if (lastScrollConvId.current !== selectedConv.id) {
+            lastScrollConvId.current = selectedConv.id;
+            setTimeout(() => scrollToBottom('auto'), 50);
+            return;
+        }
+
+        // Only scroll automatically if the user is already looking at the bottom or sent the message
+        const threshold = 150;
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= threshold;
+        
+        const lastMessage = messages[messages.length - 1];
+        const sentByMe = lastMessage && lastMessage.sender_id === user.id;
+
+        if (isNearBottom || sentByMe) {
+            scrollToBottom('smooth');
+        }
+    }, [messages, selectedConv, user.id]);
 
     const handleSendText = (e) => {
         if (e) e.preventDefault();
@@ -109,7 +136,7 @@ const ChatWindow = ({
                     </div>
             </div>
 
-            <div className="messagesContainer">
+            <div className="messagesContainer" ref={containerRef}>
                 <AnimatePresence initial={false}>
                     {Array.isArray(messages) && messages.map((msg, i) => (
                         <motion.div
