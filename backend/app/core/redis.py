@@ -11,6 +11,7 @@ class RedisManager:
     """
     _instance = None
     _client = None
+    last_error = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -39,8 +40,10 @@ class RedisManager:
             
             # Simple health check to ensure Redis is responsive
             self._client.ping()
+            self.last_error = None
             logger.info(f"Successfully connected to Redis Cloud at {REDIS_URL[:20]}...")
-        except redis.ConnectionError as e:
+        except Exception as e:
+            self.last_error = f"{type(e).__name__}: {str(e)}"
             logger.error(f"FATAL: Could not connect to Redis Cloud. Error: {e}")
             # We don't raise here to allow the app to start, 
             # but specific features requiring Redis will fail gracefully later.
@@ -50,6 +53,27 @@ class RedisManager:
         """Returns the active Redis client instance."""
         return self.client
 
+class RedisClientProxy:
+    """
+    A lazy proxy that forwards attributes to the active Redis client.
+    Allows retrying connection dynamically if it was previously disconnected.
+    """
+    @property
+    def _real_client(self):
+        client = redis_manager.client
+        if client is None:
+            raise redis.ConnectionError(f"Redis client is not connected. Last error: {redis_manager.last_error}")
+        return client
+
+    def __getattr__(self, name):
+        return getattr(self._real_client, name)
+
+    def __repr__(self):
+        try:
+            return repr(self._real_client)
+        except Exception:
+            return f"<RedisClientProxy (Disconnected: {redis_manager.last_error})>"
+
 # Export a single instance for use across the application
 redis_manager = RedisManager()
-redis_client = redis_manager.client
+redis_client = RedisClientProxy()
