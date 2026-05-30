@@ -681,6 +681,7 @@ const Chat = () => {
             
             if (sentMsg) {
                 await saveMessage(sentMsg);
+                updateConversationLastMessage(sentMsg);
                 
                 // Replace temp message with real sent message
                 setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
