@@ -315,13 +315,22 @@ def acknowledge_messages(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    messages_to_delete = db.query(ChatMessage).filter(ChatMessage.id.in_(message_ids)).all()
-    deleted_count = 0
-    for msg in messages_to_delete:
-        conv = db.query(Conversation).filter(Conversation.id == msg.conversation_id).first()
-        if conv and (conv.user1_id == current_user.id or conv.user2_id == current_user.id):
-            db.delete(msg)
-            deleted_count += 1
+    if not message_ids:
+        return {"status": "ok", "deleted": 0}
+
+    # Find conversations the user belongs to
+    user_conv_ids = [
+        r[0] for r in db.query(Conversation.id).filter(
+            (Conversation.user1_id == current_user.id) | (Conversation.user2_id == current_user.id)
+        ).all()
+    ]
+
+    # Perform bulk delete on matching messages, bypassing session state sync warnings
+    deleted_count = db.query(ChatMessage).filter(
+        ChatMessage.id.in_(message_ids),
+        ChatMessage.conversation_id.in_(user_conv_ids)
+    ).delete(synchronize_session=False)
+
     db.commit()
     return {"status": "ok", "deleted": deleted_count}
 
