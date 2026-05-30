@@ -37,7 +37,17 @@ export class ApiError extends Error {
  */
 export async function apiFetch(path, options = {}) {
     const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
-    const response = await fetch(url, options);
+    
+    // Auto-set Content-Type: application/json for stringified payloads if not set
+    const headers = { ...options.headers };
+    if (options.body && typeof options.body === 'string' && !headers['Content-Type'] && !headers['content-type']) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
 
     if (response.ok) {
         // 204 No Content — return null

@@ -8,8 +8,8 @@ async_engine = create_async_engine(
     ASYNC_SQLALCHEMY_DATABASE_URL,
     echo=False,
     future=True,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=3,         # Reduced to prevent Supabase pool exhaustion (max 15 clients)
+    max_overflow=2,      # Reduced to prevent Supabase pool exhaustion
 )
 
 AsyncSessionLocal = async_sessionmaker(

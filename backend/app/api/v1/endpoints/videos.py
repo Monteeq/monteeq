@@ -46,16 +46,23 @@ async def health_check(db: Session = Depends(get_db)):
     
     # Check DB
     try:
-        db.execute("SELECT 1")
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
         health["database"] = "connected"
-    except Exception:
+    except Exception as e:
+        health["database"] = f"disconnected: {type(e).__name__}: {str(e)}"
         health["status"] = "error"
         
     # Check Redis
     try:
-        if redis_client.ping():
+        if redis_client is None:
+            health["redis"] = "disconnected: client is None"
+            health["status"] = "error"
+        else:
+            redis_client.ping()
             health["redis"] = "connected"
-    except Exception:
+    except Exception as e:
+        health["redis"] = f"disconnected: {type(e).__name__}: {str(e)}"
         health["status"] = "error"
         
     # Check Rust Service
@@ -64,8 +71,8 @@ async def health_check(db: Session = Depends(get_db)):
             resp = await client.get(f"{config.RUST_SERVICE_URL}/health", timeout=1.0)
             if resp.status_code == 200:
                 health["rust_service"] = "reachable"
-        except Exception:
-            health["rust_service"] = "unreachable"
+        except Exception as e:
+            health["rust_service"] = f"unreachable: {type(e).__name__}: {str(e)}"
             
     return health
 
