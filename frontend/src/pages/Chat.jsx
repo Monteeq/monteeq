@@ -121,7 +121,10 @@ const Chat = () => {
                     console.warn("Local key mismatch detected!");
                     setHasKeyMismatch(true);
                 }
-                if (localPub && token) {
+                
+                // Guard: Only upload the prekey bundle once per device session
+                const storageKey = `monteeq_prekey_uploaded_${deviceId}`;
+                if (localPub && token && !localStorage.getItem(storageKey)) {
                     try {
                         await uploadPrekeyBundle({
                             device_id: deviceId,
@@ -133,21 +136,23 @@ const Chat = () => {
                                 "otk_" + Math.random().toString(36).substring(2, 15)
                             ]
                         }, token);
-                    } catch (_) {
-                        // Background execution fallback
+                        localStorage.setItem(storageKey, 'true');
+                    } catch (err) {
+                        console.error("Failed to upload prekey bundle in background:", err);
                     }
                 }
             } else if (user.google_id && drive.isAuthenticated) {
                 const synced = await performDriveSync();
                 if (synced) {
-                    setLastBackupTime(new Date().toISOString());
-                    localStorage.setItem('monteeq_last_backup_time', new Date().toISOString());
+                    const now = new Date().toISOString();
+                    setLastBackupTime(now);
+                    localStorage.setItem('monteeq_last_backup_time', now);
                 }
             }
             setIsInitialSync(false);
         };
         checkKey();
-    }, [hasLocalKey, getLocalPublicKey, user.public_key, user.google_id, drive.isAuthenticated, performDriveSync]);
+    }, [deviceId, token]);
 
     // Automatic Background Backup
     useEffect(() => {
