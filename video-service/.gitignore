@@ -1,0 +1,6 @@
+/target/
+.env
+video_service.log
+*.jpg
+*_hls/
+/monteeq/

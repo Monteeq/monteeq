@@ -60,7 +60,7 @@ async fn main() {
     
     let policy = ReconnectPolicy::default();
     // Use a connection pool for higher concurrency
-    let pool = RedisPool::new(config, Some(perf), None, Some(policy), 16).unwrap();
+    let pool = RedisPool::new(config, Some(perf), None, Some(policy), 3).unwrap();
     
     println!("[DEBUG] Initiating Redis connection to {}...", redis_url);
     pool.connect();
