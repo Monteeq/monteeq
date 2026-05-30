@@ -74,6 +74,16 @@ async def health_check(db: Session = Depends(get_db)):
         except Exception as e:
             health["rust_service"] = f"unreachable: {type(e).__name__}: {str(e)}"
             
+    # Check S3
+    try:
+        from app.core.storage import storage
+        if storage.s3_client is not None:
+            health["s3"] = "initialized"
+        else:
+            health["s3"] = f"not initialized (AWS_ACCESS_KEY_ID = '{config.AWS_ACCESS_KEY_ID[:4]}...' if config.AWS_ACCESS_KEY_ID else 'empty')"
+    except Exception as e:
+        health["s3"] = f"error: {type(e).__name__}: {str(e)}"
+
     return health
 
 from fastapi_cache.decorator import cache
