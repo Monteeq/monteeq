@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { FileIcon, Download, Play, Pause, Shield, Lock, CheckCheck, FileText, FileArchive, Image as ImageIcon, Video } from 'lucide-react';
+import { FileIcon, Download, Play, Pause, Shield, Lock, CheckCheck, FileText, FileArchive, Image as ImageIcon, Video, Loader2, AlertCircle } from 'lucide-react';
 import ChatVideoPlayer from './ChatVideoPlayer';
 
 const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFile, decryptBinary }) => {
@@ -17,10 +17,10 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
     };
 
     React.useEffect(() => {
-        if ((message.message_type === 'image' || message.message_type === 'video') && !mediaUrl && !isMediaLoading) {
+        if ((message.message_type === 'image' || message.message_type === 'video') && !mediaUrl && !isMediaLoading && message.status !== 'sending' && message.status !== 'failed') {
             handleDecipherMedia();
         }
-    }, [message.message_type]);
+    }, [message.message_type, message.status]);
 
     const handleDecipherMedia = async () => {
         setIsMediaLoading(true);
@@ -138,6 +138,24 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
     }, [message.id]);
 
     const renderContent = () => {
+        if (message.status === 'sending') {
+            return (
+                <div className="deciphering-mode">
+                    <Loader2 className="spinning" size={14} />
+                    <span>UPLOADING SECURE PAYLOAD...</span>
+                </div>
+            );
+        }
+
+        if (message.status === 'failed') {
+            return (
+                <div className="deciphering-mode" style={{ color: 'var(--neon-red)' }}>
+                    <AlertCircle size={14} />
+                    <span>TRANSMISSION FAILED</span>
+                </div>
+            );
+        }
+
         if (!decryptedContent) return (
             <div className="deciphering-mode">
                 <Lock size={14} />
@@ -254,7 +272,13 @@ const MessageBubble = ({ message, isSent, sender, decryptedContent, onDownloadFi
                 <span className="message-time">{formatTime(message.created_at)}</span>
                 {isSent && (
                     <div className="status-ticks">
-                        <CheckCheck size={14} />
+                        {message.status === 'sending' ? (
+                            <Loader2 size={12} className="spinning" style={{ opacity: 0.6 }} />
+                        ) : message.status === 'failed' ? (
+                            <AlertCircle size={14} style={{ color: 'var(--neon-red)' }} title="Failed to send" />
+                        ) : (
+                            <CheckCheck size={14} />
+                        )}
                     </div>
                 )}
             </div>

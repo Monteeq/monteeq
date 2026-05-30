@@ -442,10 +442,26 @@ const Chat = () => {
         if (!selectedConv) return;
         const recipient = selectedConv.user1.username === user.username ? selectedConv.user2 : selectedConv.user1;
         
+        const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+        const tempMsg = {
+            id: tempId,
+            conversation_id: selectedConv.id,
+            sender_id: user.id,
+            message_type: 'text',
+            created_at: new Date().toISOString(),
+            status: 'sending'
+        };
+
+        // Append optimistic message immediately
+        setMessages(prev => [...prev, tempMsg]);
+        setDecryptedMessages(prev => ({
+            ...prev,
+            [tempId]: text
+        }));
+
         try {
             if (!user.public_key) {
-                showNotification('error', "Workspace key missing. Please refresh or regenerate keys.");
-                return;
+                throw new Error("Workspace key missing. Please refresh or regenerate keys.");
             }
 
             let recipientBundles = [];
@@ -470,8 +486,7 @@ const Chat = () => {
             } else {
                 const recipientKeys = await getUserPublicKey(recipient.username, token);
                 if (!recipientKeys || !recipientKeys.public_key) {
-                    showNotification('error', `${recipient.username} hasn't initialized their workspace yet.`);
-                    return;
+                    throw new Error(`${recipient.username} hasn't initialized their workspace yet.`);
                 }
                 encrypted = await encryptMessage(text, recipientKeys.public_key, user.public_key);
             }
@@ -484,6 +499,15 @@ const Chat = () => {
 
             if (sentMsg) {
                 await saveMessage(sentMsg);
+                
+                // Replace temp message with real sent message
+                setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
+                setDecryptedMessages(prev => {
+                    const next = { ...prev };
+                    delete next[tempId];
+                    next[sentMsg.id] = text;
+                    return next;
+                });
             }
             
             if (selectedConv.isVirtual) {
@@ -493,12 +517,13 @@ const Chat = () => {
                     (c.user1.username === recipient.username) || (c.user2.username === recipient.username)
                 );
                 if (real) setSelectedConv(real);
-            } else {
-                fetchMessages(selectedConv.id);
             }
         } catch (error) {
             console.error('Failed to send message', error);
             showNotification('error', error?.message || 'Transmission failed. Check connection or recipient keys.');
+            
+            // Mark message as failed
+            setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
         }
     };
 
@@ -534,6 +559,19 @@ const Chat = () => {
         if (!selectedConv) return;
         const recipient = selectedConv.user1.username === user.username ? selectedConv.user2 : selectedConv.user1;
         
+        const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+        const tempMsg = {
+            id: tempId,
+            conversation_id: selectedConv.id,
+            sender_id: user.id,
+            message_type: 'voice',
+            created_at: new Date().toISOString(),
+            status: 'sending'
+        };
+
+        // Append optimistic voice message
+        setMessages(prev => [...prev, tempMsg]);
+        
         try {
             const arrayBuffer = await blob.arrayBuffer();
             const encrypted = await encryptPayloadMultiDevice(arrayBuffer, recipient.username);
@@ -552,18 +590,40 @@ const Chat = () => {
             
             if (sentMsg) {
                 await saveMessage(sentMsg);
+                
+                // Replace temp message with real sent message
+                setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
+                decryptAll([sentMsg]);
             }
-            
-            fetchMessages(selectedConv.id);
         } catch (err) {
             console.error("Voice send failed", err);
             showNotification('error', err?.message || 'Failed to send voice recording');
+            
+            // Mark message as failed
+            setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
         }
     };
 
     const handleUploadFile = async (file) => {
         if (!selectedConv || !file) return;
         const recipient = selectedConv.user1.username === user.username ? selectedConv.user2 : selectedConv.user1;
+        
+        let message_type = 'file';
+        if (file.type.startsWith('image/')) message_type = 'image';
+        else if (file.type.startsWith('video/')) message_type = 'video';
+
+        const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+        const tempMsg = {
+            id: tempId,
+            conversation_id: selectedConv.id,
+            sender_id: user.id,
+            message_type: message_type,
+            created_at: new Date().toISOString(),
+            status: 'sending'
+        };
+
+        // Append optimistic file/image/video message
+        setMessages(prev => [...prev, tempMsg]);
         
         try {
             const arrayBuffer = await file.arrayBuffer();
@@ -572,10 +632,6 @@ const Chat = () => {
             const encryptedBlob = new Blob([base64ToArrayBuffer(encrypted.encrypted_content)], { type: 'application/octet-stream' });
             const uploadRes = await uploadChatAttachment(encryptedBlob, token);
             
-            let message_type = 'file';
-            if (file.type.startsWith('image/')) message_type = 'image';
-            else if (file.type.startsWith('video/')) message_type = 'video';
-
             const sentMsg = await sendChatMessage({
                 ...encrypted,
                 encrypted_content: 'ENCRYPTED_FILE',
@@ -587,11 +643,17 @@ const Chat = () => {
             
             if (sentMsg) {
                 await saveMessage(sentMsg);
+                
+                // Replace temp message with real sent message
+                setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
+                decryptAll([sentMsg]);
             }
-            
-            fetchMessages(selectedConv.id);
         } catch (err) {
             console.error("File upload failed", err);
+            showNotification('error', err?.message || 'Failed to upload file');
+            
+            // Mark message as failed
+            setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
         }
     };
 
