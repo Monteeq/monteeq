@@ -69,6 +69,7 @@ const Chat = () => {
     const [showSecurityPortal, setShowSecurityPortal] = useState(false);
     const decryptionQueueRef = useRef(new Set());
     const lastHealAttemptRef = useRef(0);
+    const activeConvIdRef = useRef(null);
     const [lastBackupTime, setLastBackupTime] = useState(localStorage.getItem('monteeq_last_backup_time'));
     const [isConvsLoaded, setIsConvsLoaded] = useState(false);
 
@@ -320,15 +321,19 @@ const Chat = () => {
         if (!convId || String(convId).startsWith('virtual-')) return;
         try {
             const localMsgs = await getMessagesForConversation(convId);
+            if (convId !== activeConvIdRef.current) return;
             setMessages(localMsgs);
             decryptAll(localMsgs);
 
             const remoteMsgs = await getChatMessages(convId, token);
+            if (convId !== activeConvIdRef.current) return;
+
             if (Array.isArray(remoteMsgs) && remoteMsgs.length > 0) {
                 for (const msg of remoteMsgs) {
                     await saveMessage(msg);
                 }
                 const updatedMsgs = await getMessagesForConversation(convId);
+                if (convId !== activeConvIdRef.current) return;
                 setMessages(updatedMsgs);
                 decryptAll(updatedMsgs);
 
@@ -356,28 +361,38 @@ const Chat = () => {
             // Save to local DB
             saveMessage(msg).catch(() => {});
             // If it's for the currently selected conversation, append it
-            setMessages(prev => {
-                if (prev.some(m => m.id === msg.id)) return prev;
-                const updated = [...prev, msg];
-                updated.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-                return updated;
-            });
-            // Trigger decryption
-            decryptAll([msg]);
+            if (activeConvIdRef.current === msg.conversation_id) {
+                setMessages(prev => {
+                    if (prev.some(m => m.id === msg.id)) return prev;
+                    const updated = [...prev, msg];
+                    updated.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                    return updated;
+                });
+                // Trigger decryption
+                decryptAll([msg]);
+            }
         }
     }, [saveMessage, decryptAll]);
 
     const { isConnected: wsConnected } = useWebSocket(token, handleWsMessage);
 
     useEffect(() => {
-        if (selectedConv && !selectedConv.isVirtual) {
-            fetchMessages(selectedConv.id);
-            // Polling fallback: 15s if WS connected, 5s if not
-            const pollInterval = wsConnected ? 15000 : 5000;
-            const interval = setInterval(() => fetchMessages(selectedConv.id), pollInterval);
-            return () => clearInterval(interval);
-        } else if (selectedConv?.isVirtual) {
+        if (selectedConv) {
+            activeConvIdRef.current = selectedConv.id;
             setMessages([]);
+            setDecryptedMessages({});
+            
+            if (!selectedConv.isVirtual) {
+                fetchMessages(selectedConv.id);
+                // Polling fallback: 15s if WS connected, 5s if not
+                const pollInterval = wsConnected ? 15000 : 5000;
+                const interval = setInterval(() => fetchMessages(selectedConv.id), pollInterval);
+                return () => clearInterval(interval);
+            }
+        } else {
+            activeConvIdRef.current = null;
+            setMessages([]);
+            setDecryptedMessages({});
         }
     }, [selectedConv, fetchMessages, wsConnected]);
 
