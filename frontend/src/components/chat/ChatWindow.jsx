@@ -14,7 +14,8 @@ const ChatWindow = ({
     onUploadFile,
     onDownloadFile,
     onBack,
-    decryptBinary
+    decryptBinary,
+    wsConnected = false
 }) => {
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef(null);
@@ -95,6 +96,14 @@ const ChatWindow = ({
                         SECURE SESSION ACTIVE
                     </div>
                 </div>
+                    <div className="ws-status-indicator">
+                        <span className={`ws-dot ${wsConnected ? 'connected' : ''}`}></span>
+                        {wsConnected ? 'LIVE' : 'POLL'}
+                    </div>
+                    <span className="encryption-badge">
+                        <ShieldCheck size={10} />
+                        E2EE
+                    </span>
                     <div className="headerActions">
                         <MoreVertical size={32} className="header-more-btn" />
                     </div>

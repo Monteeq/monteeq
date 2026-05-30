@@ -736,6 +736,7 @@ const Chat = () => {
                 onDownloadFile={handleDownloadFile}
                 onBack={() => setSelectedConv(null)}
                 decryptBinary={decryptBinary}
+                wsConnected={wsConnected}
             />
 
             <AnimatePresence>
