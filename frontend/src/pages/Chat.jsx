@@ -183,12 +183,22 @@ const Chat = () => {
         try {
             const cached = await getLocalConversations();
             if (cached && cached.length > 0) {
-                setConversations(cached);
+                setConversations(prev => {
+                    if (prev.length === cached.length && JSON.stringify(prev) === JSON.stringify(cached)) {
+                        return prev;
+                    }
+                    return cached;
+                });
                 setIsConvsLoaded(true);
             }
             const data = await getConversations(token);
             if (Array.isArray(data)) {
-                setConversations(data);
+                setConversations(prev => {
+                    if (prev.length === data.length && JSON.stringify(prev) === JSON.stringify(data)) {
+                        return prev;
+                    }
+                    return data;
+                });
                 setIsConvsLoaded(true);
                 for (const c of data) {
                     await saveConversation(c);
@@ -201,6 +211,24 @@ const Chat = () => {
         }
     }, [token, getLocalConversations, saveConversation]);
 
+    const updateConversationLastMessage = useCallback((msg) => {
+        setConversations(prev => {
+            const updated = prev.map(c => {
+                if (c.id === msg.conversation_id) {
+                    return {
+                        ...c,
+                        last_message: msg,
+                        updated_at: msg.created_at
+                    };
+                }
+                return c;
+            });
+            // Sort conversations so the active one goes to the top
+            updated.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+            return updated;
+        });
+    }, []);
+
     const fetchDiscoveryUsers = useCallback(async () => {
         try {
             const data = await getFollowing(user.username);
@@ -209,14 +237,6 @@ const Chat = () => {
             console.error('Failed to fetch discovery users', error);
         }
     }, [user.username]);
-
-    useEffect(() => {
-        if (token && isSetup) {
-            fetchConversations();
-            const interval = setInterval(fetchConversations, 10000);
-            return () => clearInterval(interval);
-        }
-    }, [token, isSetup, fetchConversations]);
 
     // Handle search in discovery mode
     useEffect(() => {
@@ -365,6 +385,10 @@ const Chat = () => {
             const msg = data.message;
             // Save to local DB
             saveMessage(msg).catch(() => {});
+            
+            // Update last message in the conversation list in the UI in background
+            updateConversationLastMessage(msg);
+
             // If it's for the currently selected conversation, append it
             if (activeConvIdRef.current === msg.conversation_id) {
                 setMessages(prev => {
@@ -377,9 +401,20 @@ const Chat = () => {
                 decryptAll([msg]);
             }
         }
-    }, [saveMessage, decryptAll]);
+    }, [saveMessage, decryptAll, updateConversationLastMessage]);
 
     const { isConnected: wsConnected } = useWebSocket(token, handleWsMessage);
+
+    useEffect(() => {
+        if (token && isSetup) {
+            fetchConversations();
+            // Only poll conversations list if WebSocket is offline
+            if (!wsConnected) {
+                const interval = setInterval(fetchConversations, 30000);
+                return () => clearInterval(interval);
+            }
+        }
+    }, [token, isSetup, fetchConversations, wsConnected]);
 
     useEffect(() => {
         if (selectedConv) {
@@ -389,10 +424,11 @@ const Chat = () => {
             
             if (!selectedConv.isVirtual) {
                 fetchMessages(selectedConv.id);
-                // Polling fallback: 15s if WS connected, 5s if not
-                const pollInterval = wsConnected ? 15000 : 5000;
-                const interval = setInterval(() => fetchMessages(selectedConv.id), pollInterval);
-                return () => clearInterval(interval);
+                // Only poll fallback if WebSocket is disconnected
+                if (!wsConnected) {
+                    const interval = setInterval(() => fetchMessages(selectedConv.id), 5000);
+                    return () => clearInterval(interval);
+                }
             }
         } else {
             activeConvIdRef.current = null;
@@ -499,6 +535,7 @@ const Chat = () => {
 
             if (sentMsg) {
                 await saveMessage(sentMsg);
+                updateConversationLastMessage(sentMsg);
                 
                 // Replace temp message with real sent message
                 setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
@@ -590,6 +627,7 @@ const Chat = () => {
             
             if (sentMsg) {
                 await saveMessage(sentMsg);
+                updateConversationLastMessage(sentMsg);
                 
                 // Replace temp message with real sent message
                 setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
