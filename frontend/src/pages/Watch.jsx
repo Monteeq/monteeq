@@ -77,6 +77,8 @@ const Watch = () => {
     const [suggestedVideos, setSuggestedVideos] = useState([]);
     // Full unfiltered list used only for prev/next navigation index lookup
     const [navQueue, setNavQueue] = useState([]);
+    // Whether we're doing a background refresh (prev/next nav) vs a cold load
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Find the current video inside the full nav queue (includes current video)
     const currentIndex = navQueue.findIndex(v => v.id === parseInt(id));
@@ -92,6 +94,36 @@ const Watch = () => {
 
     useEffect(() => {
         let cancelled = false;
+
+        // If we already have the target video in the navQueue, render it
+        // immediately (optimistic) and only background-refresh the detail data.
+        const queueMatch = navQueue.find(v => v.id === parseInt(id));
+        if (queueMatch && video !== null) {
+            // Optimistic: show queue data instantly, no skeleton
+            setVideo(queueMatch);
+            setComments([]);
+            setIsRefreshing(true);
+
+            const refresh = async () => {
+                try {
+                    const [videoData, commentsData] = await Promise.all([
+                        getVideoById(id, token),
+                        getComments(id)
+                    ]);
+                    if (cancelled) return;
+                    setVideo(videoData);
+                    setComments(commentsData);
+                } catch (err) {
+                    console.error('Background refresh failed', err);
+                } finally {
+                    if (!cancelled) setIsRefreshing(false);
+                }
+            };
+            refresh();
+            return () => { cancelled = true; };
+        }
+
+        // Cold load: show skeleton and fetch everything
         setSuggestedVideos([]);
         setNavQueue([]);
 
@@ -180,6 +212,16 @@ const Watch = () => {
                 ogImage={video.thumbnail_url}
             />
             <div className="dimOverlay" />
+
+            {/* Slim bar shown while background-refreshing data after prev/next nav */}
+            {isRefreshing && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, height: '3px',
+                    background: 'linear-gradient(90deg, #ff3b30, #ff6b6b)',
+                    zIndex: 9999,
+                    animation: 'refreshBar 1.2s ease-in-out infinite'
+                }} />
+            )}
 
             <div className="mainColumn">
                 <div className="videoSection">
