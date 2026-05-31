@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import Hls from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Square, Monitor, Settings, RotateCcw, RotateCw, AlertCircle, Loader2, Crown } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Square, Monitor, Settings, RotateCcw, RotateCw, AlertCircle, Loader2, Crown, SkipBack, SkipForward } from 'lucide-react';
 import './VideoPlayerV2.css';
 import { initView, sendHeartbeat, API_BASE_URL } from '../api';
 import { getStreamUrl } from '../utils/streamUrl';
@@ -30,6 +30,10 @@ const VideoPlayerV2 = ({
   isCinematic = false,
   toggleTheaterMode,
   toggleCinematic,
+  onPrevious,
+  onNext,
+  hasPrevious = false,
+  hasNext = false,
   // Resolution URLs
   url_480p,
   url_720p,
@@ -463,8 +467,49 @@ const VideoPlayerV2 = ({
         <p className="creatorName">@{creator}</p>
       </div>
 
-      <div className={`centralControl ${!isPlaying && !isPreRollActive ? 'visible' : ''}`}>
-        <Play size={40} fill="white" />
+      {/* Central controls overlay (Prev, Rewind 10s, Play/Pause, Forward 10s, Next) */}
+      <div className={`centralControlsContainer ${(showControls || !isPlaying) && !isPreRollActive ? 'visible' : ''}`}>
+        <button
+          className={`centralBtn sideBtn ${!hasPrevious ? 'disabled' : ''}`}
+          onClick={(e) => { e.stopPropagation(); if (hasPrevious) onPrevious(); }}
+          disabled={!hasPrevious}
+          title="Previous Video"
+        >
+          <SkipBack size={18} />
+        </button>
+
+        <button
+          className="centralBtn sideBtn"
+          onClick={(e) => { e.stopPropagation(); jump(-10); }}
+          title="Rewind 10s"
+        >
+          <RotateCcw size={18} />
+        </button>
+
+        <button
+          className="centralBtn mainPlayBtn"
+          onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+          title={isPlaying ? 'Pause' : 'Play'}
+        >
+          {isPlaying ? <Pause size={28} fill="white" /> : <Play size={28} fill="white" style={{ transform: 'translateX(2px)' }} />}
+        </button>
+
+        <button
+          className="centralBtn sideBtn"
+          onClick={(e) => { e.stopPropagation(); jump(10); }}
+          title="Forward 10s"
+        >
+          <RotateCw size={18} />
+        </button>
+
+        <button
+          className={`centralBtn sideBtn ${!hasNext ? 'disabled' : ''}`}
+          onClick={(e) => { e.stopPropagation(); if (hasNext) onNext(); }}
+          disabled={!hasNext}
+          title="Next Video"
+        >
+          <SkipForward size={18} />
+        </button>
       </div>
 
       <div className={`controlsOverlay ${showControls || !isPlaying ? 'visible' : ''}`}>
@@ -481,12 +526,28 @@ const VideoPlayerV2 = ({
 
         <div className="bottomControls">
           <div className="group">
-            <button className="controlBtn" onClick={togglePlay}>
+            <button
+              className={`controlBtn navSkipBtn ${!hasPrevious ? 'navSkipDisabled' : ''}`}
+              onClick={hasPrevious ? onPrevious : undefined}
+              title="Previous video"
+              disabled={!hasPrevious}
+            >
+              <SkipBack size={20} />
+            </button>
+            <button className="controlBtn btn-playpause" onClick={togglePlay}>
               {isPlaying ? <Pause size={24} fill="white" /> : <Play size={24} fill="white" />}
             </button>
-            <button className="controlBtn" onClick={() => jump(-10)}><RotateCcw size={20} /></button>
-            <button className="controlBtn" onClick={() => jump(10)}><RotateCw size={20} /></button>
-
+            <button
+              className={`controlBtn navSkipBtn ${!hasNext ? 'navSkipDisabled' : ''}`}
+              onClick={hasNext ? onNext : undefined}
+              title="Next video"
+              disabled={!hasNext}
+            >
+              <SkipForward size={20} />
+            </button>
+            <button className="controlBtn btn-rewind" onClick={() => jump(-10)}><RotateCcw size={20} /></button>
+            <button className="controlBtn btn-forward" onClick={() => jump(10)}><RotateCw size={20} /></button>
+ 
             <div className="volumeWrapper">
               <button className="controlBtn" onClick={toggleMute}>
                 {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -577,10 +638,10 @@ const VideoPlayerV2 = ({
               </div>
             )}
 
-            <button className="controlBtn" onClick={toggleTheaterMode} title="Theater Mode">
+            <button className="controlBtn btn-theater" onClick={toggleTheaterMode} title="Theater Mode">
               {isTheaterMode ? <Square size={20} /> : <Monitor size={20} />}
             </button>
-            <button className="controlBtn" onClick={toggleFullscreen}><Maximize size={22} /></button>
+            <button className="controlBtn btn-fullscreen" onClick={toggleFullscreen}><Maximize size={22} /></button>
           </div>
         </div>
       </div>
