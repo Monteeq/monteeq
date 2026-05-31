@@ -7,11 +7,11 @@ import { useGoogleDrive } from '../hooks/useGoogleDrive';
 import { useChatDB } from '../hooks/useChatDB';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useNotification } from '../context/NotificationContext';
-import { 
-    getConversations, 
-    getChatMessages, 
-    sendChatMessage, 
-    getUserPublicKey, 
+import {
+    getConversations,
+    getChatMessages,
+    sendChatMessage,
+    getUserPublicKey,
     uploadPublicKey,
     uploadChatAttachment,
     searchUnified,
@@ -41,11 +41,11 @@ const Chat = () => {
         }
         return devId;
     }, []);
-    const { 
-        generateKeyPair, 
-        encryptMessage, 
-        decryptMessage, 
-        encryptBinary, 
+    const {
+        generateKeyPair,
+        encryptMessage,
+        decryptMessage,
+        encryptBinary,
         decryptBinary,
         encryptMessageMultiDevice,
         encryptMultiDevice,
@@ -53,7 +53,7 @@ const Chat = () => {
         importPrivateKey,
         nukeKeys,
         getLocalPublicKey,
-        hasLocalKey 
+        hasLocalKey
     } = useCrypto();
 
     const [conversations, setConversations] = useState([]);
@@ -121,7 +121,7 @@ const Chat = () => {
                     console.warn("Local key mismatch detected!");
                     setHasKeyMismatch(true);
                 }
-                
+
                 // Guard: Only upload the prekey bundle once per device session
                 const storageKey = `monteeq_prekey_uploaded_${deviceId}`;
                 if (localPub && token && !localStorage.getItem(storageKey)) {
@@ -164,10 +164,10 @@ const Chat = () => {
                     const privKeyB64 = await exportPrivateKey();
                     if (privKeyB64) {
                         const now = new Date().toISOString();
-                        await drive.saveBackup({ 
-                            wrappedPrivateKey: privKeyB64, 
+                        await drive.saveBackup({
+                            wrappedPrivateKey: privKeyB64,
                             publicKey: user.public_key,
-                            syncedAt: now 
+                            syncedAt: now
                         });
                         setLastBackupTime(now);
                         localStorage.setItem('monteeq_last_backup_time', now);
@@ -245,7 +245,7 @@ const Chat = () => {
                 if (isDiscoveryMode) fetchDiscoveryUsers();
                 return;
             }
-            
+
             try {
                 const results = await searchUnified(searchTerm);
                 if (isDiscoveryMode) {
@@ -264,10 +264,10 @@ const Chat = () => {
     useEffect(() => {
         if (location.state?.startChatWith && isConvsLoaded) {
             const targetUsername = location.state.startChatWith;
-            const existing = conversations.find(c => 
+            const existing = conversations.find(c =>
                 (c.user1.username === targetUsername) || (c.user2.username === targetUsername)
             );
-            
+
             if (existing) {
                 setSelectedConv(existing);
             } else {
@@ -298,15 +298,15 @@ const Chat = () => {
 
     const decryptAll = useCallback(async (msgs) => {
         if (!Array.isArray(msgs) || !user?.id || !isSetup) return;
-        
+
         for (const msg of msgs) {
             // Only decrypt if we haven't done it and it's not currently in progress
             if (!decryptedMessages[msg.id] && !decryptionQueueRef.current.has(msg.id)) {
                 decryptionQueueRef.current.add(msg.id);
-                
+
                 try {
                     const wrappedKey = String(msg.sender_id) === String(user.id) ? msg.sender_key : msg.recipient_key;
-                    
+
                     if (msg.message_type === 'text') {
                         const decrypted = await decryptMessage(msg.encrypted_content, msg.iv, wrappedKey);
                         setDecryptedMessages(prev => ({ ...prev, [msg.id]: decrypted }));
@@ -316,11 +316,11 @@ const Chat = () => {
                 } catch (e) {
                     console.error(`Message decryption failed for ID ${msg.id}:`, e.message);
                     setDecryptedMessages(prev => ({ ...prev, [msg.id]: '[Secure Message]' }));
-                    
+
                     // Proactive detection: if unwrap fails, flag mismatch
                     if (e.message.includes('UNWRAP_FAILED')) {
                         setHasKeyMismatch(true);
-                        
+
                         // AUTO-HEAL: Try to restore from drive if we haven't tried in the last 30s
                         const now = Date.now();
                         if (now - lastHealAttemptRef.current > 30000) {
@@ -365,7 +365,7 @@ const Chat = () => {
                 const incomingIds = remoteMsgs
                     .filter(m => String(m.sender_id) !== String(user.id))
                     .map(m => m.id);
-                    
+
                 if (incomingIds.length > 0) {
                     try {
                         await acknowledgeMessages(incomingIds, token);
@@ -379,13 +379,61 @@ const Chat = () => {
         }
     }, [token, decryptAll, getMessagesForConversation, saveMessage, user.id]);
 
+    // Request Notification permission on mount
+    useEffect(() => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().catch(err => {
+                console.warn('Failed to request notification permission:', err);
+            });
+        }
+    }, []);
+
+    // Push notification trigger
+    const triggerPushNotification = useCallback(async (msg) => {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+        let bodyText = 'Sent a message';
+        try {
+            const wrappedKey = String(msg.sender_id) === String(user.id) ? msg.sender_key : msg.recipient_key;
+            if (msg.message_type === 'text') {
+                bodyText = await decryptMessage(msg.encrypted_content, msg.iv, wrappedKey);
+            } else {
+                bodyText = `[${msg.message_type.toUpperCase()}]`;
+            }
+        } catch (e) {
+            bodyText = 'New secure message received';
+        }
+
+        const conv = conversations.find(c => c.id === msg.conversation_id);
+        const sender = conv ? (String(conv.user1.id) === String(msg.sender_id) ? conv.user1 : conv.user2) : null;
+        const senderName = sender ? (sender.username || sender.name) : 'Someone';
+
+        try {
+            const notification = new Notification(`New message from ${senderName}`, {
+                body: bodyText,
+                icon: logo,
+                tag: String(msg.conversation_id),
+                requireInteraction: false
+            });
+
+            notification.onclick = () => {
+                window.focus();
+                if (conv) {
+                    setSelectedConv(conv);
+                }
+            };
+        } catch (err) {
+            console.warn('Failed to trigger notification:', err);
+        }
+    }, [conversations, decryptMessage, user.id, setSelectedConv]);
+
     // WebSocket real-time message handler
     const handleWsMessage = useCallback((data) => {
         if (data.type === 'new_message' && data.message) {
             const msg = data.message;
             // Save to local DB
-            saveMessage(msg).catch(() => {});
-            
+            saveMessage(msg).catch(() => { });
+
             // Update last message in the conversation list in the UI in background
             updateConversationLastMessage(msg);
 
@@ -400,8 +448,19 @@ const Chat = () => {
                 // Trigger decryption
                 decryptAll([msg]);
             }
+
+            // Send push notification if it's from another user
+            if (String(msg.sender_id) !== String(user.id)) {
+                const convExists = conversations.some(c => c.id === msg.conversation_id);
+                if (!convExists) {
+                    fetchConversations();
+                }
+                if (document.hidden || activeConvIdRef.current !== msg.conversation_id) {
+                    triggerPushNotification(msg);
+                }
+            }
         }
-    }, [saveMessage, decryptAll, updateConversationLastMessage]);
+    }, [saveMessage, decryptAll, updateConversationLastMessage, user.id, conversations, fetchConversations, triggerPushNotification]);
 
     const { isConnected: wsConnected } = useWebSocket(token, handleWsMessage);
 
@@ -421,7 +480,7 @@ const Chat = () => {
             activeConvIdRef.current = selectedConv.id;
             setMessages([]);
             setDecryptedMessages({});
-            
+
             if (!selectedConv.isVirtual) {
                 fetchMessages(selectedConv.id);
                 // Only poll fallback if WebSocket is disconnected
@@ -466,7 +525,7 @@ const Chat = () => {
         }
         setUser(prev => ({ ...prev, public_key: pubKey }));
         setIsSetup(true);
-        
+
         // If Google user, backup the private key immediately
         if (user.google_id && drive.isAuthenticated) {
             const privKeyB64 = await exportPrivateKey();
@@ -477,7 +536,7 @@ const Chat = () => {
     const handleSendMessage = async (text) => {
         if (!selectedConv) return;
         const recipient = selectedConv.user1.username === user.username ? selectedConv.user2 : selectedConv.user1;
-        
+
         const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
         const tempMsg = {
             id: tempId,
@@ -503,12 +562,12 @@ const Chat = () => {
             let recipientBundles = [];
             try {
                 recipientBundles = await getRecipientPrekeyBundles(recipient.username, token);
-            } catch (_) {}
+            } catch (_) { }
 
             let senderBundles = [];
             try {
                 senderBundles = await getRecipientPrekeyBundles(user.username, token);
-            } catch (_) {}
+            } catch (_) { }
 
             let encrypted;
             if (recipientBundles && recipientBundles.length > 0) {
@@ -526,7 +585,7 @@ const Chat = () => {
                 }
                 encrypted = await encryptMessage(text, recipientKeys.public_key, user.public_key);
             }
-            
+
             const sentMsg = await sendChatMessage({
                 ...encrypted,
                 recipient_username: recipient.username,
@@ -536,7 +595,7 @@ const Chat = () => {
             if (sentMsg) {
                 await saveMessage(sentMsg);
                 updateConversationLastMessage(sentMsg);
-                
+
                 // Replace temp message with real sent message
                 setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
                 setDecryptedMessages(prev => {
@@ -546,11 +605,11 @@ const Chat = () => {
                     return next;
                 });
             }
-            
+
             if (selectedConv.isVirtual) {
                 await fetchConversations();
                 const newConvs = await getConversations(token);
-                const real = newConvs.find(c => 
+                const real = newConvs.find(c =>
                     (c.user1.username === recipient.username) || (c.user2.username === recipient.username)
                 );
                 if (real) setSelectedConv(real);
@@ -558,7 +617,7 @@ const Chat = () => {
         } catch (error) {
             console.error('Failed to send message', error);
             showNotification('error', error?.message || 'Transmission failed. Check connection or recipient keys.');
-            
+
             // Mark message as failed
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
         }
@@ -568,12 +627,12 @@ const Chat = () => {
         let recipientBundles = [];
         try {
             recipientBundles = await getRecipientPrekeyBundles(recipientUsername, token);
-        } catch (_) {}
+        } catch (_) { }
 
         let senderBundles = [];
         try {
             senderBundles = await getRecipientPrekeyBundles(user.username, token);
-        } catch (_) {}
+        } catch (_) { }
 
         if (recipientBundles && recipientBundles.length > 0) {
             if (!senderBundles.some(b => b.device_id === deviceId)) {
@@ -595,7 +654,7 @@ const Chat = () => {
     const handleSendVoice = async (blob) => {
         if (!selectedConv) return;
         const recipient = selectedConv.user1.username === user.username ? selectedConv.user2 : selectedConv.user1;
-        
+
         const tempId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
         const tempMsg = {
             id: tempId,
@@ -608,14 +667,14 @@ const Chat = () => {
 
         // Append optimistic voice message
         setMessages(prev => [...prev, tempMsg]);
-        
+
         try {
             const arrayBuffer = await blob.arrayBuffer();
             const encrypted = await encryptPayloadMultiDevice(arrayBuffer, recipient.username);
-            
+
             const encryptedBlob = new Blob([base64ToArrayBuffer(encrypted.encrypted_content)], { type: 'application/octet-stream' });
             const uploadRes = await uploadChatAttachment(encryptedBlob, token);
-            
+
             const sentMsg = await sendChatMessage({
                 ...encrypted,
                 encrypted_content: 'ENCRYPTED_VOICE',
@@ -624,11 +683,11 @@ const Chat = () => {
                 attachment_url: uploadRes.url,
                 file_metadata: JSON.stringify({ size: blob.size, type: blob.type })
             }, token);
-            
+
             if (sentMsg) {
                 await saveMessage(sentMsg);
                 updateConversationLastMessage(sentMsg);
-                
+
                 // Replace temp message with real sent message
                 setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
                 decryptAll([sentMsg]);
@@ -636,7 +695,7 @@ const Chat = () => {
         } catch (err) {
             console.error("Voice send failed", err);
             showNotification('error', err?.message || 'Failed to send voice recording');
-            
+
             // Mark message as failed
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
         }
@@ -645,7 +704,7 @@ const Chat = () => {
     const handleUploadFile = async (file) => {
         if (!selectedConv || !file) return;
         const recipient = selectedConv.user1.username === user.username ? selectedConv.user2 : selectedConv.user1;
-        
+
         let message_type = 'file';
         if (file.type.startsWith('image/')) message_type = 'image';
         else if (file.type.startsWith('video/')) message_type = 'video';
@@ -662,14 +721,14 @@ const Chat = () => {
 
         // Append optimistic file/image/video message
         setMessages(prev => [...prev, tempMsg]);
-        
+
         try {
             const arrayBuffer = await file.arrayBuffer();
             const encrypted = await encryptPayloadMultiDevice(arrayBuffer, recipient.username);
-            
+
             const encryptedBlob = new Blob([base64ToArrayBuffer(encrypted.encrypted_content)], { type: 'application/octet-stream' });
             const uploadRes = await uploadChatAttachment(encryptedBlob, token);
-            
+
             const sentMsg = await sendChatMessage({
                 ...encrypted,
                 encrypted_content: 'ENCRYPTED_FILE',
@@ -678,11 +737,11 @@ const Chat = () => {
                 attachment_url: uploadRes.url,
                 file_metadata: JSON.stringify({ name: file.name, size: file.size, type: file.type })
             }, token);
-            
+
             if (sentMsg) {
                 await saveMessage(sentMsg);
                 updateConversationLastMessage(sentMsg);
-                
+
                 // Replace temp message with real sent message
                 setMessages(prev => prev.map(m => m.id === tempId ? sentMsg : m));
                 decryptAll([sentMsg]);
@@ -690,7 +749,7 @@ const Chat = () => {
         } catch (err) {
             console.error("File upload failed", err);
             showNotification('error', err?.message || 'Failed to upload file');
-            
+
             // Mark message as failed
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
         }
@@ -701,10 +760,10 @@ const Chat = () => {
             const response = await fetch(msg.attachment_url);
             const encryptedBuffer = await response.arrayBuffer();
             const encryptedB64 = arrayBufferToBase64(encryptedBuffer);
-            
+
             const wrappedKey = String(msg.sender_id) === String(user.id) ? msg.sender_key : msg.recipient_key;
             const decryptedBuffer = await decryptBinary(encryptedB64, msg.iv, wrappedKey);
-            
+
             const metadata = JSON.parse(msg.file_metadata);
             const blob = new Blob([decryptedBuffer], { type: metadata.type });
             const url = window.URL.createObjectURL(blob);
@@ -819,7 +878,7 @@ const Chat = () => {
                 <div className="nav-rail-bottom">
                     <div className="nav-rail-avatar-row">
                         <div className="nav-rail-avatar">
-                            {user.profile_pic 
+                            {user.profile_pic
                                 ? <img src={user.profile_pic} alt="avatar" />
                                 : (user.name || user.username || 'U')[0].toUpperCase()
                             }
@@ -832,8 +891,8 @@ const Chat = () => {
                 </div>
             </div>
 
-            <ChatList 
-                conversations={conversations} 
+            <ChatList
+                conversations={conversations}
                 discoveryUsers={discoveryUsers}
                 isDiscoveryMode={isDiscoveryMode}
                 onToggleDiscovery={(val) => {
@@ -846,7 +905,7 @@ const Chat = () => {
                 searchTerm={searchTerm}
                 onSearch={setSearchTerm}
             />
-            <ChatWindow 
+            <ChatWindow
                 selectedConv={selectedConv}
                 messages={messages}
                 decryptedMessages={decryptedMessages}
@@ -862,14 +921,14 @@ const Chat = () => {
 
             <AnimatePresence>
                 {showSecurityPortal && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="security-portal-overlay"
                         onClick={() => setShowSecurityPortal(false)}
                     >
-                        <motion.div 
+                        <motion.div
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.9, y: 20 }}
@@ -880,24 +939,24 @@ const Chat = () => {
                                 <ShieldCheck size={32} color={hasKeyMismatch ? "var(--neon-red)" : "#34c759"} />
                                 <h3>Security Portal</h3>
                             </div>
-                            
+
                             <div className="portal-body">
                                 <p className="portal-desc">
-                                    {hasKeyMismatch 
+                                    {hasKeyMismatch
                                         ? `CRITICAL: ${failedCount} message${failedCount === 1 ? '' : 's'} could not be deciphered because your local keys do not match the cloud profile.`
                                         : "Your session is fully encrypted and synced with your cloud profile."}
                                 </p>
 
                                 <div className="portal-actions">
-                                    <button 
-                                        className={`portal-btn sync-btn ${hasKeyMismatch && drive.isAuthenticated ? 'suggested' : ''}`} 
+                                    <button
+                                        className={`portal-btn sync-btn ${hasKeyMismatch && drive.isAuthenticated ? 'suggested' : ''}`}
                                         onClick={performDriveSync}
                                     >
                                         <Cloud size={18} />
                                         <span>Restore from Drive</span>
                                         {hasKeyMismatch && drive.isAuthenticated && <span className="btn-badge">RECOMMENDED</span>}
                                     </button>
-                                    
+
                                     <div className="portal-divider">OR</div>
 
                                     <button className="portal-btn reset-btn" onClick={handleNukeKeys}>
@@ -905,7 +964,7 @@ const Chat = () => {
                                         <span>Emergency Session Reset</span>
                                     </button>
                                 </div>
-                                
+
                                 <div className="portal-footer-sync">
                                     <div className={`sync-dot ${drive.isAuthenticated ? 'active' : ''}`} />
                                     <span>Cloud Sync: {drive.isAuthenticated ? 'ACTIVE' : 'NOT LINKED'}</span>
@@ -915,7 +974,7 @@ const Chat = () => {
                                         </span>
                                     )}
                                 </div>
-                                
+
                                 {hasKeyMismatch && (
                                     <div className="portal-warning">
                                         <ShieldAlert size={14} />

@@ -65,6 +65,20 @@ async def health_check(db: Session = Depends(get_db)):
         health["redis"] = f"disconnected: {type(e).__name__}: {str(e)}"
         health["status"] = "error"
         
+    # Check Celery
+    try:
+        from app.worker import celery_app
+        insp = celery_app.control.inspect(timeout=1.0)
+        ping_res = insp.ping()
+        if ping_res:
+            health["celery"] = f"connected ({len(ping_res)} worker(s) active)"
+        else:
+            health["celery"] = "disconnected: no active workers found"
+            health["status"] = "error"
+    except Exception as e:
+        health["celery"] = f"error: {type(e).__name__}: {str(e)}"
+        health["status"] = "error"
+
     # Check Rust Service
     async with httpx.AsyncClient() as client:
         try:
