@@ -216,7 +216,7 @@
   transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1.8rem;
   z-index: 15;
   opacity: 0;
   pointer-events: none;
@@ -229,49 +229,49 @@
 }
 
 .centralBtn {
-  background: rgba(0, 0, 0, 0.65);
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border-radius: 50%;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #fff !important;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+  padding: 0.5rem;
 }
 
-.centralBtn:hover:not(:disabled) {
-  background: rgba(255, 59, 48, 0.85);
-  border-color: #ff3b30;
-  transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(255, 59, 48, 0.4);
+.centralBtn svg {
+  color: #fff !important;
+  stroke: #fff !important;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+  transition: stroke 0.2s ease, transform 0.2s ease;
 }
 
-.centralBtn:active:not(:disabled) {
+.centralBtn:hover:not(:disabled) svg {
+  color: #ff3b30 !important;
+  stroke: #ff3b30 !important;
+  transform: scale(1.15);
+}
+
+.centralBtn:active:not(:disabled) svg {
   transform: scale(0.95);
 }
 
 .centralBtn.disabled {
-  opacity: 0.25;
+  opacity: 0.25 !important;
   cursor: not-allowed;
   pointer-events: none;
 }
 
-.mainPlayBtn {
-  width: 60px;
-  height: 60px;
-  background: rgba(255, 59, 48, 0.9);
-  border-color: #ff3b30;
+.mainPlayBtn svg {
+  width: 48px !important;
+  height: 48px !important;
 }
 
-.mainPlayBtn:hover {
-  background: #ff3b30;
-}
-
-.sideBtn {
-  width: 42px;
-  height: 42px;
+.sideBtn svg {
+  width: 28px !important;
+  height: 28px !important;
 }
 
 /* Cinematic Mode Effect */
@@ -563,23 +563,15 @@
   }
   /* Scale central overlays down to match mobile screen sizes */
   .centralControlsContainer {
-    gap: 0.8rem;
-  }
-  .mainPlayBtn {
-    width: 48px;
-    height: 48px;
+    gap: 1.2rem;
   }
   .mainPlayBtn svg {
-    width: 22px !important;
-    height: 22px !important;
-  }
-  .sideBtn {
-    width: 34px;
-    height: 34px;
+    width: 32px !important;
+    height: 32px !important;
   }
   .sideBtn svg {
-    width: 14px !important;
-    height: 14px !important;
+    width: 20px !important;
+    height: 20px !important;
   }
 }
 
