@@ -121,9 +121,52 @@ async def read_videos(
     return videos
 
 
+def check_premium_access(db: Session, request: Request):
+    token = request.query_params.get("token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            
+    if not token:
+        raise HTTPException(status_code=403, detail="1080p and above quality levels are restricted to Premium members")
+        
+    try:
+        from jose import jwt
+        from app.core.config import SECRET_KEY, ALGORITHM
+        from datetime import datetime, timezone
+        
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=403, detail="1080p and above quality levels are restricted to Premium members")
+            
+        user = db.query(User).filter(User.username == username).first()
+        if not user or not user.is_active:
+            raise HTTPException(status_code=403, detail="1080p and above quality levels are restricted to Premium members")
+            
+        # Check premium expiration
+        if user.is_premium and user.premium_expires_at:
+            if user.premium_expires_at < datetime.now(timezone.utc):
+                user.is_premium = False
+                db.commit()
+                
+        if not user.is_premium:
+            raise HTTPException(status_code=403, detail="1080p and above quality levels are restricted to Premium members")
+            
+    except Exception:
+        raise HTTPException(status_code=403, detail="1080p and above quality levels are restricted to Premium members")
+
+
 @router.get("/{video_id}/stream/{sub_path:path}")
 @router.get("/{video_id}/stream")
 async def stream_video(video_id: int, request: Request, db: Session = Depends(get_db), sub_path: str = None):
+    # Check premium if quality is high-res (1080p, 2k, 4k)
+    if sub_path:
+        sub_path_lower = sub_path.lower()
+        if "1080p" in sub_path_lower or "2k" in sub_path_lower or "4k" in sub_path_lower:
+            check_premium_access(db, request)
+
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
@@ -215,6 +258,9 @@ async def stream_video_resolution(
     db: Session = Depends(get_db)
 ):
     """Proxy a specific resolution stream (480p, 720p, 1080p, 2k, 4k) for a video."""
+    if quality.lower() in ["1080p", "2k", "4k"]:
+        check_premium_access(db, request)
+
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")

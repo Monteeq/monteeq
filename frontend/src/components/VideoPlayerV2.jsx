@@ -72,20 +72,46 @@ const VideoPlayerV2 = ({
   // Quality selector state — null means "Auto" (master HLS)
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [selectedQuality, setSelectedQuality] = useState(null); // null = Auto/master
+  const [currentAutoLabel, setCurrentAutoLabel] = useState('');
+  const [detectedResolutions, setDetectedResolutions] = useState([]);
   const qualityMenuRef = useRef(null);
   const pendingSeekRef = useRef(null); // stores time to seek after quality switch
 
-  // Build list of available resolutions from provided URLs (only show those with actual URLs)
-  const availableResolutions = useMemo(() => {
+  // Reset resolution states when video changes
+  useEffect(() => {
+    setSelectedQuality(null);
+    setDetectedResolutions([]);
+    setCurrentAutoLabel('');
+  }, [videoId, src]);
+
+  // Helper to map height to standard resolution definitions
+  const getResolutionDetails = useCallback((height) => {
+    if (height >= 2160) return { label: '4K', quality: '4k', pro: true };
+    if (height >= 1440) return { label: '2K', quality: '2k', pro: true };
+    if (height >= 1080) return { label: '1080p', quality: '1080p', pro: true };
+    if (height >= 720) return { label: '720p', quality: '720p', pro: false };
+    if (height >= 480) return { label: '480p', quality: '480p', pro: false };
+    return { label: `${height}p`, quality: `${height}p`, pro: false };
+  }, []);
+
+  // Fallback resolutions from props in case Hls is not loaded/supported (Safari / native)
+  const fallbackResolutions = useMemo(() => {
     const urlMap = { url_480p, url_720p, url_1080p, url_2k, url_4k };
     return RESOLUTION_DEFS.filter(r => !!urlMap[r.key]);
   }, [url_480p, url_720p, url_1080p, url_2k, url_4k]);
 
+  // Combine detected and fallback resolutions
+  const availableResolutions = useMemo(() => {
+    return detectedResolutions.length > 0 ? detectedResolutions : fallbackResolutions;
+  }, [detectedResolutions, fallbackResolutions]);
+
   // Determine the label to show on the settings button
   const selectedLabel = useMemo(() => {
-    if (!selectedQuality) return 'Auto';
-    return RESOLUTION_DEFS.find(r => r.quality === selectedQuality)?.label || 'Auto';
-  }, [selectedQuality]);
+    if (!selectedQuality) {
+      return `Auto${currentAutoLabel ? ` (${currentAutoLabel})` : ''}`;
+    }
+    return availableResolutions.find(r => r.quality === selectedQuality)?.label || selectedQuality;
+  }, [selectedQuality, currentAutoLabel, availableResolutions]);
 
   useEffect(() => {
     if (isPremium) setIsPreRollActive(false);
@@ -113,31 +139,20 @@ const VideoPlayerV2 = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // Initialize HLS / Video Source — reacts to quality changes
+  // Initialize HLS / Video Source
   useEffect(() => {
     if (!videoRef.current || !src) return;
     setError(null);
 
-    // Save playback state before switching
+    // Save playback state before switching (should only happen on src/video change)
     const savedTime = videoRef.current.currentTime || 0;
     const wasPlaying = !videoRef.current.paused;
 
-    // Store pending seek time; will be applied after loadedmetadata
     if (savedTime > 0) {
       pendingSeekRef.current = savedTime;
     }
 
-    // Build the stream URL:
-    // - If a specific resolution is selected, use the /stream-res proxy endpoint
-    // - Otherwise fall through to the master HLS proxy
-    let streamSrc;
-    if (selectedQuality) {
-      // Use the dedicated resolution proxy (avoids CORS, streams the specific quality file)
-      streamSrc = `${API_BASE_URL}/videos/${videoId}/stream-res?quality=${selectedQuality}`;
-    } else {
-      streamSrc = getStreamUrl(src, videoId);
-    }
-
+    const streamSrc = `${getStreamUrl(src, videoId)}${token ? `?token=${token}` : ''}`;
     const srcToUse = streamSrc || src;
     let recoveryAttempts = 0;
 
@@ -154,15 +169,85 @@ const VideoPlayerV2 = ({
       }
     };
 
+    const handleVideoResize = () => {
+      if (videoRef.current) {
+        const height = videoRef.current.videoHeight;
+        if (height > 0) {
+          setCurrentAutoLabel(`${height}p`);
+        }
+      }
+    };
+
+    const videoEl = videoRef.current;
+    if (videoEl) {
+      videoEl.addEventListener('resize', handleVideoResize);
+    }
+
     if (Hls.isSupported() && srcToUse.includes('.m3u8')) {
       if (hlsRef.current) hlsRef.current.destroy();
-      const hls = new Hls({ capLevelToPlayerSize: false, startLevel: -1 });
+      const hls = new Hls({
+        capLevelToPlayerSize: false,
+        startLevel: -1,
+        xhrSetup: (xhr, url) => {
+          if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          }
+        }
+      });
       hls.loadSource(srcToUse);
       hls.attachMedia(videoRef.current);
       hlsRef.current = hls;
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        // Detect exact available resolutions from HLS levels
+        if (hls.levels && hls.levels.length > 0) {
+          const levelsList = hls.levels.map((level, index) => {
+            const details = getResolutionDetails(level.height);
+            return {
+              ...details,
+              height: level.height,
+              index,
+            };
+          });
+
+          // Sort descending (highest quality first)
+          levelsList.sort((a, b) => b.height - a.height);
+          setDetectedResolutions(levelsList);
+
+          // Cap resolution for free users
+          if (!isPremium) {
+            let maxAllowedIndex = -1;
+            for (let i = 0; i < hls.levels.length; i++) {
+              const lvl = hls.levels[i];
+              if (lvl.height <= 720) {
+                if (maxAllowedIndex === -1 || lvl.height > hls.levels[maxAllowedIndex].height) {
+                  maxAllowedIndex = i;
+                }
+              }
+            }
+            if (maxAllowedIndex !== -1) {
+              hls.autoLevelCapping = maxAllowedIndex;
+              console.log(`[HLS] Capped resolution to level index ${maxAllowedIndex} (${hls.levels[maxAllowedIndex].height}p) for free user`);
+            }
+          }
+
+          // Apply selected quality if one was pre-selected
+          if (selectedQuality) {
+            const levelIndex = hls.levels.findIndex(lvl => `${lvl.height}p` === selectedQuality);
+            if (levelIndex !== -1) {
+              hls.currentLevel = levelIndex;
+            }
+          }
+        }
         playAfterLoad();
+      });
+
+      hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+        const levelIndex = data.level;
+        const level = hls.levels[levelIndex];
+        if (level) {
+          setCurrentAutoLabel(`${level.height}p`);
+        }
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
@@ -188,7 +273,13 @@ const VideoPlayerV2 = ({
         }
       });
 
-      return () => hls.destroy();
+      return () => {
+        hls.destroy();
+        hlsRef.current = null;
+        if (videoEl) {
+          videoEl.removeEventListener('resize', handleVideoResize);
+        }
+      };
     } else {
       // Direct MP4 / non-HLS stream
       videoRef.current.src = srcToUse;
@@ -198,9 +289,70 @@ const VideoPlayerV2 = ({
       };
       videoRef.current.addEventListener('loadedmetadata', onMeta);
       videoRef.current.load();
-      return () => videoRef.current?.removeEventListener('loadedmetadata', onMeta);
+      return () => {
+        videoEl?.removeEventListener('loadedmetadata', onMeta);
+        if (videoEl) {
+          videoEl.removeEventListener('resize', handleVideoResize);
+        }
+      };
     }
-  }, [selectedQuality, src, autoPlay, isPreRollActive, videoId]);
+  }, [src, autoPlay, isPreRollActive, videoId, token, isPremium, getResolutionDetails]);
+
+  // Handle Hls.js level selection smoothly
+  useEffect(() => {
+    if (hlsRef.current && hlsRef.current.levels && hlsRef.current.levels.length > 0) {
+      const hls = hlsRef.current;
+      if (!selectedQuality) {
+        hls.currentLevel = -1;
+        console.log('[HLS] Switched to Auto (ABR)');
+      } else {
+        const levelIndex = hls.levels.findIndex(lvl => `${lvl.height}p` === selectedQuality);
+        if (levelIndex !== -1) {
+          hls.currentLevel = levelIndex;
+          console.log(`[HLS] Switched to manual level index ${levelIndex} (${hls.levels[levelIndex].height}p)`);
+        }
+      }
+    }
+  }, [selectedQuality]);
+
+  // Handle non-HLS quality changes (MP4 direct stream fallback)
+  useEffect(() => {
+    if (hlsRef.current) return;
+
+    if (videoRef.current && src && !src.includes('.m3u8')) {
+      const savedTime = videoRef.current.currentTime || 0;
+      const wasPlaying = !videoRef.current.paused;
+
+      let streamSrc;
+      if (selectedQuality) {
+        const resDef = RESOLUTION_DEFS.find(r => r.quality === selectedQuality);
+        const urlMap = { url_480p, url_720p, url_1080p, url_2k, url_4k };
+        const qualityUrl = resDef ? urlMap[resDef.key] : null;
+        if (qualityUrl) {
+          streamSrc = `${API_BASE_URL}/videos/${videoId}/stream-res?quality=${selectedQuality}${token ? `&token=${token}` : ''}`;
+        }
+      } else {
+        streamSrc = `${getStreamUrl(src, videoId)}${token ? `?token=${token}` : ''}`;
+      }
+
+      const srcToUse = streamSrc || src;
+      if (srcToUse && videoRef.current.src !== srcToUse) {
+        videoRef.current.src = srcToUse;
+        videoRef.current.load();
+        
+        const onMetadata = () => {
+          if (savedTime > 0) {
+            videoRef.current.currentTime = savedTime;
+          }
+          if (wasPlaying) {
+            videoRef.current.play().catch(e => console.log('Playback resume failed:', e));
+          }
+          videoRef.current.removeEventListener('loadedmetadata', onMetadata);
+        };
+        videoRef.current.addEventListener('loadedmetadata', onMetadata);
+      }
+    }
+  }, [selectedQuality, src, videoId, token]);
 
   // Analytics: View & Heartbeat + History Tracking
   useEffect(() => {
@@ -598,6 +750,23 @@ const VideoPlayerV2 = ({
                       <Settings size={14} />
                       <span>Video Quality</span>
                     </div>
+
+                    {/* Auto Option */}
+                    <button
+                      className={`qualityOption ${!selectedQuality ? 'qualityOptionActive' : ''}`}
+                      onClick={() => {
+                        setSelectedQuality(null);
+                        setShowQualityMenu(false);
+                      }}
+                    >
+                      <span className="qualityOptionLabel">
+                        Auto{(!selectedQuality && currentAutoLabel) ? ` (${currentAutoLabel})` : ''}
+                      </span>
+                      {!selectedQuality ? (
+                        <span className="qualityCheckmark">✓</span>
+                      ) : null}
+                    </button>
+
                     {availableResolutions.map(res => {
                       const isLocked = res.pro && !isPremium;
                       const isActive = selectedQuality === res.quality;

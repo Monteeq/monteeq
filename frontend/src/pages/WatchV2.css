@@ -334,7 +334,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.95);
-    z-index: 5;
+    z-index: 1005; /* Above Header & Sidebar (1000) to dim them correctly */
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.5s ease;
@@ -343,6 +343,11 @@
 .cinematic .dimOverlay {
     opacity: 1;
     pointer-events: all;
+}
+
+.cinematic .videoSection {
+    z-index: 1006; /* Above dimOverlay (1005) */
+    position: relative;
 }
 
 /* ── Suggested Videos Sidebar ──────────────────────────────────────────────── */

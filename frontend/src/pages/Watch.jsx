@@ -42,7 +42,7 @@ const DownloadModal = ({ video, onClose, user }) => {
     };
 
     return (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
             <div className="modal-content glass" style={{ background: '#111', padding: '2rem', borderRadius: '2rem', width: '90%', maxWidth: '400px', border: '1px solid rgba(255,255,255,0.1)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                     <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900 }}>Download Quality</h2>
@@ -125,7 +125,7 @@ const ShareModal = ({ video, onClose }) => {
     ];
 
     return (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
             <div className="modal-content glass" style={{ background: '#111', padding: '2.5rem 2rem 2rem 2rem', borderRadius: '2rem', width: '90%', maxWidth: '460px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
                 <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#666'}><X size={24} /></button>
                 <div style={{ marginBottom: '2rem' }}>
@@ -511,7 +511,7 @@ const Watch = () => {
                 video={video}
                 ogImage={video.thumbnail_url}
             />
-            <div className="dimOverlay" />
+            <div className="dimOverlay" onClick={() => setIsCinematic(false)} />
 
             {/* Slim bar shown while background-refreshing data after prev/next nav */}
             {isRefreshing && (
