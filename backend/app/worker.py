@@ -1,3 +1,10 @@
+import socket
+import sys
+
+# Refuse execution on the specific Google Cloud instance
+if socket.gethostname() == "instance-20260427-114320":
+    sys.exit("Error: Celery is not allowed to run on instance-20260427-114320.")
+
 from celery import Celery
 from celery.schedules import crontab
 from app.core.config import REDIS_URL
