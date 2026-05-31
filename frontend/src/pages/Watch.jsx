@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo, getVideos, getRecommendedFeed, toggleFollow } from '../api';
+import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo, getVideos, getRecommendedFeed, toggleFollow, getUserProfile } from '../api';
 import VideoPreviewCard from '../components/VideoPreviewCard';
 import { Heart, Share2, Send, Download, X, Crown, Lightbulb, LightbulbOff, UserPlus, UserCheck, Users } from 'lucide-react';
 import VideoPlayerV2 from '../components/VideoPlayerV2';
@@ -297,8 +297,19 @@ const Watch = () => {
                     if (cancelled) return;
                     setVideo(videoData);
                     setComments(commentsData);
-                    setIsFollowing(videoData.owner?.is_following ?? false);
-                    setFollowersCount(videoData.owner?.followers_count ?? 0);
+
+                    // Fetch creator's real profile stats to set real followers count & follow status
+                    if (videoData.owner) {
+                        try {
+                            const profileData = await getUserProfile(videoData.owner.username, token);
+                            if (!cancelled) {
+                                setIsFollowing(profileData.is_following ?? false);
+                                setFollowersCount(profileData.followers_count ?? 0);
+                            }
+                        } catch (err) {
+                            console.error("Failed to refresh creator profile", err);
+                        }
+                    }
 
                     // Fetch fresh recommendations to refresh the sidebar and extend the queue
                     const videoType = videoData.video_type || 'home';
@@ -339,9 +350,23 @@ const Watch = () => {
                 if (cancelled) return;
                 setVideo(videoData);
                 setComments(commentsData);
-                // Seed follow state from video owner data
-                setIsFollowing(videoData.owner?.is_following ?? false);
-                setFollowersCount(videoData.owner?.followers_count ?? 0);
+                // Fetch creator's real profile stats to set real followers count & follow status
+                if (videoData.owner) {
+                    try {
+                        const profileData = await getUserProfile(videoData.owner.username, token);
+                        if (!cancelled) {
+                            setIsFollowing(profileData.is_following ?? false);
+                            setFollowersCount(profileData.followers_count ?? 0);
+                        }
+                    } catch (err) {
+                        console.error("Failed to fetch creator profile info", err);
+                        setIsFollowing(false);
+                        setFollowersCount(0);
+                    }
+                } else {
+                    setIsFollowing(false);
+                    setFollowersCount(0);
+                }
 
                 // Fetch suggestions after main content renders
                 const videoType = videoData.video_type || 'home';
@@ -410,29 +435,26 @@ const Watch = () => {
         if (!token) { showNotification('info', 'Sign in to follow creators'); return; }
         if (followLoading) return;
         setFollowLoading(true);
-        // Optimistic update
         const wasFollowing = isFollowing;
+        // Optimistic toggle
         setIsFollowing(!wasFollowing);
-        setFollowersCount(c => wasFollowing ? c - 1 : c + 1);
+        setFollowersCount(c => wasFollowing ? Math.max(0, c - 1) : c + 1);
         try {
-            await toggleFollow(video.owner?.id, token);
+            const res = await toggleFollow(video.owner?.id, token);
+            setIsFollowing(res.is_following);
+            // Sync count with backend result
+            if (res.is_following !== !wasFollowing) {
+                setFollowersCount(c => res.is_following ? c + 1 : Math.max(0, c - 1));
+            }
         } catch (err) {
             // Revert on failure
             setIsFollowing(wasFollowing);
-            setFollowersCount(c => wasFollowing ? c + 1 : c - 1);
+            setFollowersCount(c => wasFollowing ? c + 1 : Math.max(0, c - 1));
             showNotification('error', 'Failed to update follow status');
         } finally {
             setFollowLoading(false);
         }
     };
-
-    // Sync follow state when video changes (optimistic nav)
-    useEffect(() => {
-        if (video?.owner) {
-            setIsFollowing(video.owner.is_following ?? false);
-            setFollowersCount(video.owner.followers_count ?? 0);
-        }
-    }, [video?.owner?.id]);
 
     const renderCreatorCard = (isMobileLayout) => {
         const isSelf = user?.id === video.owner?.id;
