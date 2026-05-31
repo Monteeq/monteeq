@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo, getVideos, getRecommendedFeed } from '../api';
+import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo, getVideos, getRecommendedFeed, toggleFollow } from '../api';
 import VideoPreviewCard from '../components/VideoPreviewCard';
-import { Heart, Share2, Send, Download, X, Crown, Lightbulb, LightbulbOff } from 'lucide-react';
+import { Heart, Share2, Send, Download, X, Crown, Lightbulb, LightbulbOff, UserPlus, UserCheck, Users } from 'lucide-react';
 import VideoPlayerV2 from '../components/VideoPlayerV2';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
@@ -70,6 +70,9 @@ const Watch = () => {
     const [video, setVideo] = useState(null);
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState("");
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followersCount, setFollowersCount] = useState(0);
+    const [followLoading, setFollowLoading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isCinematic, setIsCinematic] = useState(false);
     const [isTheaterMode, setIsTheaterMode] = useState(false);
@@ -136,6 +139,9 @@ const Watch = () => {
                 if (cancelled) return;
                 setVideo(videoData);
                 setComments(commentsData);
+                // Seed follow state from video owner data
+                setIsFollowing(videoData.owner?.is_following ?? false);
+                setFollowersCount(videoData.owner?.followers_count ?? 0);
 
                 // Fetch suggestions after main content renders
                 const videoType = videoData.video_type || 'home';
@@ -198,6 +204,78 @@ const Watch = () => {
                 likes_count: prev.liked_by_user ? prev.likes_count - 1 : prev.likes_count + 1
             }));
         } catch (err) { console.error(err); }
+    };
+
+    const handleFollow = async () => {
+        if (!token) { showNotification('info', 'Sign in to follow creators'); return; }
+        if (followLoading) return;
+        setFollowLoading(true);
+        // Optimistic update
+        const wasFollowing = isFollowing;
+        setIsFollowing(!wasFollowing);
+        setFollowersCount(c => wasFollowing ? c - 1 : c + 1);
+        try {
+            await toggleFollow(video.owner?.id, token);
+        } catch (err) {
+            // Revert on failure
+            setIsFollowing(wasFollowing);
+            setFollowersCount(c => wasFollowing ? c + 1 : c - 1);
+            showNotification('error', 'Failed to update follow status');
+        } finally {
+            setFollowLoading(false);
+        }
+    };
+
+    // Sync follow state when video changes (optimistic nav)
+    useEffect(() => {
+        if (video?.owner) {
+            setIsFollowing(video.owner.is_following ?? false);
+            setFollowersCount(video.owner.followers_count ?? 0);
+        }
+    }, [video?.owner?.id]);
+
+    const renderCreatorCard = (isMobileLayout) => {
+        const isSelf = user?.id === video.owner?.id;
+
+        return (
+            <div className={`creatorCard ${isMobileLayout ? 'mobileCreatorCard' : 'desktopCreatorCard'}`}>
+                <div className="creatorHeader" onClick={() => navigate(`/profile/${video.owner?.username}`)} style={{ cursor: 'pointer' }}>
+                    <div className="avatar">
+                        {video.owner?.profile_pic ? (
+                            <img src={video.owner.profile_pic} alt="" loading="lazy" />
+                        ) : (
+                            <div className="avatarPlaceholder">{video.owner?.username?.charAt(0).toUpperCase()}</div>
+                        )}
+                    </div>
+                    <div className="creatorMeta">
+                        <h3>@{video.owner?.username}</h3>
+                        <p className="followersDisplay">
+                            <Users size={12} style={{ marginRight: '4px', verticalAlign: 'middle', display: 'inline' }} />
+                            <span>{followersCount.toLocaleString()} followers</span>
+                        </p>
+                    </div>
+                </div>
+                {!isSelf && (
+                    <button 
+                        className={`followBtn ${isFollowing ? 'following' : ''}`} 
+                        onClick={handleFollow}
+                        disabled={followLoading}
+                    >
+                        {isFollowing ? (
+                            <>
+                                <UserCheck size={15} />
+                                <span>Following</span>
+                            </>
+                        ) : (
+                            <>
+                                <UserPlus size={15} />
+                                <span>Follow</span>
+                            </>
+                        )}
+                    </button>
+                )}
+            </div>
+        );
     };
 
     if (loading) return <WatchSkeleton />;
@@ -275,6 +353,8 @@ const Watch = () => {
                     </button>
                 </div>
 
+                {renderCreatorCard(true)}
+
                 <div style={{ marginTop: '3rem' }}>
                     <div className="descriptionBox">
                         <div style={{ fontWeight: 800, marginBottom: '0.5rem', color: '#fff' }}>
@@ -310,7 +390,7 @@ const Watch = () => {
                                     onChange={(e) => setNewComment(e.target.value)}
                                     placeholder="Add a comment..."
                                     style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '1rem', color: '#fff', outline: 'none' }}
-                                />
+                                  />
                                 <button type="submit" disabled={!newComment.trim()} style={{ background: '#ff3b30', border: 'none', borderRadius: '12px', padding: '0 1.5rem', cursor: 'pointer' }}>
                                     <Send size={20} color="white" />
                                 </button>
@@ -325,18 +405,7 @@ const Watch = () => {
             </div>
 
             <div className="sideColumn">
-                <div className="creatorCard">
-                    <div className="creatorHeader">
-                        <div className="avatar">
-                            {video.owner?.profile_pic && <img src={video.owner.profile_pic} alt="" loading="lazy" />}
-                        </div>
-                        <div className="creatorMeta">
-                            <h3>@{video.owner?.username}</h3>
-                            <p>{video.owner?.followers_count || 0} Followers</p>
-                        </div>
-                    </div>
-                    <button className="subBtn">SUBSCRIBE</button>
-                </div>
+                {renderCreatorCard(false)}
 
                 {suggestedVideos.length > 0 && (
                     <div className="suggestedSection">
