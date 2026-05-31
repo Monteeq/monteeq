@@ -1,7 +1,8 @@
 .v2Wrapper {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  height: 100%;
+  aspect-ratio: inherit;
   background: #000;
   border-radius: 16px;
   overflow: hidden;
