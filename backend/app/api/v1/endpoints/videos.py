@@ -71,7 +71,8 @@ async def health_check(db: Session = Depends(get_db)):
         insp = celery_app.control.inspect(timeout=1.0)
         ping_res = insp.ping()
         if ping_res:
-            health["celery"] = f"connected ({len(ping_res)} worker(s) active)"
+            workers = list(ping_res.keys())
+            health["celery"] = f"connected ({len(ping_res)} worker(s) active: {', '.join(workers)})"
         else:
             health["celery"] = "disconnected: no active workers found"
             health["status"] = "error"
