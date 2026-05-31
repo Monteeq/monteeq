@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo } from '../api';
+import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo, getVideos, getRecommendedFeed } from '../api';
+import VideoPreviewCard from '../components/VideoPreviewCard';
 import { Heart, Share2, Send, Download, X, Crown, Lightbulb, LightbulbOff } from 'lucide-react';
 import VideoPlayerV2 from '../components/VideoPlayerV2';
 import { useAuth } from '../context/AuthContext';
@@ -73,23 +74,50 @@ const Watch = () => {
     const [isCinematic, setIsCinematic] = useState(false);
     const [isTheaterMode, setIsTheaterMode] = useState(false);
     const [showDownloadModal, setShowDownloadModal] = useState(false);
+    const [suggestedVideos, setSuggestedVideos] = useState([]);
 
     useEffect(() => {
-        const fetchVideoData = async () => {
+        let cancelled = false;
+        setSuggestedVideos([]);
+
+        const fetchAll = async () => {
             try {
                 const [videoData, commentsData] = await Promise.all([
                     getVideoById(id, token),
                     getComments(id)
                 ]);
+                if (cancelled) return;
                 setVideo(videoData);
                 setComments(commentsData);
+
+                // Fetch suggestions after main content renders
+                const videoType = videoData.video_type || 'home';
+                try {
+                    const results = await getRecommendedFeed(videoType, token, 16);
+                    if (cancelled) return;
+                    if (Array.isArray(results) && results.length > 0) {
+                        setSuggestedVideos(results.filter(v => v.id !== parseInt(id)));
+                        return;
+                    }
+                } catch (_) { /* fall through to getVideos */ }
+
+                // Fallback: plain video list
+                try {
+                    const fallback = await getVideos(videoType, token, 0, 16);
+                    if (!cancelled) {
+                        setSuggestedVideos((fallback || []).filter(v => v.id !== parseInt(id)));
+                    }
+                } catch (_) { /* non-critical */ }
+
             } catch (err) {
-                console.error("Failed to load video", err);
+                console.error('Failed to load video', err);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
-        fetchVideoData();
+
+        fetchAll();
+        return () => { cancelled = true; };
     }, [id, token]);
 
     useEffect(() => {
@@ -246,9 +274,21 @@ const Watch = () => {
                     <button className="subBtn">SUBSCRIBE</button>
                 </div>
 
-                <div style={{ opacity: 0.5, fontSize: '0.8rem', textAlign: 'center' }}>
-                    <p>Suggested Content Coming Soon</p>
-                </div>
+                {suggestedVideos.length > 0 && (
+                    <div className="suggestedSection">
+                        <h4 className="suggestedTitle">Up Next</h4>
+                        <div className="suggestedList">
+                            {suggestedVideos.map(v => (
+                                <VideoPreviewCard
+                                    key={v.id}
+                                    video={v}
+                                    variant="list"
+                                    onClick={() => navigate(`/watch/${v.id}`)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {showDownloadModal && (
