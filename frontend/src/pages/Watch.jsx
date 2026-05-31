@@ -107,6 +107,12 @@ const Watch = () => {
             setComments([]);
             setIsRefreshing(true);
 
+            // Optimistically set the follow state from cached owner metadata
+            if (queueMatch.owner) {
+                setIsFollowing(queueMatch.owner.is_following ?? false);
+                setFollowersCount(queueMatch.owner.followers_count ?? 0);
+            }
+
             const refresh = async () => {
                 try {
                     const [videoData, commentsData] = await Promise.all([
@@ -116,6 +122,24 @@ const Watch = () => {
                     if (cancelled) return;
                     setVideo(videoData);
                     setComments(commentsData);
+                    setIsFollowing(videoData.owner?.is_following ?? false);
+                    setFollowersCount(videoData.owner?.followers_count ?? 0);
+
+                    // Fetch fresh recommendations to refresh the sidebar and extend the queue
+                    const videoType = videoData.video_type || 'home';
+                    try {
+                        const results = await getRecommendedFeed(videoType, token, 16);
+                        if (cancelled) return;
+                        if (Array.isArray(results) && results.length > 0) {
+                            setNavQueue(prev => {
+                                const curIdx = prev.findIndex(item => item.id === parseInt(id));
+                                const history = curIdx >= 0 ? prev.slice(0, curIdx + 1) : [];
+                                const newItems = results.filter(r => !history.some(h => h.id === r.id));
+                                return [...history, ...newItems];
+                            });
+                            setSuggestedVideos(results.filter(v => v.id !== parseInt(id)));
+                        }
+                    } catch (_) {}
                 } catch (err) {
                     console.error('Background refresh failed', err);
                 } finally {
@@ -127,6 +151,7 @@ const Watch = () => {
         }
 
         // Cold load: show skeleton and fetch everything
+        setLoading(true);
         setSuggestedVideos([]);
         setNavQueue([]);
 
