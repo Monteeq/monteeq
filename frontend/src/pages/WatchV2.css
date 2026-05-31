@@ -417,3 +417,38 @@
     50%  { opacity: 1; transform: scaleX(0.8); transform-origin: left; }
     100% { opacity: 0.6; transform: scaleX(1);   transform-origin: left; }
 }
+
+/* Responsive overrides for full-bleed mobile video player */
+@media (max-width: 768px) {
+    .watchContainer {
+        padding: 0 !important;
+        gap: 1rem;
+    }
+    .videoSection {
+        border-radius: 0 !important;
+        margin-bottom: 1rem;
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+    }
+    
+    /* Indent text rows, comment container, and suggested column so they don't touch screen edges */
+    .titleRow,
+    .actionRow,
+    .commentsContainer,
+    .sideColumn {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        box-sizing: border-box;
+    }
+
+    /* Cards (Creator follow card and Description Box) get margins instead of padding */
+    .mobileCreatorCard,
+    .descriptionBox {
+        width: calc(100% - 2rem) !important;
+        margin-left: 1rem !important;
+        margin-right: 1rem !important;
+        box-sizing: border-box;
+    }
+}
+

@@ -548,18 +548,18 @@
     display: none !important;
   }
   .controlBtn {
-    padding: 0.25rem;
+    padding: 0.4rem;
   }
   .controlBtn svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 24px !important;
+    height: 24px !important;
   }
   .timeDisplay {
-    font-size: 0.72rem;
+    font-size: 0.75rem;
   }
   .volumeWrapper {
-    gap: 0.1rem;
-    max-width: 28px;
+    gap: 0.15rem;
+    max-width: 32px;
   }
   /* Scale central overlays down to match mobile screen sizes */
   .centralControlsContainer {
@@ -582,4 +582,5 @@
     height: 14px !important;
   }
 }
+
 
