@@ -12,10 +12,11 @@ if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
 else:
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
-        pool_size=3,         # Reduced to prevent Supabase pool exhaustion (max 15 clients)
-        max_overflow=2,      # Reduced to prevent Supabase pool exhaustion
+        pool_size=5,         # 5 persistent connections (Supabase free tier allows ~15-20)
+        max_overflow=5,      # 5 burst connections → 10 total max
         pool_timeout=30,     # 30 seconds wait for a connection
         pool_recycle=1800,   # Recycle connections every 30 minutes
+        pool_pre_ping=True,  # Discard stale connections before use
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
