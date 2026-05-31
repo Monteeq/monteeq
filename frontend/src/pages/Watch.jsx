@@ -75,10 +75,25 @@ const Watch = () => {
     const [isTheaterMode, setIsTheaterMode] = useState(false);
     const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [suggestedVideos, setSuggestedVideos] = useState([]);
+    // Full unfiltered list used only for prev/next navigation index lookup
+    const [navQueue, setNavQueue] = useState([]);
+
+    // Find the current video inside the full nav queue (includes current video)
+    const currentIndex = navQueue.findIndex(v => v.id === parseInt(id));
+    const hasPrevious = currentIndex > 0;
+    const hasNext = currentIndex >= 0 && currentIndex < navQueue.length - 1;
+
+    const goToPrevious = () => {
+        if (hasPrevious) navigate(`/watch/${navQueue[currentIndex - 1].id}`);
+    };
+    const goToNext = () => {
+        if (hasNext) navigate(`/watch/${navQueue[currentIndex + 1].id}`);
+    };
 
     useEffect(() => {
         let cancelled = false;
         setSuggestedVideos([]);
+        setNavQueue([]);
 
         const fetchAll = async () => {
             try {
@@ -96,7 +111,8 @@ const Watch = () => {
                     const results = await getRecommendedFeed(videoType, token, 16);
                     if (cancelled) return;
                     if (Array.isArray(results) && results.length > 0) {
-                        setSuggestedVideos(results.filter(v => v.id !== parseInt(id)));
+                        setNavQueue(results);                                          // full list for prev/next
+                        setSuggestedVideos(results.filter(v => v.id !== parseInt(id))); // filtered for sidebar
                         return;
                     }
                 } catch (_) { /* fall through to getVideos */ }
@@ -105,7 +121,9 @@ const Watch = () => {
                 try {
                     const fallback = await getVideos(videoType, token, 0, 16);
                     if (!cancelled) {
-                        setSuggestedVideos((fallback || []).filter(v => v.id !== parseInt(id)));
+                        const list = fallback || [];
+                        setNavQueue(list);                                          // full list for prev/next
+                        setSuggestedVideos(list.filter(v => v.id !== parseInt(id))); // filtered for sidebar
                     }
                 } catch (_) { /* non-critical */ }
 
@@ -176,6 +194,10 @@ const Watch = () => {
                         isCinematic={isCinematic}
                         toggleTheaterMode={() => setIsTheaterMode(!isTheaterMode)}
                         toggleCinematic={() => setIsCinematic(!isCinematic)}
+                        onPrevious={goToPrevious}
+                        onNext={goToNext}
+                        hasPrevious={hasPrevious}
+                        hasNext={hasNext}
                         url_480p={video.url_480p}
                         url_720p={video.url_720p}
                         url_1080p={video.url_1080p}
