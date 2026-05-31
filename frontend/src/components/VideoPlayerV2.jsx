@@ -532,10 +532,10 @@ const VideoPlayerV2 = ({
               title="Previous video"
               disabled={!hasPrevious}
             >
-              <SkipBack size={20} />
+              <SkipBack size={22} />
             </button>
             <button className="controlBtn btn-playpause" onClick={togglePlay}>
-              {isPlaying ? <Pause size={24} fill="white" /> : <Play size={24} fill="white" />}
+              {isPlaying ? <Pause size={26} fill="white" /> : <Play size={26} fill="white" />}
             </button>
             <button
               className={`controlBtn navSkipBtn ${!hasNext ? 'navSkipDisabled' : ''}`}
@@ -543,14 +543,14 @@ const VideoPlayerV2 = ({
               title="Next video"
               disabled={!hasNext}
             >
-              <SkipForward size={20} />
+              <SkipForward size={22} />
             </button>
-            <button className="controlBtn btn-rewind" onClick={() => jump(-10)}><RotateCcw size={20} /></button>
-            <button className="controlBtn btn-forward" onClick={() => jump(10)}><RotateCw size={20} /></button>
+            <button className="controlBtn btn-rewind" onClick={() => jump(-10)}><RotateCcw size={22} /></button>
+            <button className="controlBtn btn-forward" onClick={() => jump(10)}><RotateCw size={22} /></button>
  
             <div className="volumeWrapper">
               <button className="controlBtn" onClick={toggleMute}>
-                {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                {isMuted || volume === 0 ? <VolumeX size={22} /> : <Volume2 size={22} />}
               </button>
               <input
                 type="range" min="0" max="1" step="0.01"
@@ -586,7 +586,7 @@ const VideoPlayerV2 = ({
                   title="Video Quality"
                   id="quality-settings-btn"
                 >
-                  <Settings size={20} />
+                  <Settings size={22} />
                   <span className="qualityLabel">
                     {selectedLabel}
                   </span>
@@ -639,9 +639,9 @@ const VideoPlayerV2 = ({
             )}
 
             <button className="controlBtn btn-theater" onClick={toggleTheaterMode} title="Theater Mode">
-              {isTheaterMode ? <Square size={20} /> : <Monitor size={20} />}
+              {isTheaterMode ? <Square size={22} /> : <Monitor size={22} />}
             </button>
-            <button className="controlBtn btn-fullscreen" onClick={toggleFullscreen}><Maximize size={22} /></button>
+            <button className="controlBtn btn-fullscreen" onClick={toggleFullscreen}><Maximize size={24} /></button>
           </div>
         </div>
       </div>

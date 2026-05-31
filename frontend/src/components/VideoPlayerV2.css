@@ -367,19 +367,20 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.4rem 0.6rem;
+  padding: 0.4rem;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  transition: background 0.2s ease, border-color 0.2s ease;
+  background: transparent !important;
+  border: none !important;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .qualityBtn:hover {
-  background: rgba(255, 59, 48, 0.18);
-  border-color: rgba(255, 59, 48, 0.4);
-  color: #fff;
-  transform: scale(1);
+  color: #ff3b30 !important;
+  background: transparent !important;
+  border: none !important;
+  transform: scale(1.1);
 }
+
 
 .qualityLabel {
   font-size: 0.75rem;
