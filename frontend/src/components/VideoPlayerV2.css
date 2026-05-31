@@ -151,6 +151,23 @@
   transform: scale(0.9);
 }
 
+/* Prev / Next video navigation buttons */
+.navSkipBtn {
+  position: relative;
+  transition: transform 0.15s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.navSkipBtn:hover:not(:disabled) {
+  color: #ff3b30;
+  transform: scale(1.15);
+}
+
+.navSkipDisabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .timeDisplay {
   font-size: 0.85rem;
   font-weight: 600;
@@ -466,5 +483,32 @@
   font-weight: 700;
   letter-spacing: 0.01em;
   cursor: default;
+}
+
+/* Responsive adjustments for mobile screens */
+@media (max-width: 768px) {
+  .controlsOverlay {
+    padding: 1.5rem 0.8rem 0.8rem;
+    gap: 0.25rem;
+  }
+  .group {
+    gap: 0.6rem;
+  }
+  .controlBtn {
+    padding: 0.35rem;
+  }
+  .controlBtn svg {
+    width: 17px !important;
+    height: 17px !important;
+  }
+  .timeDisplay {
+    font-size: 0.75rem;
+  }
+  .volumeWrapper {
+    gap: 0.3rem;
+  }
+  .volumeSlider {
+    width: 50px;
+  }
 }
 
