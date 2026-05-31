@@ -282,7 +282,7 @@ const Watch = () => {
     if (!video) return <div className="page-error">Video not found</div>;
 
     return (
-        <div className={`watchContainer ${isCinematic ? 'cinematic' : ''}`}>
+        <div className={`watchContainer ${isCinematic ? 'cinematic' : ''} ${isTheaterMode ? 'theaterMode' : ''}`}>
             <SEO 
                 title={video.title}
                 description={video.description || `Watch ${video.title} on Monteeq. The best video edits and creative content.`}
@@ -301,30 +301,31 @@ const Watch = () => {
                 }} />
             )}
 
+            <div className="videoSection">
+                <VideoPlayerV2
+                    src={video.video_url}
+                    videoId={video.id}
+                    title={video.title}
+                    creator={video.owner?.username}
+                    poster={video.thumbnail_url}
+                    autoPlay={true}
+                    isTheaterMode={isTheaterMode}
+                    isCinematic={isCinematic}
+                    toggleTheaterMode={() => setIsTheaterMode(!isTheaterMode)}
+                    toggleCinematic={() => setIsCinematic(!isCinematic)}
+                    onPrevious={goToPrevious}
+                    onNext={goToNext}
+                    hasPrevious={hasPrevious}
+                    hasNext={hasNext}
+                    url_480p={video.url_480p}
+                    url_720p={video.url_720p}
+                    url_1080p={video.url_1080p}
+                    url_2k={video.url_2k}
+                    url_4k={video.url_4k}
+                />
+            </div>
+
             <div className="mainColumn">
-                <div className="videoSection">
-                    <VideoPlayerV2
-                        src={video.video_url}
-                        videoId={video.id}
-                        title={video.title}
-                        creator={video.owner?.username}
-                        poster={video.thumbnail_url}
-                        autoPlay={true}
-                        isTheaterMode={isTheaterMode}
-                        isCinematic={isCinematic}
-                        toggleTheaterMode={() => setIsTheaterMode(!isTheaterMode)}
-                        toggleCinematic={() => setIsCinematic(!isCinematic)}
-                        onPrevious={goToPrevious}
-                        onNext={goToNext}
-                        hasPrevious={hasPrevious}
-                        hasNext={hasNext}
-                        url_480p={video.url_480p}
-                        url_720p={video.url_720p}
-                        url_1080p={video.url_1080p}
-                        url_2k={video.url_2k}
-                        url_4k={video.url_4k}
-                    />
-                </div>
 
                 <div className="titleRow">
                     <h1 className="vTitle">{video.title}</h1>
