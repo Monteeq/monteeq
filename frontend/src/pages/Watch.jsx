@@ -259,7 +259,7 @@ const Watch = () => {
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Find the current video inside the full nav queue (includes current video)
-    const currentIndex = navQueue.findIndex(v => v.id === parseInt(id));
+    const currentIndex = navQueue.findIndex(v => v.id.toString() === id.toString());
     const hasPrevious = currentIndex > 0;
     const hasNext = currentIndex >= 0 && currentIndex < navQueue.length - 1;
 
@@ -275,7 +275,7 @@ const Watch = () => {
 
         // If we already have the target video in the navQueue, render it
         // immediately (optimistic) and only background-refresh the detail data.
-        const queueMatch = navQueue.find(v => v.id === parseInt(id));
+        const queueMatch = navQueue.find(v => v.id.toString() === id.toString());
         if (queueMatch && video !== null) {
             // Optimistic: show queue data instantly, no skeleton
             setVideo(queueMatch);
@@ -318,12 +318,12 @@ const Watch = () => {
                         if (cancelled) return;
                         if (Array.isArray(results) && results.length > 0) {
                             setNavQueue(prev => {
-                                const curIdx = prev.findIndex(item => item.id === parseInt(id));
+                                const curIdx = prev.findIndex(item => item.id.toString() === id.toString());
                                 const history = curIdx >= 0 ? prev.slice(0, curIdx + 1) : [];
                                 const newItems = results.filter(r => !history.some(h => h.id === r.id));
                                 return [...history, ...newItems];
                             });
-                            setSuggestedVideos(results.filter(v => v.id !== parseInt(id)));
+                            setSuggestedVideos(results.filter(v => v.id.toString() !== id.toString()));
                         }
                     } catch (_) {}
                 } catch (err) {
@@ -375,7 +375,7 @@ const Watch = () => {
                     if (cancelled) return;
                     if (Array.isArray(results) && results.length > 0) {
                         setNavQueue(results);                                          // full list for prev/next
-                        setSuggestedVideos(results.filter(v => v.id !== parseInt(id))); // filtered for sidebar
+                        setSuggestedVideos(results.filter(v => v.id.toString() !== id.toString())); // filtered for sidebar
                         return;
                     }
                 } catch (_) { /* fall through to getVideos */ }
@@ -386,7 +386,7 @@ const Watch = () => {
                     if (!cancelled) {
                         const list = fallback || [];
                         setNavQueue(list);                                          // full list for prev/next
-                        setSuggestedVideos(list.filter(v => v.id !== parseInt(id))); // filtered for sidebar
+                        setSuggestedVideos(list.filter(v => v.id.toString() !== id.toString())); // filtered for sidebar
                     }
                 } catch (_) { /* non-critical */ }
 

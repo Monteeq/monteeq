@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Text, DateTime, func, Numeric, Index
+import uuid
 
 from sqlalchemy.orm import relationship, backref
 from app.db.base import Base
@@ -129,10 +130,14 @@ class UserSession(Base):
 
     user = relationship("User")
 
+def generate_public_id():
+    return f"vid_{uuid.uuid4().hex[:16]}"
+
 class Video(Base):
     __tablename__ = "videos"
 
     id = Column(Integer, primary_key=True, index=True)
+    public_id = Column(String, unique=True, index=True, nullable=True, default=generate_public_id)
     title = Column(String)
     description = Column(Text, nullable=True)
     video_url = Column(String) # This will now be the fallback (likely 720p or original)

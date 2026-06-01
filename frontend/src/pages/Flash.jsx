@@ -194,8 +194,7 @@ const Flash = () => {
         // YouTube Shorts Style - Fetch specific video by ID first if specified in URL
         if (urlVideoId) {
             try {
-                const targetId = parseInt(urlVideoId, 10);
-                const targetVid = await getVideoById(targetId, token);
+                const targetVid = await getVideoById(urlVideoId, token);
                 if (targetVid) {
                     const formattedTarget = {
                         ...targetVid,
@@ -344,14 +343,14 @@ const Flash = () => {
             entries.forEach(entry => {
                 if (!entry.isIntersecting) return;
 
-                const id = parseInt(entry.target.getAttribute('data-id'), 10);
-                if (activeVideoId !== id) {
+                const id = entry.target.getAttribute('data-id');
+                if (activeVideoId?.toString() !== id?.toString()) {
                     setLayerResponse(adaptiveDiscovery.recordSkip(id, activeCategory));
                     metricsManager.trackSkip(id);
                     setActiveVideoId(id);
                 }
 
-                const currentIndex = clips.findIndex(c => c.id === id);
+                const currentIndex = clips.findIndex(c => c.id.toString() === id?.toString());
                 const remaining = clips.length - currentIndex;
 
                 feedManager.recordConsumption(remaining);
@@ -369,7 +368,7 @@ const Flash = () => {
 
     // ─────────────────────────────────────────────────────────────────────────
     const visibleClips = useMemo(() => {
-        const activeIndex = clips.findIndex(c => c.id === activeVideoId);
+        const activeIndex = clips.findIndex(c => c.id.toString() === activeVideoId?.toString());
         const buffer = scrollVelocity > 1.5 ? 3 : 1;
         return clips.map((clip, index) => ({
             ...clip,
@@ -377,7 +376,7 @@ const Flash = () => {
         }));
     }, [clips, activeVideoId, scrollVelocity]);
 
-    const activeClip = useMemo(() => clips.find(c => c.id === activeVideoId), [clips, activeVideoId]);
+    const activeClip = useMemo(() => clips.find(c => c.id.toString() === activeVideoId?.toString()), [clips, activeVideoId]);
 
     useEffect(() => {
         if (activeClip?.title) {
@@ -513,7 +512,7 @@ const Flash = () => {
                             <div className={s.cardContainer} data-id={clip.id}>
                                 <FlashCard
                                     video={clip}
-                                    isActive={activeVideoId === clip.id}
+                                    isActive={activeVideoId?.toString() === clip.id.toString()}
                                     onLike={handleLike}
                                     onComment={handleComment}
                                     onShare={handleShare}

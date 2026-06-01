@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, field_serializer
 from typing import List, Optional, Union
 from datetime import datetime
 
@@ -183,7 +183,8 @@ class VideoCreate(VideoBase):
     description: Optional[str] = None
 
 class Video(VideoBase):
-    id: int
+    id: Union[int, str]
+    public_id: Optional[str] = None
     video_url: str
     url_480p: Optional[str] = None
     url_720p: Optional[str] = None
@@ -227,6 +228,10 @@ class Video(VideoBase):
             except Exception:
                 return v
         return v
+
+    @field_serializer('id')
+    def serialize_id(self, v: int) -> Union[int, str]:
+        return self.public_id if (hasattr(self, 'public_id') and self.public_id) else v
 
     model_config = ConfigDict(from_attributes=True)
 

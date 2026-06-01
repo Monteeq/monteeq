@@ -63,6 +63,37 @@ const Upload = () => {
     const [postImage, setPostImage] = useState(null);
     const [postPreview, setPostPreview] = useState(null);
 
+    // Chunked Upload State
+    const [uploadId, setUploadId] = useState(null);
+    const [isPaused, setIsPaused] = useState(false);
+    const [isUploadError, setIsUploadError] = useState(false);
+
+    const uploadIdRef = useRef(null);
+    const isPausedRef = useRef(false);
+
+    // Sync refs
+    useEffect(() => {
+        isPausedRef.current = isPaused;
+    }, [isPaused]);
+
+    useEffect(() => {
+        uploadIdRef.current = uploadId;
+    }, [uploadId]);
+
+    // Unload prevention
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (uploading && processingStatus !== 'completed') {
+                e.preventDefault();
+                e.returnValue = 'Upload is in progress. Are you sure you want to close this page?';
+                return e.returnValue;
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [uploading, processingStatus]);
 
     const fileInputRef = useRef(null);
     const thumbnailInputRef = useRef(null);
@@ -70,7 +101,7 @@ const Upload = () => {
     const handleFileSelect = (selectedFile) => {
         if (!selectedFile) return;
         if (!selectedFile.type.startsWith('video/')) {
-            showNotification('error', err?.message || "Only video files are supported.");
+            showNotification('error', "Only video files are supported.");
             return;
         }
         setFile(selectedFile);
@@ -80,75 +111,190 @@ const Upload = () => {
         setStep('details');
     };
 
+    const pollProcessingStatus = (processingKey) => {
+        setProcessingStatus('processing');
+        const interval = setInterval(async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/videos/status/${processingKey}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const statusData = await res.json();
+
+                if (statusData.status === 'completed') {
+                    clearInterval(interval);
+                    setProcessingStatus('completed');
+                    setUploading(false);
+                    setProgress(100);
+                    setProcessingProgress(100);
+                    showNotification('success', 'Video is now live!');
+                    refreshUser();
+                } else if (statusData.status === 'error') {
+                    clearInterval(interval);
+                    setProcessingStatus('error');
+                    setUploading(false);
+                    showNotification('error', 'Processing failed.');
+                } else {
+                    setProcessingProgress(statusData.progress || 0);
+                    setCurrentStatusMessage(statusData.message || 'Transcoding...');
+                }
+            } catch (e) { console.error("Poll error:", e); }
+        }, 3000);
+    };
+
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+
+    const uploadLoop = async (currentUploadId, completedSet) => {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        
+        for (let i = 0; i < totalChunks; i++) {
+            if (isPausedRef.current) {
+                console.log("Upload paused");
+                return;
+            }
+
+            if (completedSet.has(i)) {
+                continue;
+            }
+
+            // Upload chunk i
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(file.size, start + CHUNK_SIZE);
+            const chunkBlob = file.slice(start, end);
+
+            const formData = new FormData();
+            formData.append("upload_id", currentUploadId);
+            formData.append("chunk_index", i);
+            formData.append("file", chunkBlob, file.name);
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/videos/upload/chunk`, {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${token}` },
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    throw new Error(`Failed to upload chunk ${i}`);
+                }
+
+                completedSet.add(i);
+                const overallProgress = Math.round((completedSet.size / totalChunks) * 100);
+                setProgress(overallProgress);
+            } catch (err) {
+                console.error("Chunk upload error:", err);
+                setIsUploadError(true);
+                setIsPaused(true);
+                setUploading(false);
+                showNotification("error", "Network issue detected. Upload paused. Click Resume to retry.");
+                return;
+            }
+        }
+
+        // Finalize upload
+        setProcessingStatus('processing');
+        setCurrentStatusMessage("Finalizing upload on server...");
+        
+        const finalizeFormData = new FormData();
+        finalizeFormData.append("upload_id", currentUploadId);
+        finalizeFormData.append("total_chunks", totalChunks);
+        finalizeFormData.append("filename", file.name);
+
+        try {
+            const finalizeRes = await fetch(`${API_BASE_URL}/videos/upload/finalize`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` },
+                body: finalizeFormData
+            });
+
+            if (!finalizeRes.ok) {
+                const errorData = await finalizeRes.json();
+                throw new Error(errorData.detail || "Finalization failed");
+            }
+
+            const data = await finalizeRes.json();
+            setDbVideoId(data.video_id);
+            pollProcessingStatus(currentUploadId);
+        } catch (err) {
+            console.error("Finalization error:", err);
+            setIsUploadError(true);
+            setUploading(false);
+            showNotification("error", err.message || "Failed to finalize video upload.");
+        }
+    };
+
     const startUpload = async () => {
         if (uploading) return;
         setUploading(true);
+        setIsPaused(false);
+        setIsUploadError(false);
         setProcessingStatus('uploading');
 
-        const formData = new FormData();
-        formData.append('title', title);
-        formData.append('description', description);
-        formData.append('tags', tags);
-        formData.append('video_type', videoType);
-        formData.append('file', file);
-        if (thumbnailFile) formData.append('thumbnail', thumbnailFile);
+        let currentUploadId = uploadIdRef.current;
+        let completedSet = new Set();
 
-        const xhr = new XMLHttpRequest();
-        const uploadPromise = new Promise((resolve, reject) => {
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    setProgress(Math.round((e.loaded / e.total) * 100));
-                }
-            });
-            xhr.onreadystatechange = () => {
-                if (xhr.readyState === 4) {
-                    if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
-                    else reject(new Error('Upload failed'));
-                }
-            };
-            xhr.onerror = () => reject(new Error('Network error during upload'));
-            xhr.open('POST', `${API_BASE_URL}/videos/upload`);
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-            xhr.send(formData);
-        });
-
-        try {
-            const data = await uploadPromise;
-            setDbVideoId(data.id);
-            setProcessingStatus('processing');
-
-            const processingKey = data.processing_key;
-            if (processingKey) {
-                const interval = setInterval(async () => {
-                    try {
-                        const res = await fetch(`${API_BASE_URL}/videos/status/${processingKey}`, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        const statusData = await res.json();
-
-                        if (statusData.status === 'completed') {
-                            clearInterval(interval);
-                            setProcessingStatus('completed');
-                            setProgress(100);
-                            setProcessingProgress(100);
-                            showNotification('success', 'Video is now live!');
-                            refreshUser();
-                        } else if (statusData.status === 'error') {
-                            clearInterval(interval);
-                            setProcessingStatus('error');
-                            showNotification('error', err?.message || 'Processing failed.');
-                        } else {
-                            setProcessingProgress(statusData.progress || 0);
-                            setCurrentStatusMessage(statusData.message || 'Transcoding...');
-                        }
-                    } catch (e) { console.error("Poll error:", e); }
-                }, 3000);
+        if (!currentUploadId) {
+            // First time initiating upload
+            const initFormData = new FormData();
+            initFormData.append('title', title);
+            initFormData.append('description', description);
+            initFormData.append('tags', tags);
+            initFormData.append('video_type', videoType);
+            initFormData.append('filename', file.name);
+            if (thumbnailFile) {
+                initFormData.append('thumbnail', thumbnailFile);
             }
-        } catch (err) {
-            setUploading(false);
-            setProcessingStatus('error');
-            showNotification('error', err.message);
+
+            try {
+                const initRes = await fetch(`${API_BASE_URL}/videos/upload/initiate`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: initFormData
+                });
+
+                if (!initRes.ok) {
+                    const errData = await initRes.json();
+                    throw new Error(errData.detail || 'Failed to initiate upload session');
+                }
+
+                const initData = await initRes.json();
+                currentUploadId = initData.upload_id;
+                setUploadId(currentUploadId);
+                uploadIdRef.current = currentUploadId;
+            } catch (err) {
+                setUploading(false);
+                setIsPaused(true);
+                setIsUploadError(true);
+                showNotification('error', err.message);
+                return;
+            }
+        } else {
+            // Resume upload - check completed chunks status
+            try {
+                const statusRes = await fetch(`${API_BASE_URL}/videos/upload/status/${currentUploadId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!statusRes.ok) {
+                    throw new Error('Failed to fetch upload status');
+                }
+                const statusData = await statusRes.json();
+                completedSet = new Set(statusData.completed_chunks || []);
+            } catch (err) {
+                setUploading(false);
+                setIsPaused(true);
+                setIsUploadError(true);
+                showNotification('error', 'Failed to resume upload session. Retrying...');
+                return;
+            }
         }
+
+        // Run chunked upload loop
+        await uploadLoop(currentUploadId, completedSet);
+    };
+
+    const pauseUpload = () => {
+        setIsPaused(true);
+        setUploading(false);
+        showNotification('info', 'Upload paused');
     };
 
     const saveMetadata = async () => {
@@ -188,6 +334,81 @@ const Upload = () => {
         } finally {
             setUploading(false);
         }
+    };
+
+    const renderActionButtons = () => {
+        if (uploadType === 'post') {
+            return (
+                <button 
+                    className={uploading ? "btn-loading" : "btn-primary"} 
+                    disabled={!postContent || uploading} 
+                    onClick={handlePostSubmit} 
+                    style={{ width: '100%' }}
+                >
+                    {uploading ? <><Loader2 className={s.spin} size={20} /> PUBLISHING...</> : 'PUBLISH NOW'}
+                </button>
+            );
+        }
+
+        // Video uploads
+        if (!uploadId && !uploading) {
+            return (
+                <button
+                    className="btn-primary"
+                    disabled={!title || !file}
+                    onClick={startUpload}
+                    style={{ width: '100%' }}
+                >
+                    PUBLISH NOW
+                </button>
+            );
+        }
+
+        if (uploading && processingStatus === 'uploading') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                    <div className="btn-loading" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Loader2 className={s.spin} size={20} /> UPLOADING ({progress}%)
+                    </div>
+                    <button
+                        className="btn-secondary"
+                        onClick={pauseUpload}
+                        style={{ width: '100%' }}
+                    >
+                        PAUSE UPLOAD
+                    </button>
+                </div>
+            );
+        }
+
+        if (isPaused && processingStatus === 'uploading') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                    <button
+                        className="btn-primary"
+                        onClick={startUpload}
+                        style={{ width: '100%' }}
+                    >
+                        RESUME UPLOAD
+                    </button>
+                    {uploadId && (
+                        <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            Upload paused at {progress}%
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        if (processingStatus === 'processing') {
+            return (
+                <div className="btn-loading" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Loader2 className={s.spin} size={20} /> PROCESSING ({processingProgress}%)
+                </div>
+            );
+        }
+
+        return null;
     };
 
 
@@ -357,14 +578,7 @@ const Upload = () => {
                         </div>
 
                         <div className="mobile-only" style={{ marginTop: '2rem' }}>
-                            <button 
-                                className={uploading ? "btn-loading" : "btn-primary"} 
-                                disabled={(uploadType === 'video' ? !title : !postContent) || uploading} 
-                                onClick={uploadType === 'video' ? startUpload : handlePostSubmit} 
-                                style={{ width: '100%' }}
-                            >
-                                {uploading ? <><Loader2 className={s.spin} size={20} /> PUBLISHING...</> : 'PUBLISH NOW'}
-                            </button>
+                            {renderActionButtons()}
                         </div>
 
                     </div>
@@ -415,17 +629,9 @@ const Upload = () => {
                         </div>
 
                         <div className="desktop-only" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <button 
-                                className={uploading ? "btn-loading" : "btn-primary"} 
-                                disabled={(uploadType === 'video' ? !title : !postContent) || uploading} 
-                                onClick={uploadType === 'video' ? startUpload : handlePostSubmit} 
-                                style={{ width: '100%' }}
-                            >
-                                {uploading ? <><Loader2 className={s.spin} size={20} /> PUBLISHING...</> : 'PUBLISH NOW'}
-                            </button>
+                            {renderActionButtons()}
 
-                            
-                            {uploading && processingStatus !== 'completed' && (
+                            {dbVideoId && processingStatus !== 'completed' && (
                                 <button className="btn-secondary" style={{ width: '100%' }} onClick={saveMetadata} disabled={isSaving}>
                                     {isSaving ? 'Saving...' : 'Update Metadata'}
                                 </button>

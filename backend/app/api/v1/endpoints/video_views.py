@@ -34,7 +34,7 @@ def create_view_ticket(video_id: int, user_id: Optional[int], ip: str):
 
 @router.post("/{video_id}/init-view")
 async def init_view(
-    video_id: int, 
+    video_id: str, 
     request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[dict] = Depends(dependencies.get_current_user_optional)
@@ -45,7 +45,11 @@ async def init_view(
     if any(keyword in user_agent for keyword in bot_keywords):
         return {"status": "success", "message": "Bot detected, view session not initialized"}
 
-    video = db.query(Video).filter(Video.id == video_id).first()
+    if isinstance(video_id, str) and not video_id.isdigit():
+        video = db.query(Video).filter(Video.public_id == video_id).first()
+    else:
+        video = db.query(Video).filter(Video.id == int(video_id)).first()
+
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
 
@@ -54,13 +58,13 @@ async def init_view(
     
     # Rate limiting disabled
 
-    ticket = create_view_ticket(video_id, user_id, ip)
+    ticket = create_view_ticket(video.id, user_id, ip)
     
     # Store session in Redis
     session_id = str(uuid.uuid4())
     redis_key = f"view_session:{session_id}"
     session_data = {
-        "video_id": video_id,
+        "video_id": video.id,
         "accumulated_time": 0,
         "last_heartbeat": int(time.time()),
         "is_validated": False,
@@ -72,7 +76,7 @@ async def init_view(
 
 @router.post("/{video_id}/heartbeat")
 async def view_heartbeat(
-    video_id: int,
+    video_id: str,
     session_id: str,
     ticket: str,
     db: Session = Depends(get_db)
@@ -80,10 +84,17 @@ async def view_heartbeat(
     # 1. Validate Ticket
     try:
         payload = jwt.decode(ticket, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload.get("video_id") != video_id:
-            raise HTTPException(status_code=400, detail="Invalid ticket for this video")
+        ticket_video_id = payload.get("video_id")
     except JWTError:
         raise HTTPException(status_code=403, detail="Invalid view ticket")
+
+    if isinstance(video_id, str) and not video_id.isdigit():
+        video = db.query(Video).filter(Video.public_id == video_id).first()
+    else:
+        video = db.query(Video).filter(Video.id == int(video_id)).first()
+
+    if not video or video.id != ticket_video_id:
+        raise HTTPException(status_code=400, detail="Invalid ticket for this video")
 
     # 2. Get Redis Session
     redis_key = f"view_session:{session_id}"
@@ -116,9 +127,9 @@ async def view_heartbeat(
     
     if not session["is_validated"] and session["accumulated_time"] >= threshold:
         # Commit to DB
-        crud_video.increment_view(db, video_id=video_id, user_id=payload.get("user_id"))
+        crud_video.increment_view(db, video_id=video.id, user_id=payload.get("user_id"))
         session["is_validated"] = True
-        print(f"Video {video_id} view VALIDATED after {session['accumulated_time']}s")
+        print(f"Video {video.id} view VALIDATED after {session['accumulated_time']}s")
     
     # Update Redis
     redis_client.setex(redis_key, 3600, json.dumps(session))
@@ -128,3 +139,4 @@ async def view_heartbeat(
         "accumulated": session["accumulated_time"],
         "is_validated": session["is_validated"]
     }
+

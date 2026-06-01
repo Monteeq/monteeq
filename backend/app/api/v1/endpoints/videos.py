@@ -32,6 +32,11 @@ class VideoStatus(str, Enum):
     READY       = "ready"
     FAILED      = "failed"
 
+def get_video_db(db: Session, video_id: str) -> Optional[Video]:
+    if isinstance(video_id, str) and not video_id.isdigit():
+        return db.query(Video).filter(Video.public_id == video_id).first()
+    return db.query(Video).filter(Video.id == int(video_id)).first()
+
 router = APIRouter()
 
 @router.get("/health")
@@ -160,14 +165,14 @@ def check_premium_access(db: Session, request: Request):
 
 @router.get("/{video_id}/stream/{sub_path:path}")
 @router.get("/{video_id}/stream")
-async def stream_video(video_id: int, request: Request, db: Session = Depends(get_db), sub_path: str = None):
+async def stream_video(video_id: str, request: Request, db: Session = Depends(get_db), sub_path: str = None):
     # Check premium if quality is high-res (1080p, 2k, 4k)
     if sub_path:
         sub_path_lower = sub_path.lower()
         if "1080p" in sub_path_lower or "2k" in sub_path_lower or "4k" in sub_path_lower:
             check_premium_access(db, request)
 
-    video = db.query(Video).filter(Video.id == video_id).first()
+    video = get_video_db(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
         
@@ -252,7 +257,7 @@ async def stream_video(video_id: int, request: Request, db: Session = Depends(ge
 
 @router.get("/{video_id}/stream-res")
 async def stream_video_resolution(
-    video_id: int,
+    video_id: str,
     quality: str,
     request: Request,
     db: Session = Depends(get_db)
@@ -261,7 +266,7 @@ async def stream_video_resolution(
     if quality.lower() in ["1080p", "2k", "4k"]:
         check_premium_access(db, request)
 
-    video = db.query(Video).filter(Video.id == video_id).first()
+    video = get_video_db(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
 
@@ -424,7 +429,7 @@ async def get_trending_suggestions(db: Session = Depends(get_db)):
     return result
 
 @router.get("/{video_id}", response_model=schemas.Video)
-def read_video(video_id: int, db: Session = Depends(get_db), current_user: Optional[dict] = Depends(get_current_user_optional)):
+def read_video(video_id: str, db: Session = Depends(get_db), current_user: Optional[dict] = Depends(get_current_user_optional)):
     user_id = current_user.id if current_user else None
     db_video = crud_video.get_video(db, video_id=video_id, current_user_id=user_id)
     if db_video is None:
@@ -465,11 +470,11 @@ def delete_video_files(video: Video):
 
 @router.delete("/{video_id}")
 def delete_video(
-    video_id: int,
+    video_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    video = db.query(Video).filter(Video.id == video_id).first()
+    video = get_video_db(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     
@@ -496,12 +501,12 @@ def delete_video(
 
 @router.patch("/{video_id}", response_model=schemas.Video)
 def update_video_metadata(
-    video_id: int,
+    video_id: str,
     video_in: schemas.VideoBase,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    video = db.query(Video).filter(Video.id == video_id).first()
+    video = get_video_db(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     
@@ -518,6 +523,221 @@ def update_video_metadata(
     return video
 
 
+@router.post("/upload/initiate")
+async def initiate_upload(
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    video_type: str = Form(...),
+    filename: str = Form(...),
+    thumbnail: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    logger.info(f"Chunked Upload initiated: title='{title}', type='{video_type}', filename='{filename}', user_id={current_user.id}")
+    
+    if not current_user.is_premium:
+        if video_type == "flash" and current_user.flash_uploads >= FLASH_QUOTA_LIMIT:
+            raise HTTPException(status_code=403, detail=f"Flash quota exceeded ({FLASH_QUOTA_LIMIT} max)")
+        if video_type == "home" and current_user.home_uploads >= HOME_QUOTA_LIMIT:
+            raise HTTPException(status_code=403, detail=f"Home quota exceeded ({HOME_QUOTA_LIMIT} max)")
+
+    import uuid
+    import time
+    import re
+    import unicodedata
+    
+    task_id = str(uuid.uuid4())
+    
+    # Aggressively slugify filename
+    filename_base, filename_ext = os.path.splitext(filename)
+    safe_name = unicodedata.normalize('NFKD', filename_base).encode('ascii', 'ignore').decode('ascii')
+    safe_name = re.sub(r'[^\w\s-]', '', safe_name).strip().lower()
+    safe_name = re.sub(r'[-\s]+', '_', safe_name)
+    safe_filename = f"{safe_name}{filename_ext}"
+    
+    # Initial DB record
+    video_create_data = schemas.VideoCreate(
+        title=title,
+        description=description,
+        tags=tags,
+        video_type=video_type,
+        video_url="", 
+        thumbnail_url="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=60",
+        processing_key=task_id
+    )
+    
+    if thumbnail:
+        safe_thumb_name = thumbnail.filename.replace(" ", "_")
+        timestamp = int(time.time())
+        thumb_key = f"thumbs/custom_{timestamp}_{safe_thumb_name}"
+        
+        try:
+            video_create_data.thumbnail_url = storage.upload_file_obj(thumbnail.file, thumb_key)
+        except Exception as e:
+            logger.error(f"Failed to upload thumbnail to storage: {str(e)}")
+
+    # Update quota
+    if video_type == "flash":
+        current_user.flash_uploads = (current_user.flash_uploads or 0) + 1
+    else:
+        current_user.home_uploads = (current_user.home_uploads or 0) + 1
+    
+    db.commit() # Save user updates
+    
+    # Create the Video database record
+    db_video = crud_video.create_video(db, video_create_data, user_id=current_user.id)
+    # Set status as uploading initially
+    db_video.status = "uploading"
+    db.commit()
+    db.refresh(db_video)
+    
+    logger.info(f"Video record created in DB: id={db_video.id}, public_id={db_video.public_id}")
+    
+    # Create temp directory
+    backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+    temp_dir = os.path.join(backend_dir, "static", "temp_uploads", task_id)
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    return {
+        "upload_id": task_id,
+        "video_id": db_video.public_id,
+        "filename": safe_filename
+    }
+
+
+@router.post("/upload/chunk")
+async def upload_chunk(
+    upload_id: str = Form(...),
+    chunk_index: int = Form(...),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+    temp_dir = os.path.join(backend_dir, "static", "temp_uploads", upload_id)
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    chunk_path = os.path.join(temp_dir, f"chunk_{chunk_index}")
+    
+    logger.info(f"Saving chunk {chunk_index} for upload {upload_id}")
+    try:
+        with open(chunk_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+    except Exception as e:
+        logger.error(f"Failed to save chunk {chunk_index} for upload {upload_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save chunk")
+        
+    return {"status": "success", "chunk_index": chunk_index}
+
+
+@router.get("/upload/status/{upload_id}")
+async def upload_status(
+    upload_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+    temp_dir = os.path.join(backend_dir, "static", "temp_uploads", upload_id)
+    
+    if not os.path.exists(temp_dir):
+        return {"completed_chunks": []}
+        
+    completed_chunks = []
+    for f in os.listdir(temp_dir):
+        if f.startswith("chunk_"):
+            try:
+                index = int(f.split("_")[1])
+                completed_chunks.append(index)
+            except ValueError:
+                pass
+                
+    completed_chunks.sort()
+    return {"completed_chunks": completed_chunks}
+
+
+@router.post("/upload/finalize")
+async def finalize_upload(
+    upload_id: str = Form(...),
+    total_chunks: int = Form(...),
+    filename: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    logger.info(f"Finalizing chunked upload {upload_id} with {total_chunks} chunks")
+    
+    backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
+    temp_dir = os.path.join(backend_dir, "static", "temp_uploads", upload_id)
+    
+    if not os.path.exists(temp_dir):
+        raise HTTPException(status_code=400, detail="Upload directory not found or session expired")
+        
+    # Check if all chunks are present
+    missing_chunks = []
+    for i in range(total_chunks):
+        chunk_file = os.path.join(temp_dir, f"chunk_{i}")
+        if not os.path.exists(chunk_file):
+            missing_chunks.append(i)
+            
+    if missing_chunks:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Missing chunks: {missing_chunks}. Please upload them first."
+        )
+        
+    # Merge chunks
+    merged_path = os.path.join(temp_dir, filename)
+    try:
+        with open(merged_path, "wb") as outfile:
+            for i in range(total_chunks):
+                chunk_file = os.path.join(temp_dir, f"chunk_{i}")
+                with open(chunk_file, "rb") as infile:
+                    shutil.copyfileobj(infile, outfile)
+    except Exception as e:
+        logger.error(f"Failed to merge chunks for upload {upload_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to merge chunks on server")
+        
+    # Upload to storage
+    source_key = f"uploads/{upload_id}/{filename}"
+    logger.info(f"Uploading merged video to storage: {source_key}")
+    
+    try:
+        with open(merged_path, "rb") as f:
+            storage.upload_file_obj(f, source_key)
+    except Exception as e:
+        logger.error(f"Failed to upload merged video to storage: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to upload video to storage")
+        
+    # Clean up temp folder
+    try:
+        shutil.rmtree(temp_dir)
+    except Exception as e:
+        logger.warning(f"Failed to clean up temp directory {temp_dir}: {str(e)}")
+        
+    # Find the Video in database and set its status to pending
+    video = db.query(Video).filter(Video.processing_key == upload_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video record not found")
+        
+    video.status = "pending"
+    db.commit()
+    
+    # Trigger Celery transcoding task
+    try:
+        from app.tasks.video_tasks import process_video_task
+        process_video_task.delay(
+            source_key,
+            video.video_type,
+            video.title,
+            video.id,
+            video.thumbnail_url != "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=60",
+            video.processing_key
+        )
+        logger.info(f"Transcoding celery task enqueued for video_id={video.id}")
+    except Exception as e:
+        logger.error(f"Failed to enqueue Celery transcoding task: {str(e)}")
+        video.status = "failed"
+        db.commit()
+        
+    return {"status": "success", "video_id": video.public_id}
 
 
 @router.post("/upload", response_model=schemas.Video)
@@ -620,13 +840,13 @@ async def upload_video(
 
 @router.post("/{video_id}/reupload", response_model=schemas.Video)
 async def reupload_video(
-    video_id: int,
+    video_id: str,
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    video = db.query(Video).filter(Video.id == video_id).first()
+    video = get_video_db(db, video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     
@@ -714,7 +934,7 @@ async def get_processing_status(key: str, db: Session = Depends(get_db)):
 
 @router.post("/{video_id}/view")
 def view_video(
-    video_id: int,
+    video_id: str,
     request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[dict] = Depends(get_current_user_optional)
@@ -735,12 +955,12 @@ def view_video(
         return {"status": "success", "views": video.views, "message": "View not counted for non-approved video"}
 
     user_id = current_user.id if current_user else None
-    updated_video = crud_video.increment_view(db, user_id=user_id, video_id=video_id)
+    updated_video = crud_video.increment_view(db, user_id=user_id, video_id=video.id)
     return {"status": "success", "views": updated_video.views if updated_video else 0}
 
 @router.post("/{video_id}/comments", response_model=schemas.Comment)
 def create_comment(
-    video_id: int,
+    video_id: str,
     comment: schemas.CommentCreate,
     background_tasks: BackgroundTasks,
     request: Request,
@@ -759,16 +979,19 @@ def create_comment(
     if video.status != "approved":
         raise HTTPException(status_code=403, detail="Comments are disabled for videos still in processing or failed state")
     
-    db_comment = crud_video.create_comment(db, comment=comment, user_id=current_user.id, video_id=video_id)
+    db_comment = crud_video.create_comment(db, comment=comment, user_id=current_user.id, video_id=video.id)
     
     # Background side effects
-    background_tasks.add_task(handle_comment_background, current_user.id, video_id=video_id)
+    background_tasks.add_task(handle_comment_background, current_user.id, video_id=video.id)
     
     return db_comment
 
 @router.get("/{video_id}/comments", response_model=List[schemas.Comment])
-def read_comments(video_id: int, db: Session = Depends(get_db)):
-    return crud_video.get_comments(db, video_id=video_id)
+def read_comments(video_id: str, db: Session = Depends(get_db)):
+    video = crud_video.get_video(db, video_id=video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return crud_video.get_comments(db, video_id=video.id)
 
 def handle_like_background(user_id: int, video_id: int):
     """Background task to handle side effects of a video like."""
@@ -788,7 +1011,7 @@ def handle_comment_background(user_id: int, video_id: Optional[int] = None, post
 
 @router.post("/{video_id}/like")
 def like_video(
-    video_id: int,
+    video_id: str,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -800,33 +1023,33 @@ def like_video(
     if video.status != "approved":
         raise HTTPException(status_code=403, detail="Likes are disabled for videos still in processing or failed state")
     
-    is_liked = crud_video.toggle_like(db, user_id=current_user.id, video_id=video_id)
+    is_liked = crud_video.toggle_like(db, user_id=current_user.id, video_id=video.id)
     
     if is_liked:
         # Perform notifications and score updates in background
-        background_tasks.add_task(handle_like_background, current_user.id, video_id)
+        background_tasks.add_task(handle_like_background, current_user.id, video.id)
     
     from app.models.models import Like
-    likes_count = db.query(func.count(Like.video_id)).filter(Like.video_id == video_id).scalar() or 0
+    likes_count = db.query(func.count(Like.video_id)).filter(Like.video_id == video.id).scalar() or 0
     
     return {"status": "success", "liked": is_liked, "likes_count": likes_count}
 
 
 @router.post("/{video_id}/share")
 def share_video(
-    video_id: int,
+    video_id: str,
     db: Session = Depends(get_db)
 ):
     video = crud_video.get_video(db, video_id=video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     
-    crud_video.increment_share(db, video_id=video_id)
+    crud_video.increment_share(db, video_id=video.id)
     return {"status": "success"}
 
 @router.put("/{video_id}/comments/{comment_id}", response_model=schemas.Comment)
 def update_comment(
-    video_id: int,
+    video_id: str,
     comment_id: int,
     comment_in: schemas.CommentBase,
     db: Session = Depends(get_db),
@@ -846,7 +1069,7 @@ def update_comment(
 
 @router.delete("/{video_id}/comments/{comment_id}")
 def delete_comment(
-    video_id: int,
+    video_id: str,
     comment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

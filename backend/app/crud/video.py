@@ -3,7 +3,7 @@ from sqlalchemy import func, desc, text, or_
 from app.models.models import Video, Like, Comment, View, User, Post, SponsoredAd
 from app.schemas import schemas
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Union
 
 def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str = "approved", current_user_id: Optional[int] = None, skip: int = 0, limit: int = 100, mood: Optional[str] = None, feed_mode: Optional[str] = None):
     from app.models.models import Follow
@@ -165,13 +165,17 @@ def search_posts(db: Session, query_str: str, current_user_id: int = None):
             
     return posts
 
-def get_video(db: Session, video_id: int, current_user_id: int = None):
-    video = db.query(Video).options(joinedload(Video.owner)).filter(Video.id == video_id).first()
+def get_video(db: Session, video_id: Union[int, str], current_user_id: int = None):
+    if isinstance(video_id, str) and not video_id.isdigit():
+        video = db.query(Video).options(joinedload(Video.owner)).filter(Video.public_id == video_id).first()
+    else:
+        video = db.query(Video).options(joinedload(Video.owner)).filter(Video.id == int(video_id)).first()
+        
     if not video:
         return None
     
     if current_user_id:
-        video.liked_by_user = db.query(Like).filter(Like.video_id == video_id, Like.user_id == current_user_id).first() is not None
+        video.liked_by_user = db.query(Like).filter(Like.video_id == video.id, Like.user_id == current_user_id).first() is not None
     else:
         video.liked_by_user = False
         
