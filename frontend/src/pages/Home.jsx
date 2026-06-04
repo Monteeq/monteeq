@@ -56,6 +56,11 @@ const Home = () => {
     if (isLoading) return <HomeSkeleton />;
 
     const allVideos = data?.pages.flat() || [];
+    
+    // Calculate how many videos make up exactly 1 row based on CSS grid
+    const columnCount = width >= 1200 ? 3 : width >= 768 ? 2 : 1;
+    const firstRowVideos = allVideos.slice(0, columnCount);
+    const remainingVideos = allVideos.slice(columnCount);
 
     return (
         <div className="home-container page-container">
@@ -78,10 +83,10 @@ const Home = () => {
                 ))}
             </div>
 
-            {/* Main Video Feed */}
+            {/* First Row of Feed */}
             <div className="feed-section">
-                {allVideos.length > 0 ? (
-                    <VirtualizedFeed videos={allVideos} onVideoClick={handleVideoClick} />
+                {firstRowVideos.length > 0 ? (
+                    <VirtualizedFeed videos={firstRowVideos} onVideoClick={handleVideoClick} />
                 ) : !isLoading ? (
                     <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)', background: 'var(--bg-raised)', borderRadius: '32px', margin: '2rem 0', border: '1px solid var(--border-glass)' }}>
                         <Play size={48} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
@@ -120,6 +125,13 @@ const Home = () => {
                             </div>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Remaining Videos Feed */}
+            {remainingVideos.length > 0 && (
+                <div className="feed-section" style={{ marginTop: '1rem' }}>
+                    <VirtualizedFeed videos={remainingVideos} onVideoClick={handleVideoClick} />
                 </div>
             )}
 
