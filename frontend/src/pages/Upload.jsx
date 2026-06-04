@@ -166,27 +166,44 @@ const Upload = () => {
             formData.append("chunk_index", i);
             formData.append("file", chunkBlob, file.name);
 
-            try {
-                const res = await fetch(`${API_BASE_URL}/videos/upload/chunk`, {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${token}` },
-                    body: formData
-                });
+            let chunkSuccess = false;
+            let retries = 3;
 
-                if (!res.ok) {
-                    throw new Error(`Failed to upload chunk ${i}`);
+            while (!chunkSuccess && retries > 0) {
+                if (isPausedRef.current) {
+                    console.log("Upload paused during retry");
+                    return;
                 }
 
-                completedSet.add(i);
-                const overallProgress = Math.round((completedSet.size / totalChunks) * 100);
-                setProgress(overallProgress);
-            } catch (err) {
-                console.error("Chunk upload error:", err);
-                setIsUploadError(true);
-                setIsPaused(true);
-                setUploading(false);
-                showNotification("error", "Network issue detected. Upload paused. Click Resume to retry.");
-                return;
+                try {
+                    const res = await fetch(`${API_BASE_URL}/videos/upload/chunk`, {
+                        method: "POST",
+                        headers: { "Authorization": `Bearer ${token}` },
+                        body: formData
+                    });
+
+                    if (!res.ok) {
+                        throw new Error(`Failed to upload chunk ${i}`);
+                    }
+
+                    completedSet.add(i);
+                    const overallProgress = Math.round((completedSet.size / totalChunks) * 100);
+                    setProgress(overallProgress);
+                    chunkSuccess = true;
+                } catch (err) {
+                    console.error(`Chunk ${i} upload error, retries left: ${retries - 1}`, err);
+                    retries--;
+                    if (retries === 0) {
+                        setIsUploadError(true);
+                        setIsPaused(true);
+                        setUploading(false);
+                        showNotification("error", "Network issue detected. Upload paused. Click Resume to retry.");
+                        return;
+                    }
+                    // Wait before retrying (exponential backoff: 2s, 4s)
+                    const backoff = (3 - retries) * 2000;
+                    await new Promise(resolve => setTimeout(resolve, backoff));
+                }
             }
         }
 
