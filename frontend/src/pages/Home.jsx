@@ -6,6 +6,9 @@ import { useHomeFeed, useFlashFeed } from '../hooks/useFeed';
 import VideoPreviewCard from '../components/VideoPreviewCard';
 import { HomeSkeleton, VideoSkeleton } from '../components/Skeleton';
 import SEO from '../components/SEO';
+import VirtualizedFeed from '../components/VirtualizedFeed';
+import useWindowWidth from '../hooks/useWindowWidth';
+import { useInView } from 'react-intersection-observer';
 
 const CATEGORIES = ["All", "Gaming", "Music", "Live", "Comedy", "Vlogs", "Recently uploaded", "News", "Sports", "Learning"];
 
@@ -13,6 +16,7 @@ const Home = () => {
     const navigate = useNavigate();
     const { token, user } = useAuth();
     const [activeCategory, setActiveCategory] = useState("All");
+    const width = useWindowWidth();
 
     const {
         data,
@@ -23,6 +27,17 @@ const Home = () => {
         isError,
         refetch
     } = useHomeFeed(token, activeCategory);
+
+    const { ref, inView } = useInView({
+        threshold: 0,
+        rootMargin: '200px',
+    });
+
+    React.useEffect(() => {
+        if (inView && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     const { data: flashData, isLoading: flashLoading } = useFlashFeed(token);
 
@@ -37,9 +52,15 @@ const Home = () => {
         return num;
     };
 
+
     if (isLoading) return <HomeSkeleton />;
 
     const allVideos = data?.pages.flat() || [];
+    
+    // Calculate how many videos make up exactly 1 row based on CSS grid
+    const columnCount = width >= 1200 ? 3 : width >= 768 ? 2 : 1;
+    const firstRowVideos = allVideos.slice(0, columnCount);
+    const remainingVideos = allVideos.slice(columnCount);
 
     return (
         <div className="home-container page-container">
@@ -62,19 +83,10 @@ const Home = () => {
                 ))}
             </div>
 
-            {/* Main Video Feed */}
+            {/* First Row of Feed */}
             <div className="feed-section">
-                {allVideos.length > 0 ? (
-                    <div className="video-grid">
-                        {allVideos.map(video => (
-                            <VideoPreviewCard
-                                key={video.id}
-                                video={video}
-                                variant="grid"
-                                onClick={() => handleVideoClick(video.id)}
-                            />
-                        ))}
-                    </div>
+                {firstRowVideos.length > 0 ? (
+                    <VirtualizedFeed videos={firstRowVideos} onVideoClick={handleVideoClick} />
                 ) : !isLoading ? (
                     <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)', background: 'var(--bg-raised)', borderRadius: '32px', margin: '2rem 0', border: '1px solid var(--border-glass)' }}>
                         <Play size={48} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
@@ -101,7 +113,7 @@ const Home = () => {
                     </div>
 
                     <div className="flash-shelf-grid">
-                        {flashData.slice(0, window.innerWidth < 768 ? 6 : 18).map(flash => (
+                        {flashData.slice(0, width < 768 ? 6 : 18).map(flash => (
                             <div key={flash.id} className="flash-shelf-item hover-scale" onClick={() => navigate('/flash')}>
                                 <div className="flash-thumbnail-container">
                                     <img src={flash.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
@@ -113,6 +125,13 @@ const Home = () => {
                             </div>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Remaining Videos Feed */}
+            {remainingVideos.length > 0 && (
+                <div className="feed-section" style={{ marginTop: '1rem' }}>
+                    <VirtualizedFeed videos={remainingVideos} onVideoClick={handleVideoClick} />
                 </div>
             )}
 
@@ -130,16 +149,10 @@ const Home = () => {
                 </div>
             )}
 
-            {/* Load More Button or Observer Trigger */}
+            {/* Load More Observer Trigger */}
             {hasNextPage && (
-                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <button
-                        className="btn-secondary"
-                        onClick={() => fetchNextPage()}
-                        disabled={isFetchingNextPage}
-                    >
-                        {isFetchingNextPage ? <Loader2 className="animate-spin" /> : 'Load More'}
-                    </button>
+                <div ref={ref} style={{ height: '20px', margin: '2rem 0', display: 'flex', justifyContent: 'center' }}>
+                    {isFetchingNextPage ? <Loader2 className="animate-spin" style={{ color: 'var(--accent-primary)' }} /> : null}
                 </div>
             )}
         </div>

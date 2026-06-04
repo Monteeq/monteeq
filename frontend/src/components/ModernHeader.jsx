@@ -4,7 +4,6 @@ import {
     Settings, LogOut, X, ArrowLeft, History, TrendingUp,
     ChevronRight, Sparkles
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -48,16 +47,8 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
         const history = JSON.parse(localStorage.getItem('monteeq_search_history') || '[]');
         setSearchHistory(history);
 
-        const loadTrending = async () => {
-            try {
-                const data = await getTrendingSuggestions();
-                setTrending(Array.isArray(data) ? data : []);
-            } catch (err) {
-                console.error("Trending error:", err);
-            }
-        };
-        loadTrending();
-
+        // Load trending only when search is focused
+        // Will be called in onFocus of search bar
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setShowSuggestions(false);
@@ -134,11 +125,21 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                     <div className={s.searchBar}>
                         <Search size={18} className={s.searchIcon} />
                         <input
+                            id="header-search-input"
+                            name="search"
                             type="text"
                             placeholder="Videos, users, tags..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            onFocus={() => setShowSuggestions(true)}
+                            onFocus={async () => {
+                                setShowSuggestions(true);
+                                if (trending.length === 0) {
+                                    try {
+                                        const data = await getTrendingSuggestions();
+                                        setTrending(Array.isArray(data) ? data : []);
+                                    } catch (err) {}
+                                }
+                            }}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                         />
                         {searchQuery && (
@@ -215,80 +216,69 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                 </div>
             </div>
 
-            {/* Premium Profile Drawer */}
-            <AnimatePresence>
-                {showProfileMenu && (
-                    <>
-                        <motion.div
-                            className={s.drawerOverlay}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={closeDrawer}
-                        />
-                        <motion.div
-                            className={s.profileDrawer}
-                            initial={{ x: '100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '100%' }}
-                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        >
-                            <div className={s.drawerHeader}>
-                                <h2>Account</h2>
-                                <button onClick={closeDrawer} className={s.closeBtn}>
-                                    <X size={24} />
-                                </button>
+            {/* Premium Profile Drawer - CSS transitions replacing Framer Motion */}
+            {showProfileMenu && (
+                <>
+                    <div
+                        className={`${s.drawerOverlay} ${showProfileMenu ? s.active : ''}`}
+                        onClick={closeDrawer}
+                    />
+                    <div className={`${s.profileDrawer} ${showProfileMenu ? s.active : ''}`}>
+                        <div className={s.drawerHeader}>
+                            <h2>Account</h2>
+                            <button onClick={closeDrawer} className={s.closeBtn}>
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className={s.drawerHero}>
+                            <div className={s.heroAvatar}>
+                                {user?.profile_pic ? (
+                                    <img src={user.profile_pic} alt="" />
+                                ) : (
+                                    <div className={s.fallbackAvatarLarge}>{user?.username?.charAt(0).toUpperCase()}</div>
+                                )}
                             </div>
-
-                            <div className={s.drawerHero}>
-                                <div className={s.heroAvatar}>
-                                    {user?.profile_pic ? (
-                                        <img src={user.profile_pic} alt="" />
-                                    ) : (
-                                        <div className={s.fallbackAvatarLarge}>{user?.username?.charAt(0).toUpperCase()}</div>
-                                    )}
-                                </div>
-                                <div className={s.heroInfo}>
-                                    <h3>{user?.full_name || user?.username}</h3>
-                                    <p>@{user?.username}</p>
-                                    {user?.is_premium && (
-                                        <div className={s.proBadge}>
-                                            <Sparkles size={12} /> PRO
-                                        </div>
-                                    )}
-                                </div>
+                            <div className={s.heroInfo}>
+                                <h3>{user?.full_name || user?.username}</h3>
+                                <p>@{user?.username}</p>
+                                {user?.is_premium && (
+                                    <div className={s.proBadge}>
+                                        <Sparkles size={12} /> PRO
+                                    </div>
+                                )}
                             </div>
+                        </div>
 
-                            <nav className={s.drawerNav}>
-                                <button className={s.navItem} onClick={() => { closeDrawer(); navigate(`/profile/${user?.username}`); }}>
-                                    <div className={s.navIcon}><User size={20} /></div>
-                                    <span>My Profile</span>
-                                    <ChevronRight size={18} className={s.chevron} />
-                                </button>
-                                <button className={s.navItem} onClick={() => { closeDrawer(); navigate('/settings'); }}>
-                                    <div className={s.navIcon}><Settings size={20} /></div>
-                                    <span>Settings</span>
-                                    <ChevronRight size={18} className={s.chevron} />
-                                </button>
+                        <nav className={s.drawerNav}>
+                            <button className={s.navItem} onClick={() => { closeDrawer(); navigate(`/profile/${user?.username}`); }}>
+                                <div className={s.navIcon}><User size={20} /></div>
+                                <span>My Profile</span>
+                                <ChevronRight size={18} className={s.chevron} />
+                            </button>
+                            <button className={s.navItem} onClick={() => { closeDrawer(); navigate('/settings'); }}>
+                                <div className={s.navIcon}><Settings size={20} /></div>
+                                <span>Settings</span>
+                                <ChevronRight size={18} className={s.chevron} />
+                            </button>
 
-                                <div className={s.navDivider} />
+                            <div className={s.navDivider} />
 
-                                <button className={`${s.navItem} ${s.logoutBtn}`} onClick={() => { closeDrawer(); logout(); navigate('/login'); }}>
-                                    <div className={s.navIcon}><LogOut size={20} /></div>
-                                    <span>Sign Out</span>
-                                </button>
-                            </nav>
+                            <button className={`${s.navItem} ${s.logoutBtn}`} onClick={() => { closeDrawer(); logout(); navigate('/login'); }}>
+                                <div className={s.navIcon}><LogOut size={20} /></div>
+                                <span>Sign Out</span>
+                            </button>
+                        </nav>
 
-                            <div className={s.drawerFooter}>
-                                <div className={s.footerLogo}>
-                                    <img src={logo} alt="" className={s.footerLogoImg} />
-                                    <span>Monteeq v2.0</span>
-                                </div>
+                        <div className={s.drawerFooter}>
+                            <div className={s.footerLogo}>
+                                <img src={logo} alt="" className={s.footerLogoImg} />
+                                <span>Monteeq v2.0</span>
                             </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
+                        </div>
+                    </div>
+                </>
+            )}
         </header>
     );
 };

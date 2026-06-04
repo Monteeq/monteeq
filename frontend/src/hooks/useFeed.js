@@ -32,9 +32,63 @@ export const useVideoLike = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ videoId, token }) => likeVideo(videoId, token),
-        onSuccess: (data, variables) => {
-            // Optionally invalidate queries or update cache optimistically
-            queryClient.invalidateQueries({ queryKey: ['feed'] });
+        onMutate: async ({ videoId }) => {
+            await queryClient.cancelQueries({ queryKey: ['feed'] });
+            const previousQueries = queryClient.getQueriesData({ queryKey: ['feed'] });
+
+            previousQueries.forEach(([queryKey, oldData]) => {
+                if (!oldData) return;
+                queryClient.setQueryData(queryKey, (old) => {
+                    if (!old) return old;
+
+                    if (old.pages && Array.isArray(old.pages)) {
+                        return {
+                            ...old,
+                            pages: old.pages.map(page => {
+                                if (!Array.isArray(page)) return page;
+                                return page.map(video => {
+                                    if (video.id === videoId) {
+                                        const isLiked = video.liked_by_user;
+                                        return {
+                                            ...video,
+                                            liked_by_user: !isLiked,
+                                            like_count: isLiked ? Math.max(0, (video.like_count || 0) - 1) : (video.like_count || 0) + 1,
+                                            likes_count: isLiked ? Math.max(0, (video.likes_count || 0) - 1) : (video.likes_count || 0) + 1
+                                        };
+                                    }
+                                    return video;
+                                });
+                            })
+                        };
+                    }
+
+                    if (Array.isArray(old)) {
+                        return old.map(video => {
+                            if (video.id === videoId) {
+                                const isLiked = video.liked_by_user;
+                                return {
+                                    ...video,
+                                    liked_by_user: !isLiked,
+                                    like_count: isLiked ? Math.max(0, (video.like_count || 0) - 1) : (video.like_count || 0) + 1,
+                                    likes_count: isLiked ? Math.max(0, (video.likes_count || 0) - 1) : (video.likes_count || 0) + 1
+                                };
+                            }
+                            return video;
+                        });
+                    }
+
+                    return old;
+                });
+            });
+
+            return { previousQueries };
+        },
+        onError: (err, variables, context) => {
+            if (context?.previousQueries) {
+                context.previousQueries.forEach(([queryKey, oldData]) => {
+                    queryClient.setQueryData(queryKey, oldData);
+                });
+            }
         }
     });
 };

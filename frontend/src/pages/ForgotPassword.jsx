@@ -3,7 +3,15 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Zap, Loader2, ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { API_BASE_URL } from '../api';
-import debounce from 'lodash/debounce';
+
+// Native debounce — replaces lodash/debounce
+const debounce = (fn, ms) => {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
+    };
+};
 
 import logo from '../assets/images/logo.png';
 

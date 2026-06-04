@@ -12,6 +12,9 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Expose AdSense client ID for the deferred loader in index.html
+window.__ADSENSE_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID || '';
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />,
 )

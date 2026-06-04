@@ -17,8 +17,7 @@ const AmbientBackdrop = ({ videoThumbnail, tier }) => {
             };
         }
 
-        const blurAmount = tier === TIERS.HIGH ? '80px' : '40px';
-        const animationSpeed = tier === TIERS.HIGH ? '15s' : '0s'; // Disable motion for Mid
+        const blurAmount = '40px';
 
         return {
             backgroundImage: `url(${videoThumbnail})`,
@@ -26,7 +25,7 @@ const AmbientBackdrop = ({ videoThumbnail, tier }) => {
             backgroundPosition: 'center',
             filter: `blur(${blurAmount}) saturate(1.5) brightness(0.6)`,
             opacity: 0.4,
-            animation: tier === TIERS.HIGH ? `ambientMotion ${animationSpeed} infinite alternate ease-in-out` : 'none'
+            animation: 'none'
         };
     }, [videoThumbnail, tier]);
 
@@ -53,14 +52,6 @@ const AmbientBackdrop = ({ videoThumbnail, tier }) => {
                 background: 'rgba(0,0,0,0.6)',
                 zIndex: 1
             }} />
-
-            <style>{`
-                @keyframes ambientMotion {
-                    0% { transform: scale(1) rotate(0deg); }
-                    50% { transform: scale(1.1) rotate(2deg); }
-                    100% { transform: scale(1.2) rotate(-2deg); }
-                }
-            `}</style>
         </div>
     );
 };

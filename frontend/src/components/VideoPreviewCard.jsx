@@ -4,6 +4,14 @@ import { Play, AlertTriangle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getStreamUrl } from '../utils/streamUrl';
 
+const HlsPool = {
+    count: 0,
+    MAX_CONCURRENT: 2,
+    release() {
+        this.count = Math.max(0, this.count - 1);
+    }
+};
+
 const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant = 'grid' }, ref) => {
     const navigate = useNavigate();
     const [showPreview, setShowPreview] = useState(false);
@@ -14,8 +22,14 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
     const hlsRef = useRef(null);
 
     const handleMouseEnter = useCallback(() => {
+        if (HlsPool.count >= HlsPool.MAX_CONCURRENT) {
+            return;
+        }
         // Debounce: only load video preview after 300ms of sustained hover
         hoverTimerRef.current = setTimeout(() => {
+            if (HlsPool.count >= HlsPool.MAX_CONCURRENT) {
+                return;
+            }
             setShowPreview(true);
         }, 300);
     }, []);
@@ -36,6 +50,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
             if (hlsRef.current) {
                 hlsRef.current.destroy();
                 hlsRef.current = null;
+                HlsPool.release();
             }
             if (videoRef.current) {
                 videoRef.current.pause();
@@ -56,9 +71,14 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
             hls.loadSource(streamUrl);
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
+            HlsPool.count++;
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 videoRef.current?.play().catch(() => {});
+            });
+
+            hls.on(Hls.Events.FRAG_LOADED, () => {
+                hls.stopLoad();
             });
         } else {
             videoRef.current.src = streamUrl;
@@ -69,6 +89,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
             if (hlsRef.current) {
                 hlsRef.current.destroy();
                 hlsRef.current = null;
+                HlsPool.release();
             }
             if (videoRef.current) {
                 videoRef.current.pause();

@@ -170,6 +170,25 @@ class TrackingManager {
         if (s) s.replayed = true;
     }
 
+    trackWatchTime(videoId, durationMs) {
+        const watchTimeS = parseFloat((durationMs / 1000).toFixed(3));
+        this._enqueue({
+            video_id: videoId,
+            watch_time: watchTimeS,
+            timestamp: new Date().toISOString(),
+            _sessionKey: `wt_${videoId}_${Math.round(performance.now())}`
+        });
+    }
+
+    trackSkip(videoId) {
+        this._enqueue({
+            video_id: videoId,
+            skipped: true,
+            timestamp: new Date().toISOString(),
+            _sessionKey: `skip_${videoId}_${Math.round(performance.now())}`
+        });
+    }
+
     // ── Queuing & Batching ────────────────────────────────────────────────────
 
     _enqueue(event) {

@@ -204,6 +204,8 @@ const Signup = () => {
                             <form className="auth-v4-form" onSubmit={handleVerifyCode}>
                                 <div className="auth-v4-group">
                                     <input
+                                        id="signup-verify-code"
+                                        name="verificationCode"
                                         type="text"
                                         maxLength="6"
                                         placeholder="000000"
@@ -245,13 +247,13 @@ const Signup = () => {
                             <form className="auth-v4-form" onSubmit={handleSubmit}>
                                 <motion.div variants={itemVariants} className="auth-v4-group">
                                     <label>Full Name</label>
-                                    <input type="text" placeholder="Sadiqul Masduq" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                                    <input id="signup-fullname" name="name" type="text" placeholder="Sadiqul Masduq" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
                                 </motion.div>
 
                                 <motion.div variants={itemVariants} className="auth-v4-group">
                                     <label>Username</label>
                                     <div className="auth-v4-input-wrap">
-                                        <input type="text" placeholder="username" value={username} onChange={handleUsernameChange} className={isAvailable === false ? 'error' : isAvailable === true ? 'success' : ''} required />
+                                        <input id="signup-username" name="username" type="text" placeholder="username" value={username} onChange={handleUsernameChange} className={isAvailable === false ? 'error' : isAvailable === true ? 'success' : ''} required />
                                         {isAvailable !== null && <span className={`auth-v4-status ${isAvailable ? 'success' : 'error'}`}>{isChecking ? '...' : isAvailable ? <Check size={14} /> : '!'}</span>}
                                     </div>
                                 </motion.div>
@@ -259,7 +261,7 @@ const Signup = () => {
                                 <motion.div variants={itemVariants} className="auth-v4-group">
                                     <label>Email Address</label>
                                     <div className="auth-v4-input-wrap">
-                                        <input type="email" placeholder="you@example.com" value={email} onChange={handleEmailChange} className={isEmailAvailable === false ? 'error' : isEmailAvailable === true ? 'success' : ''} required />
+                                        <input id="signup-email" name="email" type="email" placeholder="you@example.com" value={email} onChange={handleEmailChange} className={isEmailAvailable === false ? 'error' : isEmailAvailable === true ? 'success' : ''} required />
                                         {isEmailAvailable !== null && <span className={`auth-v4-status ${isEmailAvailable ? 'success' : 'error'}`}>{isEmailChecking ? '...' : isEmailAvailable ? <Check size={14} /> : '!'}</span>}
                                     </div>
                                 </motion.div>
@@ -267,7 +269,7 @@ const Signup = () => {
                                 <motion.div variants={itemVariants} className="auth-v4-group">
                                     <label>Password</label>
                                     <div className="auth-v4-input-wrap">
-                                        <input type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                                        <input id="signup-password" name="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
                                         <button type="button" className="auth-v4-toggle" onClick={() => setShowPassword(!showPassword)}>
                                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                         </button>
