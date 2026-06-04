@@ -598,29 +598,29 @@
     display: none !important;
   }
   .controlBtn {
-    padding: 0.4rem;
+    padding: 0.3rem;
   }
   .controlBtn svg {
-    width: 20px !important;
-    height: 20px !important;
+    width: 16px !important;
+    height: 16px !important;
   }
   .timeDisplay {
-    font-size: clamp(0.65rem, 2.5vw, 0.75rem);
+    font-size: clamp(0.6rem, 2.2vw, 0.7rem);
   }
   .volumeWrapper {
-    gap: 0.15rem;
-    max-width: 32px;
+    gap: 0.1rem;
+    max-width: 28px;
   }
   .centralControlsContainer {
-    gap: clamp(0.8rem, 4vw, 1.8rem);
+    gap: clamp(0.5rem, 3vw, 1.2rem);
   }
   .mainPlayBtn svg {
-    width: clamp(36px, 10vw, 48px) !important;
-    height: clamp(36px, 10vw, 48px) !important;
+    width: clamp(28px, 8vw, 36px) !important;
+    height: clamp(28px, 8vw, 36px) !important;
   }
   .sideBtn svg {
-    width: clamp(20px, 6vw, 28px) !important;
-    height: clamp(20px, 6vw, 28px) !important;
+    width: clamp(16px, 5vw, 22px) !important;
+    height: clamp(16px, 5vw, 22px) !important;
   }
   .bufferingOverlayV2 {
     padding: 0.75rem;
