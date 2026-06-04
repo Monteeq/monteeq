@@ -8,6 +8,7 @@ import { HomeSkeleton, VideoSkeleton } from '../components/Skeleton';
 import SEO from '../components/SEO';
 import VirtualizedFeed from '../components/VirtualizedFeed';
 import useWindowWidth from '../hooks/useWindowWidth';
+import { useInView } from 'react-intersection-observer';
 
 const CATEGORIES = ["All", "Gaming", "Music", "Live", "Comedy", "Vlogs", "Recently uploaded", "News", "Sports", "Learning"];
 
@@ -26,6 +27,17 @@ const Home = () => {
         isError,
         refetch
     } = useHomeFeed(token, activeCategory);
+
+    const { ref, inView } = useInView({
+        threshold: 0,
+        rootMargin: '200px',
+    });
+
+    React.useEffect(() => {
+        if (inView && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     const { data: flashData, isLoading: flashLoading } = useFlashFeed(token);
 
@@ -125,16 +137,10 @@ const Home = () => {
                 </div>
             )}
 
-            {/* Load More Button or Observer Trigger */}
+            {/* Load More Observer Trigger */}
             {hasNextPage && (
-                <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <button
-                        className="btn-secondary"
-                        onClick={() => fetchNextPage()}
-                        disabled={isFetchingNextPage}
-                    >
-                        {isFetchingNextPage ? <Loader2 className="animate-spin" /> : 'Load More'}
-                    </button>
+                <div ref={ref} style={{ height: '20px', margin: '2rem 0', display: 'flex', justifyContent: 'center' }}>
+                    {isFetchingNextPage ? <Loader2 className="animate-spin" style={{ color: 'var(--accent-primary)' }} /> : null}
                 </div>
             )}
         </div>
