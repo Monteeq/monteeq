@@ -562,9 +562,9 @@
     object-fit: contain;
   }
   .topOverlay {
-    top: 2px;
-    left: 2px;
-    right: 2px;
+    top: 0;
+    left: 0;
+    right: 0;
     padding: 6px 8px;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
   }
@@ -578,9 +578,9 @@
     font-size: clamp(0.85rem, 3.5vw, 1rem);
   }
   .controlsOverlay {
-    bottom: 2px;
-    left: 2px;
-    right: 2px;
+    bottom: 0;
+    left: 0;
+    right: 0;
     padding: 6px 8px;
     gap: 0.15rem;
   }
