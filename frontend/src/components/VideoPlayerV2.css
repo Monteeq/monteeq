@@ -327,6 +327,13 @@
 @media (max-width: 768px) {
   .v2Wrapper {
     border-radius: 0;
+    height: auto;
+    min-height: 35vh;
+  }
+  .videoElement {
+    height: auto;
+    max-height: 75vh;
+    object-fit: contain;
   }
   .controlsOverlay {
     padding: 2rem 1rem 1rem;
