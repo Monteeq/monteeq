@@ -469,9 +469,7 @@
     }
     .videoSection {
         border-radius: 0 !important;
-        margin-bottom: 0.5rem;
-        margin-left: 0;
-        margin-right: 0;
+        margin: 0 !important;
         width: 100%;
         aspect-ratio: auto !important; /* Allow natural height or max-height */
     }

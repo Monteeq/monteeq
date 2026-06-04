@@ -543,6 +543,16 @@
 
 /* Responsive adjustments for mobile screens */
 @media (max-width: 768px) {
+  .v2Wrapper {
+    border-radius: 0;
+    height: auto;
+    min-height: 65vh; /* Massive player on mobile */
+  }
+  .videoElement {
+    height: auto;
+    max-height: 85vh;
+    object-fit: contain;
+  }
   .topOverlay {
     padding: 1.5rem 1rem;
   }
@@ -555,6 +565,7 @@
   }
   .seekBarContainer {
     margin-bottom: 4px;
+    height: 4px; /* Slim bar */
   }
   .group {
     gap: 0.4rem;
@@ -571,11 +582,11 @@
     padding: 0.4rem;
   }
   .controlBtn svg {
-    width: 24px !important;
-    height: 24px !important;
+    width: 20px !important; /* Smaller */
+    height: 20px !important; /* Smaller */
   }
   .timeDisplay {
-    font-size: 0.75rem;
+    font-size: 0.75rem; /* Smaller */
   }
   .volumeWrapper {
     gap: 0.15rem;
@@ -586,13 +597,11 @@
     gap: 1.2rem;
   }
   .mainPlayBtn svg {
-    width: 32px !important;
-    height: 32px !important;
+    width: 36px !important; /* Smaller */
+    height: 36px !important; /* Smaller */
   }
   .sideBtn svg {
-    width: 20px !important;
-    height: 20px !important;
+    width: 24px !important; /* Smaller */
+    height: 24px !important; /* Smaller */
   }
 }
-
-
