@@ -71,9 +71,10 @@
     overflow: hidden;
     background: #000;
     position: relative;
-    aspect-ratio: 16 / 9;
+    display: flex;
+    justify-content: center;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    transition: aspect-ratio 0.5s ease, max-height 0.5s ease, border-radius 0.5s ease, margin 0.5s ease;
+    transition: max-height 0.5s ease, border-radius 0.5s ease, margin 0.5s ease;
 }
 
 .sideColumn {
@@ -476,17 +477,17 @@
     }
     
     .vTitle {
-        font-size: 1.15rem;
-        line-height: 1.3;
+        font-size: 1rem;
+        line-height: 1.25;
     }
 
     .actionBtn {
-        padding: 0.45rem 0.8rem;
-        font-size: 0.85rem;
+        padding: 0.35rem 0.6rem;
+        font-size: 0.75rem;
     }
 
     .actionRow {
-        gap: 0.5rem;
+        gap: 0.4rem;
     }
 
     /* Indent text rows, comment container, and suggested column so they don't touch screen edges */
