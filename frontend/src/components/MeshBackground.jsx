@@ -13,6 +13,12 @@ const MeshBackground = () => {
                 .mesh-blob.red-2 {
                     animation: driftRed2 25s linear infinite;
                 }
+                @media (max-width: 768px) {
+                    .mesh-blob.red-1, .mesh-blob.red-2 {
+                        will-change: auto;
+                        animation: none;
+                    }
+                }
                 @keyframes driftRed1 {
                     0% { transform: translate(0px, 0px) scale(1); }
                     33.33% { transform: translate(100px, -50px) scale(1.2); }

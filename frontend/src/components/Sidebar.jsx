@@ -43,10 +43,19 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [following, setFollowing] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const fetchFollowing = async () => {
-      if (!user || !token) {
-        setFollowing([]);
+      // Gate API call behind visibility
+      if (!user || !token || (!isOpen && !isDesktop)) {
+        if (!user || !token) setFollowing([]);
         return;
       }
       
@@ -62,7 +71,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     };
 
     fetchFollowing();
-  }, [user, token]);
+  }, [user, token, isOpen, isDesktop]);
 
 
   return (

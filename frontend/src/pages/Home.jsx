@@ -40,12 +40,10 @@ const Home = () => {
         return num;
     };
 
-    console.log("DEBUG HOME FEED:", { token, user, activeCategory, isLoading, isError, data, flashLoading });
 
     if (isLoading) return <HomeSkeleton />;
 
     const allVideos = data?.pages.flat() || [];
-    console.log("DEBUG ALL VIDEOS:", allVideos);
 
     return (
         <div className="home-container page-container">

@@ -5,17 +5,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react()],
-    optimizeDeps: {
-      include: ['react-paystack']
-    },
     build: {
       rollupOptions: {
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
             'recharts-vendor': ['recharts'],
-            'framer-vendor': ['framer-motion'],
-            'ui-vendor': ['lucide-react', 'react-paystack']
+            'framer-vendor': ['framer-motion']
           }
         }
       },

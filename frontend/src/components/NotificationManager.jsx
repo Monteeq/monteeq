@@ -52,13 +52,9 @@ const NotificationManager = () => {
             }
         };
 
-        // Poll every 120 seconds — centralized polling in context handles the count
-        const intervalId = setInterval(pollNotifications, 120000);
-
-        // Initial check
+        // Initial check on mount
         pollNotifications();
 
-        return () => clearInterval(intervalId);
     }, [user, token, showNotification, activeAchievement]);
 
     return (
