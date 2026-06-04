@@ -324,6 +324,58 @@
     font-size: 0.95rem;
 }
 
+.descriptionBox p {
+    font-size: clamp(0.85rem, 3vw, 0.95rem);
+}
+
+.descriptionBox .videoMeta {
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.commentsHeading {
+    font-size: clamp(1rem, 4vw, 1.4rem);
+    font-weight: 900;
+}
+
+.commentForm {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    align-items: flex-start;
+}
+.commentForm .avatar { flex-shrink: 0; }
+.commentForm .inputRow {
+    flex: 1;
+    display: flex;
+    gap: 0.5rem;
+    min-width: 0;
+}
+.commentForm input {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    color: #fff;
+    outline: none;
+    font-size: 0.9rem;
+}
+.commentForm button[type="submit"] {
+    flex-shrink: 0;
+    background: #ff3b30;
+    border: none;
+    border-radius: 12px;
+    padding: 0 1rem;
+    cursor: pointer;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .tagline {
     color: var(--accent-primary);
     font-weight: 700;
@@ -475,22 +527,37 @@
     }
     
     .vTitle {
-        font-size: 1rem;
-        line-height: 1.25;
+        font-size: clamp(1rem, 4vw, 1.8rem);
+        line-height: 1.2;
     }
 
     .actionBtn {
         padding: 0.35rem 0.6rem;
         font-size: 0.75rem;
+        min-height: 36px;
+        min-width: 36px;
+    }
+    .actionBtn svg {
+        width: 16px;
+        height: 16px;
     }
 
     .actionRow {
         gap: 0.4rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .actionRow::-webkit-scrollbar {
+        display: none;
+    }
+
+    .mainColumn {
+        padding: 0 1rem;
+        margin-top: 1rem;
     }
 
     /* Indent text rows, comment container, and suggested column so they don't touch screen edges */
-    .titleRow,
-    .actionRow,
     .commentsContainer,
     .sideColumn {
         padding-left: 1rem !important;
@@ -522,5 +589,7 @@
         padding: 0.6rem 1rem;
         font-size: 0.85rem;
     }
-}
 
+    .commentForm { gap: 0.5rem; }
+    .commentForm input { padding: 0.6rem 0.75rem; font-size: 0.85rem; }
+}

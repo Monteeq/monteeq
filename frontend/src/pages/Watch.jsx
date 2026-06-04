@@ -577,7 +577,7 @@ const Watch = () => {
 
                 <div style={{ marginTop: '3rem' }}>
                     <div className="descriptionBox">
-                        <div style={{ fontWeight: 800, marginBottom: '0.5rem', color: '#fff' }}>
+                        <div className="videoMeta" style={{ marginBottom: '0.5rem', color: '#fff' }}>
                             {video.views?.toLocaleString()} Views • {new Date(video.created_at).toLocaleDateString()}
                         </div>
                         <p>{video.description || "No description provided."}</p>
@@ -600,18 +600,17 @@ const Watch = () => {
                     )}
 
                     <div style={{ marginTop: '4rem' }}>
-                        <h3 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '2rem' }}>Comments ({comments.length})</h3>
-                        <form onSubmit={handleCommentSubmit} style={{ display: 'flex', gap: '1rem', marginBottom: '3rem' }}>
+                        <h3 className="commentsHeading" style={{ marginBottom: '2rem' }}>Comments ({comments.length})</h3>
+                        <form onSubmit={handleCommentSubmit} className="commentForm">
                             <div className="avatar"></div>
-                            <div style={{ flex: 1, display: 'flex', gap: '1rem' }}>
+                            <div className="inputRow">
                                 <input
                                     type="text"
                                     value={newComment}
                                     onChange={(e) => setNewComment(e.target.value)}
                                     placeholder="Add a comment..."
-                                    style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '1rem', color: '#fff', outline: 'none' }}
-                                  />
-                                <button type="submit" disabled={!newComment.trim()} style={{ background: '#ff3b30', border: 'none', borderRadius: '12px', padding: '0 1.5rem', cursor: 'pointer' }}>
+                                />
+                                <button type="submit" disabled={!newComment.trim()}>
                                     <Send size={20} color="white" />
                                 </button>
                             </div>
