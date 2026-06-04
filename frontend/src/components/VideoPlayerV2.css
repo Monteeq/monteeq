@@ -334,7 +334,7 @@
   .v2Wrapper {
     border-radius: 0;
     height: auto;
-    min-height: 35vh;
+    min-height: auto;
   }
   .videoElement {
     height: auto;
@@ -554,11 +554,11 @@
   .v2Wrapper {
     border-radius: 0;
     height: auto;
-    min-height: 65vh;
+    min-height: auto;
   }
   .videoElement {
     height: auto;
-    max-height: 85vh;
+    max-height: 75vh;
     object-fit: contain;
   }
   .topOverlay {
