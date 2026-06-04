@@ -4,6 +4,7 @@ Uses Zoho SMTP for all communications.
 """
 import logging
 import os
+import random
 import requests
 import smtplib
 from email.mime.text import MIMEText
@@ -12,6 +13,21 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core import config
 from app.core.config import SMTP_FROM, SMTP_FROM_NAME
+from app.email_templates import pick
+from app.email_templates import verification     as _t_verify
+from app.email_templates import password_reset   as _t_reset
+from app.email_templates import pro_upgrade      as _t_pro
+from app.email_templates import challenge_announce as _t_announce
+from app.email_templates import challenge_exit   as _t_exit
+from app.email_templates import welcome          as _t_welcome
+from app.email_templates import day3_nudge       as _t_day3
+from app.email_templates import first_video      as _t_fvideo
+from app.email_templates import first_follower   as _t_ffollower
+from app.email_templates import first_like       as _t_flike
+from app.email_templates import digest           as _t_digest
+from app.email_templates import reengagement     as _t_reeng
+from app.email_templates import challenge_ending as _t_ending
+from app.email_templates import challenge_result as _t_result
 
 logger = logging.getLogger(__name__)
 
@@ -210,11 +226,11 @@ def _primary_button(text: str, url: str) -> str:
 
 
 def send_verification_email(to_email: str, code: str) -> bool:
+    _v = pick(_t_verify.VARIANTS)
     plain_text = f"Welcome to Monteeq!\n\nYour verification code is: {code}\nExpires in 10 mins."
     content_html = f"""
-  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;">Confirm your email</p>
-  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:400;color:#8e8e93;margin:0 0 16px;line-height:1.7;">Use the code below to finish setting up your Monteeq account.
-  It expires in 10 minutes.</p>
+  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;">{_v['heading']}</p>
+  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:400;color:#8e8e93;margin:0 0 16px;line-height:1.7;">{_v['body']}</p>
 
   <!-- Code block -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
@@ -230,7 +246,7 @@ def send_verification_email(to_email: str, code: str) -> bool:
     </tr>
   </table>
 
-  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:12px;color:#48484a;margin:0;line-height:1.6;">Didn't create a Monteeq account? You can safely ignore this email.</p>
+  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:12px;color:#48484a;margin:0;line-height:1.6;">{_v['caption']}</p>
 """
     html = _base_email_template(content_html)
     return _send_email_logic(to_email, f"{code} is your Monteeq code", plain_text, html)
@@ -238,12 +254,10 @@ def send_verification_email(to_email: str, code: str) -> bool:
 def send_password_reset_email(to_email: str, token: str) -> bool:
     reset_link = f"{config.FRONTEND_URL}/reset-password?token={token}&email={to_email}"
     plain_text = f"Reset your Monteeq password:\n\nClick here: {reset_link}\n\nThis link expires in 1 hour."
+    _v = pick(_t_reset.VARIANTS)
     content_html = f"""
-  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;text-align:center;">Reset your password</p>
-  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:400;color:#8e8e93;margin:0 0 16px;line-height:1.7;text-align:center;">
-    We got a request to reset your Monteeq password.<br>
-    Hit the button below — this link is valid for 1 hour.
-  </p>
+  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;text-align:center;">{_v['heading']}</p>
+  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:400;color:#8e8e93;margin:0 0 16px;line-height:1.7;text-align:center;">{_v['body']}</p>
 
   <!-- Button centered -->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
@@ -259,21 +273,21 @@ def send_password_reset_email(to_email: str, token: str) -> bool:
       <td style="background:#1a1a1a;border-left:3px solid #ff3b30;
                  border-radius:0 6px 6px 0;padding:16px 20px;">
         <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;color:#8e8e93;line-height:1.6;">
-          Didn't request this? Your account is fine — just ignore this email.
-          The link expires automatically.
+          {_v['security_note']}
         </p>
       </td>
     </tr>
   </table>
 """
     html = _base_email_template(content_html)
-    return _send_email_logic(to_email, "Reset your Monteeq password", plain_text, html)
+    return _send_email_logic(to_email, _v.get("subject", "Reset your Monteeq password"), plain_text, html)
 
 def send_challenge_announcement_batch(bcc_emails: list, title: str, prize: str, end_date: str) -> bool:
+    _v = pick(_t_announce.VARIANTS)
     content_html = f"""
   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;
              color:#ff3b30;text-transform:uppercase;
-             text-align:center;margin:0 0 16px;">New Challenge</p>
+             text-align:center;margin:0 0 16px;">{_v['eyebrow']}</p>
   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;text-align:center;">{title}</p>
 
   <!-- Prize pool highlight box -->
@@ -296,7 +310,7 @@ def send_challenge_announcement_batch(bcc_emails: list, title: str, prize: str, 
   </table>
 
   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:400;color:#8e8e93;margin:0 0 16px;line-height:1.7;text-align:center;">
-    Submit your best edit before {end_date}. One shot, real prize money.
+    {_v['body'].format(title=title, prize=prize, end_date=end_date)}
   </p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
@@ -308,13 +322,16 @@ def send_challenge_announcement_batch(bcc_emails: list, title: str, prize: str, 
 """
     html = _base_email_template(content_html)
     plain_text = f"New Challenge: {title}! Win {prize}. Join at https://monteeq.com/challenges"
-    return _send_email_logic(None, f"New Challenge: {title} — Win {prize}", plain_text, html, bcc_list=bcc_emails)
+    return _send_email_logic(None, _v['subject'].format(title=title, prize=prize), plain_text, html, bcc_list=bcc_emails)
 
 def send_pro_upgrade_email(to_email: str, username: str) -> bool:
+    _v = pick(_t_pro.VARIANTS)
+    _heading = _v['heading'].format(username=username)
+    _body    = _v['body'].format(username=username)
     content_html = f"""
-  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;text-align:center;">You're now Pro, {username}.</p>
+  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;text-align:center;">{_heading}</p>
   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:400;color:#8e8e93;margin:0 0 16px;line-height:1.7;text-align:center;">
-    Your account has been upgraded to Monteeq Pro. Here's what you now have access to:
+    {_body}
   </p>
 
   <!-- Perks list (table rows — Outlook safe) -->
@@ -347,13 +364,17 @@ def send_pro_upgrade_email(to_email: str, username: str) -> bool:
 """
     html = _base_email_template(content_html)
     plain_text = f"Congratulations {username}! You are now a Monteeq Pro user."
-    return _send_email_logic(to_email, f"You're now on Monteeq Pro", plain_text, html)
+    return _send_email_logic(to_email, _v['subject'].format(username=username), plain_text, html)
 
 def send_challenge_exit_email(to_email: str, username: str, challenge_title: str) -> bool:
+    _v = pick(_t_exit.VARIANTS)
+    _heading = _v['heading'].format(username=username, challenge_title=challenge_title)
+    _body    = _v['body'].format(username=username, challenge_title=challenge_title)
+    _followup = _v['followup'].format(username=username, challenge_title=challenge_title)
     content_html = f"""
-  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;">Challenge update, {username}</p>
+  <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;">{_heading}</p>
   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:400;color:#8e8e93;margin:0 0 16px;line-height:1.7;">
-    Your entry was removed from the following challenge because the video was deleted:
+    {_body}
   </p>
 
   <!-- Challenge name box -->
@@ -370,7 +391,7 @@ def send_challenge_exit_email(to_email: str, username: str, challenge_title: str
   </table>
 
   <p style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:400;color:#8e8e93;margin:0 0 16px;line-height:1.7;">
-    You can still compete — upload a new video to re-enter the challenge at any time.
+    {_followup}
   </p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
@@ -411,6 +432,308 @@ def send_email(to_email: str, subject: str, title: str, message: str, action_tex
     html_content = _base_email_template(content_html)
 
     return _send_email_logic(to_email, subject, message, html_content)
+
+# ── Shared style shortcuts ────────────────────────────────────────────────────
+_H  = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:800;color:#ffffff;margin:0 0 16px;line-height:1.3;"
+_B  = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:15px;font-weight:400;color:#8e8e93;margin:0 0 16px;line-height:1.7;"
+_S  = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:12px;color:#48484a;margin:0;line-height:1.6;"
+_FF = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;"
+
+
+# ── 1. Welcome (Sign up) ──────────────────────────────────────────────────────
+def send_welcome_email(to_email: str, username: str) -> bool:
+    _v = pick(_t_welcome.VARIANTS)
+    _heading = _v['heading'].format(username=username)
+    _body    = _v['body'].format(username=username)
+    content_html = f"""
+  <p style="{_H}">{_heading}</p>
+  <p style="{_B}">{_body}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="margin:24px 0;background:#1a1a1a;border:1px solid #2e2e2e;
+                border-top:2px solid #ff3b30;border-radius:8px;overflow:hidden;">
+    <tr><td style="padding:14px 20px;border-bottom:1px solid #2e2e2e;">
+      <span style="{_FF}color:#ff3b30;font-weight:800;font-size:14px;">01</span>&nbsp;&nbsp;
+      <span style="{_FF}color:#fff;font-size:14px;font-weight:600;">Upload your first video</span>
+    </td></tr>
+    <tr><td style="padding:14px 20px;border-bottom:1px solid #2e2e2e;">
+      <span style="{_FF}color:#ff3b30;font-weight:800;font-size:14px;">02</span>&nbsp;&nbsp;
+      <span style="{_FF}color:#fff;font-size:14px;font-weight:600;">Complete your creator profile</span>
+    </td></tr>
+    <tr><td style="padding:14px 20px;">
+      <span style="{_FF}color:#ff3b30;font-weight:800;font-size:14px;">03</span>&nbsp;&nbsp;
+      <span style="{_FF}color:#fff;font-size:14px;font-weight:600;">Explore the community feed</span>
+    </td></tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("Upload Your First Video", "https://monteeq.com/upload")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"Welcome to Monteeq, {username}! Upload your first video at https://monteeq.com/upload"
+    return _send_email_logic(to_email, f"Welcome to Monteeq, {username}", plain, html)
+
+
+# ── 2. Day-3 onboarding nudge ─────────────────────────────────────────────────
+def send_day3_nudge_email(to_email: str, username: str) -> bool:
+    _v = pick(_t_day3.VARIANTS)
+    _heading = _v['heading'].format(username=username)
+    _body    = _v['body'].format(username=username)
+    content_html = f"""
+  <p style="{_H}">{_heading}</p>
+  <p style="{_B}">{_body}</p>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("Upload a Video", "https://monteeq.com/upload")}</td></tr>
+  </table>
+  <p style="{_S};margin-top:20px;text-align:center;">Takes less than 2 minutes.</p>
+"""
+    html = _base_email_template(content_html)
+    plain = f"Hey {username}, upload your first video at https://monteeq.com/upload"
+    return _send_email_logic(to_email, _v['subject'].format(username=username), plain, html)
+
+
+# ── 3. First video uploaded (milestone) ──────────────────────────────────────
+def send_first_video_email(to_email: str, username: str, video_title: str, video_url: str) -> bool:
+    _v = pick(_t_fvideo.VARIANTS)
+    _heading = _v['heading'].format(username=username, video_title=video_title)
+    _body    = _v['body'].format(username=username, video_title=video_title)
+    _tip     = _v['tip'].format(username=username, video_title=video_title)
+    content_html = f"""
+  <p style="{_H}">{_heading}</p>
+  <p style="{_B}">{_body}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="margin:24px 0;background:#1a1a1a;border-left:3px solid #ff3b30;
+                border-radius:0 6px 6px 0;padding:0;">
+    <tr><td style="padding:16px 20px;">
+      <p style="{_S}margin:0 0 4px;text-transform:uppercase;letter-spacing:2px;font-weight:700;">What to do next</p>
+      <p style="{_FF}font-size:14px;color:#8e8e93;margin:0;line-height:1.6;">
+        {_tip}
+      </p>
+    </td></tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("View Your Video", video_url)}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"Your video '{video_title}' is live on Monteeq. View it at {video_url}"
+    return _send_email_logic(to_email, _v['subject'].format(username=username, video_title=video_title), plain, html)
+
+
+# ── 4. First follower (social) ────────────────────────────────────────────────
+def send_first_follower_email(to_email: str, username: str, follower_name: str) -> bool:
+    _v = pick(_t_ffollower.VARIANTS)
+    _heading = _v['heading'].format(username=username, follower_name=follower_name)
+    _body    = _v['body'].format(username=username, follower_name=follower_name)
+    content_html = f"""
+  <p style="{_H}">{_heading}</p>
+  <p style="{_B}">{_body}</p>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("See Your Profile", f"https://monteeq.com/u/{username}")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{follower_name} just followed you on Monteeq."
+    return _send_email_logic(to_email, _v['subject'].format(username=username, follower_name=follower_name), plain, html)
+
+
+# ── 5. First like (social) ────────────────────────────────────────────────────
+def send_first_like_email(to_email: str, username: str, video_title: str, liker_name: str, video_url: str) -> bool:
+    _v = pick(_t_flike.VARIANTS)
+    _heading = _v['heading'].format(username=username, video_title=video_title, liker_name=liker_name)
+    _body    = _v['body'].format(username=username, video_title=video_title, liker_name=liker_name)
+    content_html = f"""
+  <p style="{_H}">{_heading}</p>
+  <p style="{_B}">{_body}</p>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("View Your Video", video_url)}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{liker_name} liked your video '{video_title}'."
+    return _send_email_logic(to_email, _v['subject'].format(username=username, video_title=video_title, liker_name=liker_name), plain, html)
+
+
+# ── 6. Weekly digest (batch) ──────────────────────────────────────────────────
+def send_weekly_digest_email(bcc_emails: list, videos: list) -> bool:
+    """videos: list of dicts with keys: title, creator, url"""
+    _v = pick(_t_digest.WEEKLY_VARIANTS)
+    rows_html = ""
+    for i, v in enumerate(videos[:5]):
+        border = "border-bottom:1px solid #2e2e2e;" if i < len(videos[:5]) - 1 else ""
+        rows_html += f"""
+    <tr><td style="padding:14px 20px;{border}">
+      <a href="{v.get('url','https://monteeq.com')}"
+         style="{_FF}font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;display:block;">
+        {v.get('title','Untitled')}
+      </a>
+      <span style="{_FF}font-size:12px;color:#48484a;">{v.get('creator','')}</span>
+    </td></tr>"""
+
+    content_html = f"""
+  <p style="{_H}">{_v['heading']}</p>
+  <p style="{_B}">{_v['body']}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="margin:24px 0;background:#1a1a1a;border:1px solid #2e2e2e;
+                border-top:2px solid #ff3b30;border-radius:8px;overflow:hidden;">
+    {rows_html}
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("Open Your Feed", "https://monteeq.com")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = "This week's top videos on Monteeq — https://monteeq.com"
+    return _send_email_logic(None, _v['subject'], plain, html, bcc_list=bcc_emails)
+
+
+# ── 7. Monthly stats digest ───────────────────────────────────────────────────
+def send_monthly_stats_email(to_email: str, username: str, month: str, stats: dict) -> bool:
+    """stats: dict with keys: views, likes, followers, uploads"""
+    _v = pick(_t_digest.MONTHLY_VARIANTS)
+    _heading = _v['heading'].format(username=username, month=month)
+    _body    = _v['body'].format(username=username, month=month)
+    def stat_cell(label, value):
+        return f"""<td align="center" style="padding:20px;width:50%;">
+          <p style="{_FF}font-size:28px;font-weight:900;color:#ffffff;margin:0 0 4px;">{value}</p>
+          <p style="{_S}{_FF}text-transform:uppercase;letter-spacing:2px;font-weight:700;">{label}</p>
+        </td>"""
+
+    content_html = f"""
+  <p style="{_H}">{_heading}</p>
+  <p style="{_B}">{_body}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="margin:24px 0;background:#1a1a1a;border:1px solid #2e2e2e;
+                border-top:2px solid #ff3b30;border-radius:8px;overflow:hidden;">
+    <tr>
+      {stat_cell("Views", stats.get("views", 0))}
+      <td style="width:1px;background:#2e2e2e;font-size:0;">&nbsp;</td>
+      {stat_cell("Likes", stats.get("likes", 0))}
+    </tr>
+    <tr><td colspan="3" style="background:#2e2e2e;font-size:0;height:1px;">&nbsp;</td></tr>
+    <tr>
+      {stat_cell("New Followers", stats.get("followers", 0))}
+      <td style="width:1px;background:#2e2e2e;font-size:0;">&nbsp;</td>
+      {stat_cell("Uploads", stats.get("uploads", 0))}
+    </tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("View Full Analytics", "https://monteeq.com/analytics")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{username}'s {month} on Monteeq — {stats.get('views',0)} views, {stats.get('likes',0)} likes."
+    return _send_email_logic(to_email, _v['subject'].format(username=username, month=month), plain, html)
+
+
+# ── 8. Re-engagement (30 days inactive) ──────────────────────────────────────
+def send_reengagement_email(to_email: str, username: str) -> bool:
+    _v = pick(_t_reeng.VARIANTS)
+    _heading = _v['heading'].format(username=username)
+    _body_1  = _v['body_1'].format(username=username)
+    _body_2  = _v['body_2'].format(username=username)
+    content_html = f"""
+  <p style="{_H}">{_heading}</p>
+  <p style="{_B}">{_body_1}</p>
+  <p style="{_B}">{_body_2}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("Upload a Video", "https://monteeq.com/upload")}</td></tr>
+  </table>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+    <tr><td align="center">
+      <a href="https://monteeq.com"
+         style="{_FF}font-size:13px;color:#48484a;text-decoration:none;">
+        Or just browse the feed
+      </a>
+    </td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"Hey {username}, we haven't seen you in 30 days. Come back to Monteeq: https://monteeq.com"
+    return _send_email_logic(to_email, _v['subject'].format(username=username), plain, html)
+
+
+# ── 9. Challenge ending soon (campaign, batch) ────────────────────────────────
+def send_challenge_ending_soon_email(bcc_emails: list, title: str, prize: str, end_date: str) -> bool:
+    _v = pick(_t_ending.VARIANTS)
+    content_html = f"""
+  <p style="{_FF}font-size:11px;font-weight:700;letter-spacing:3px;color:#ff3b30;
+             text-transform:uppercase;text-align:center;margin:0 0 16px;">{_v['eyebrow']}</p>
+  <p style="{_H}text-align:center;">{title}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+    <tr><td align="center"
+        style="background:#1a1a1a;border:1px solid #2e2e2e;
+               border-top:2px solid #ff3b30;border-radius:8px;padding:28px;">
+      <p style="{_S}{_FF}text-transform:uppercase;letter-spacing:3px;font-weight:700;margin:0 0 6px;">
+        Prize Pool
+      </p>
+      <p style="{_FF}font-size:40px;font-weight:900;color:#ffffff;margin:0;">{prize}</p>
+      <p style="{_FF}font-size:13px;color:#ff3b30;font-weight:700;margin:8px 0 0;">
+        Closes {end_date}
+      </p>
+    </td></tr>
+  </table>
+
+  <p style="{_B}text-align:center;">{_v['body'].format(title=title, prize=prize, end_date=end_date)}</p>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("Enter Now", "https://monteeq.com/challenges")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"Last chance to enter {title} — prize: {prize}. Closes {end_date}. Enter at https://monteeq.com/challenges"
+    return _send_email_logic(None, _v['subject'].format(title=title, prize=prize, end_date=end_date), plain, html, bcc_list=bcc_emails)
+
+
+# ── 10. Challenge result / winner announcement (batch) ───────────────────────
+def send_challenge_result_email(bcc_emails: list, challenge_title: str, winner_name: str,
+                                winner_video_url: str, prize: str) -> bool:
+    _v = pick(_t_result.VARIANTS)
+    _eyebrow = _v['eyebrow'].format(challenge_title=challenge_title, winner_name=winner_name, prize=prize)
+    _heading = _v['heading'].format(challenge_title=challenge_title, winner_name=winner_name, prize=prize)
+    _body    = _v['body'].format(challenge_title=challenge_title, winner_name=winner_name, prize=prize)
+    content_html = f"""
+  <p style="{_FF}font-size:11px;font-weight:700;letter-spacing:3px;color:#ff3b30;
+             text-transform:uppercase;text-align:center;margin:0 0 16px;">{_eyebrow}</p>
+  <p style="{_H}text-align:center;">{_heading}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+         style="margin:24px 0;background:#1a1a1a;border:1px solid #2e2e2e;
+                border-top:2px solid #ff3b30;border-radius:8px;overflow:hidden;">
+    <tr><td align="center" style="padding:28px;">
+      <p style="{_S}{_FF}text-transform:uppercase;letter-spacing:3px;font-weight:700;margin:0 0 8px;">Winner</p>
+      <p style="{_FF}font-size:26px;font-weight:900;color:#ffffff;margin:0 0 4px;">{winner_name}</p>
+      <p style="{_FF}font-size:14px;color:#ff3b30;font-weight:700;margin:0;">Took home {prize}</p>
+    </td></tr>
+  </table>
+
+  <p style="{_B}text-align:center;">
+    {_body}
+  </p>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button("Watch the Winning Edit", winner_video_url)}</td></tr>
+  </table>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+    <tr><td align="center">
+      <a href="https://monteeq.com/challenges"
+         style="{_FF}font-size:13px;color:#48484a;text-decoration:none;">
+        More challenges are open
+      </a>
+    </td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{winner_name} won {challenge_title} and took home {prize}. Watch at {winner_video_url}"
+    return _send_email_logic(None, _v['subject'].format(challenge_title=challenge_title, winner_name=winner_name, prize=prize), plain, html, bcc_list=bcc_emails)
+
 
 _missing = [v for v, k in {
     "SMTP_HOST": config.SMTP_HOST,
