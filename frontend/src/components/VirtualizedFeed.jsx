@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { List } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 import VideoPreviewCard from './VideoPreviewCard';
+import useWindowWidth from '../hooks/useWindowWidth';
 
 const Row = React.memo(({ index, style, videos, columnCount, columnWidth, onVideoClick }) => {
     const from = index * columnCount;
@@ -27,6 +28,7 @@ Row.displayName = 'Row';
 
 const VirtualizedFeed = ({ videos, onVideoClick }) => {
     const listRef = useRef(null);
+    const windowWidth = useWindowWidth();
 
     return (
         <div style={{ height: '80vh', width: '100%' }}>
@@ -35,7 +37,7 @@ const VirtualizedFeed = ({ videos, onVideoClick }) => {
                     return null;
                 }
 
-                const columnCount = width >= 1200 ? 3 : width >= 768 ? 2 : 1;
+                const columnCount = windowWidth >= 1200 ? 3 : windowWidth >= 768 ? 2 : 1;
                 const rowCount = Math.ceil(videos.length / columnCount);
                 const columnWidth = width / columnCount;
                 const thumbnailHeight = columnWidth * (9 / 16);

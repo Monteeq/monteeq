@@ -27,6 +27,9 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
         }
         // Debounce: only load video preview after 300ms of sustained hover
         hoverTimerRef.current = setTimeout(() => {
+            if (HlsPool.count >= HlsPool.MAX_CONCURRENT) {
+                return;
+            }
             setShowPreview(true);
         }, 300);
     }, []);
