@@ -15,7 +15,6 @@ import SEO from '../components/SEO';
 // Services
 import { adaptiveEngine } from '../services/adaptiveEngine';
 import { adaptiveDiscovery } from '../services/adaptiveDiscovery';
-import { metricsManager } from '../services/metricsManager';
 import { feedManager } from '../services/feedManager';
 import { trackingManager } from '../services/trackingManager';
 
@@ -346,7 +345,7 @@ const Flash = () => {
                 const id = entry.target.getAttribute('data-id');
                 if (activeVideoId?.toString() !== id?.toString()) {
                     setLayerResponse(adaptiveDiscovery.recordSkip(id, activeCategory));
-                    metricsManager.trackSkip(id);
+                    trackingManager.trackSkip(id);
                     setActiveVideoId(id);
                 }
 

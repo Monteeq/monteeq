@@ -37,41 +37,53 @@ export const FlashSkeleton = () => (
 );
 
 export const WatchSkeleton = () => (
-    <div className="watch-container">
-        <div className="watch-video-wrapper">
-            <div className="skeleton" style={{ aspectRatio: '16/9', width: '100%', borderRadius: '0' }} />
+    <div className="watchContainer">
+        <div className="videoSection">
+            <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: '0' }} />
         </div>
-        <div className="watch-meta" style={{ padding: '1.5rem 1rem' }}>
-            <div className="skeleton skeleton-text" style={{ width: '80%', height: '1.8rem', marginBottom: '1.5rem', borderRadius: '4px' }} />
-
-            <div className="glass" style={{ padding: '1.2rem', borderRadius: '12px', marginBottom: '2rem', background: 'rgba(255,255,255,0.03)' }}>
-                <div className="skeleton skeleton-text" style={{ width: '30%', height: '1rem', marginBottom: '1rem' }} />
-                <div className="skeleton skeleton-text" style={{ width: '100%', height: '1.2rem' }} />
-                <div className="skeleton skeleton-text" style={{ width: '100%', height: '1.2rem' }} />
-                <div className="skeleton skeleton-text" style={{ width: '60%', height: '1.2rem', marginBottom: '1rem' }} />
-                <div style={{ display: 'flex', gap: '0.6rem' }}>
-                    {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ width: '60px', height: '1.2rem', borderRadius: '4px' }} />)}
-                </div>
+        <div className="mainColumn">
+            <div className="titleRow">
+                <div className="skeleton skeleton-text" style={{ width: '70%', height: '2rem', borderRadius: '8px' }} />
+                <div className="skeleton" style={{ width: '140px', height: '40px', borderRadius: '50px' }} />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '50%' }} />
-                    <div style={{ flex: 1 }}>
-                        <div className="skeleton skeleton-text" style={{ width: '120px', height: '1.1rem', marginBottom: '0.4rem' }} />
-                        <div className="skeleton skeleton-text" style={{ width: '80px', height: '0.8rem' }} />
-                    </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ width: '100px', height: '36px', borderRadius: '2rem' }} />)}
-                </div>
+            <div className="actionRow" style={{ marginBottom: '2rem' }}>
+                <div className="skeleton" style={{ width: '90px', height: '40px', borderRadius: '50px' }} />
+                <div className="skeleton" style={{ width: '90px', height: '40px', borderRadius: '50px' }} />
+                <div className="skeleton" style={{ width: '120px', height: '40px', borderRadius: '50px' }} />
             </div>
 
-            <div className="comments-section" style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '2rem' }}>
+            <div className="mobileCreatorCard skeleton" style={{ height: '80px', borderRadius: '1.25rem', marginBottom: '1.5rem' }} />
+
+            <div className="descriptionBox" style={{ height: '150px', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <div className="skeleton skeleton-text" style={{ width: '30%', height: '1rem' }} />
+                <div className="skeleton skeleton-text" style={{ width: '100%', height: '1.2rem' }} />
+                <div className="skeleton skeleton-text" style={{ width: '100%', height: '1.2rem' }} />
+                <div className="skeleton skeleton-text" style={{ width: '60%', height: '1.2rem' }} />
+            </div>
+
+            <div className="comments-section" style={{ marginTop: '3rem' }}>
                 <div className="skeleton skeleton-text" style={{ width: '150px', height: '1.5rem', marginBottom: '2rem' }} />
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-                    <div className="skeleton" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
-                    <div className="skeleton" style={{ flex: 1, height: '42px', borderRadius: '8px' }} />
+                    <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0 }} />
+                    <div className="skeleton" style={{ flex: 1, height: '48px', borderRadius: '12px' }} />
+                </div>
+            </div>
+        </div>
+        <div className="sideColumn">
+            <div className="desktopCreatorCard skeleton" style={{ height: '80px', borderRadius: '1.25rem', marginBottom: '1.5rem' }} />
+            <div className="suggestedSection">
+                <div className="skeleton skeleton-text" style={{ width: '80px', height: '1.2rem', marginBottom: '1rem' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.4rem' }}>
+                            <div className="skeleton" style={{ width: '180px', height: '101px', borderRadius: '12px', flexShrink: 0 }} />
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.5rem' }}>
+                                <div className="skeleton skeleton-text" style={{ width: '90%', height: '1.1rem' }} />
+                                <div className="skeleton skeleton-text" style={{ width: '60%', height: '0.8rem' }} />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>

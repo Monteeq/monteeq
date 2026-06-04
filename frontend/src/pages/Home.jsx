@@ -6,6 +6,8 @@ import { useHomeFeed, useFlashFeed } from '../hooks/useFeed';
 import VideoPreviewCard from '../components/VideoPreviewCard';
 import { HomeSkeleton, VideoSkeleton } from '../components/Skeleton';
 import SEO from '../components/SEO';
+import VirtualizedFeed from '../components/VirtualizedFeed';
+import useWindowWidth from '../hooks/useWindowWidth';
 
 const CATEGORIES = ["All", "Gaming", "Music", "Live", "Comedy", "Vlogs", "Recently uploaded", "News", "Sports", "Learning"];
 
@@ -13,6 +15,7 @@ const Home = () => {
     const navigate = useNavigate();
     const { token, user } = useAuth();
     const [activeCategory, setActiveCategory] = useState("All");
+    const width = useWindowWidth();
 
     const {
         data,
@@ -37,9 +40,12 @@ const Home = () => {
         return num;
     };
 
+    console.log("DEBUG HOME FEED:", { token, user, activeCategory, isLoading, isError, data, flashLoading });
+
     if (isLoading) return <HomeSkeleton />;
 
     const allVideos = data?.pages.flat() || [];
+    console.log("DEBUG ALL VIDEOS:", allVideos);
 
     return (
         <div className="home-container page-container">
@@ -65,16 +71,7 @@ const Home = () => {
             {/* Main Video Feed */}
             <div className="feed-section">
                 {allVideos.length > 0 ? (
-                    <div className="video-grid">
-                        {allVideos.map(video => (
-                            <VideoPreviewCard
-                                key={video.id}
-                                video={video}
-                                variant="grid"
-                                onClick={() => handleVideoClick(video.id)}
-                            />
-                        ))}
-                    </div>
+                    <VirtualizedFeed videos={allVideos} onVideoClick={handleVideoClick} />
                 ) : !isLoading ? (
                     <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--text-muted)', background: 'var(--bg-raised)', borderRadius: '32px', margin: '2rem 0', border: '1px solid var(--border-glass)' }}>
                         <Play size={48} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
@@ -101,7 +98,7 @@ const Home = () => {
                     </div>
 
                     <div className="flash-shelf-grid">
-                        {flashData.slice(0, window.innerWidth < 768 ? 6 : 18).map(flash => (
+                        {flashData.slice(0, width < 768 ? 6 : 18).map(flash => (
                             <div key={flash.id} className="flash-shelf-item hover-scale" onClick={() => navigate('/flash')}>
                                 <div className="flash-thumbnail-container">
                                     <img src={flash.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />

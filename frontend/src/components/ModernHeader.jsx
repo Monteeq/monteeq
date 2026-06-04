@@ -134,6 +134,8 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                     <div className={s.searchBar}>
                         <Search size={18} className={s.searchIcon} />
                         <input
+                            id="header-search-input"
+                            name="search"
                             type="text"
                             placeholder="Videos, users, tags..."
                             value={searchQuery}

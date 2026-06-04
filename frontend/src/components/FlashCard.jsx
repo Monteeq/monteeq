@@ -7,7 +7,6 @@ import { getStreamUrl } from '../utils/streamUrl';
 import { useTrackHistory } from '../hooks/useLibrary';
 
 // Services
-import { metricsManager } from '../services/metricsManager';
 import { adaptiveDiscovery } from '../services/adaptiveDiscovery';
 import { trackingManager } from '../services/trackingManager';
 
@@ -95,7 +94,7 @@ const FlashCard = ({
                 const curTime = Math.floor(videoRef.current?.currentTime || 0);
                 const durTime = Math.floor(videoRef.current?.duration || video.duration || 0);
 
-                metricsManager.trackWatchTime(video.id, watchMs);
+                trackingManager.trackWatchTime(video.id, watchMs);
                 adaptiveDiscovery.recordWatch(video.id, watchMs, durTime * 1000, video.mood);
                 trackingManager.endSession(video.id);
 

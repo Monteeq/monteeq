@@ -528,23 +528,17 @@ h3 {
   width: 100%;
 }
 
-@media (min-width: 800px) {
+@media (min-width: 768px) {
   .video-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 2.5rem;
   }
 }
 
-@media (min-width: 1400px) {
+@media (min-width: 1200px) {
   .video-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 3rem;
-  }
-}
-
-@media (min-width: 2000px) {
-  .video-grid {
-    grid-template-columns: repeat(4, 1fr);
   }
 }
 

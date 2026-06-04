@@ -1,52 +1,66 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { List } from 'react-window';
 import { AutoSizer } from 'react-virtualized-auto-sizer';
 import VideoPreviewCard from './VideoPreviewCard';
 
-const VirtualizedFeed = ({ videos, onVideoClick }) => {
+const Row = React.memo(({ index, style, videos, columnCount, columnWidth, onVideoClick }) => {
+    const from = index * columnCount;
+    const to = Math.min(from + columnCount, videos.length);
+    const rowItems = videos.slice(from, to);
 
-    const columnCount = window.innerWidth > 1200 ? 4 : window.innerWidth > 768 ? 3 : window.innerWidth > 480 ? 2 : 1;
-    const rowCount = Math.ceil(videos.length / columnCount);
-    const itemHeight = 320; // Estimated height of a video card
-
-    const Row = ({ index, style }) => {
-        const items = [];
-        const from = index * columnCount;
-        const to = Math.min(from + columnCount, videos.length);
-
-        for (let i = from; i < to; i++) {
-            items.push(
-                <div key={videos[i].id} style={{ flex: 1, padding: '0 10px' }}>
+    return (
+        <div style={{ ...style, display: 'flex' }}>
+            {rowItems.map(video => (
+                <div key={video.id} style={{ width: columnWidth, padding: '0 12px 12px' }}>
                     <VideoPreviewCard
-                        video={videos[i]}
+                        video={video}
                         variant="grid"
-                        onClick={() => onVideoClick(videos[i].id)}
+                        onClick={() => onVideoClick(video.id)}
                     />
                 </div>
-            );
-        }
+            ))}
+        </div>
+    );
+});
 
-        return (
-            <div style={{ ...style, display: 'flex', padding: '0 10px' }}>
-                {items}
-            </div>
-        );
-    };
+Row.displayName = 'Row';
+
+const VirtualizedFeed = ({ videos, onVideoClick }) => {
+    const listRef = useRef(null);
 
     return (
         <div style={{ height: '80vh', width: '100%' }}>
-            <AutoSizer>
-                {({ height, width }) => (
+            <AutoSizer renderProp={({ height, width }) => {
+                if (height <= 0 || width <= 0) {
+                    return null;
+                }
+
+                const columnCount = width >= 1200 ? 3 : width >= 768 ? 2 : 1;
+                const rowCount = Math.ceil(videos.length / columnCount);
+                const columnWidth = width / columnCount;
+                const thumbnailHeight = columnWidth * (9 / 16);
+                const rowHeight = thumbnailHeight + 120;
+
+                return (
                     <List
+                        key={`${width}_${rowHeight}`}
+                        listRef={listRef}
                         height={height}
-                        itemCount={rowCount}
-                        itemSize={itemHeight}
                         width={width}
-                    >
-                        {Row}
-                    </List>
-                )}
-            </AutoSizer>
+                        style={{ height, width }}
+                        rowCount={rowCount}
+                        rowHeight={rowHeight}
+                        rowComponent={Row}
+                        rowProps={{
+                            videos,
+                            columnCount,
+                            columnWidth,
+                            onVideoClick
+                        }}
+                        overscanCount={2}
+                    />
+                );
+            }} />
         </div>
     );
 };

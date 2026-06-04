@@ -133,6 +133,8 @@ const Login = () => {
                                                 <div className="auth-v4-group">
                                                     <label>Username or Email</label>
                                                     <input 
+                                                        id="login-username"
+                                                        name="username"
                                                         type="text" 
                                                         placeholder="your_username" 
                                                         value={username} 
@@ -148,6 +150,8 @@ const Login = () => {
                                                     </div>
                                                     <div className="auth-v4-input-wrap">
                                                         <input 
+                                                            id="login-password"
+                                                            name="password"
                                                             type={showPassword ? "text" : "password"} 
                                                             placeholder="••••••••" 
                                                             value={password} 
@@ -252,6 +256,8 @@ const Login = () => {
                                             <label>{isUsingRecoveryCode ? 'Recovery Code' : 'Verification Code'}</label>
                                             <div className="auth-v4-input-wrap">
                                                 <input 
+                                                    id="login-2fa-code"
+                                                    name="twoFactorCode"
                                                     type="text" 
                                                     placeholder={isUsingRecoveryCode ? "XXXX-XXXX-XXXX" : "000 000"} 
                                                     value={twoFactorCode} 
