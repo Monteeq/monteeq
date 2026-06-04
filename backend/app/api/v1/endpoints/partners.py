@@ -7,7 +7,7 @@ from app.db.session import get_db
 from app.models.models import User, PartnerLead
 from app.schemas import schemas
 from app.core.dependencies import get_current_user
-from app.utils.emails import send_email
+from app.services.email_service import send_email
 from app.core import config
 
 logger = logging.getLogger(__name__)

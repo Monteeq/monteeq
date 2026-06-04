@@ -85,7 +85,7 @@ def register_user(request: Request, user_in: schemas.UserCreate, db: Session = D
     try:
         send_verification_email(user.email, code)
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        logger.error(f"[auth] Verification email failed for {user.email}: {e}")
         # We don't fail registration if email sending fails in dev, but in prod we might
     
     db.refresh(user)
@@ -290,8 +290,8 @@ def forgot_password(data: schemas.ResendVerification, db: Session = Depends(get_
     try:
         from app.services.email_service import send_password_reset_email
         send_password_reset_email(user.email, token)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"[auth] Password reset email failed for {user.email}: {e}")
     
     return {"message": "A secure reset link has been sent to your email."}
 

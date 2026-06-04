@@ -36,11 +36,42 @@ celery_app.conf.update(
         'max_connections': 20
     },
     beat_schedule={
-        # Send personalised good-morning notification to opted-in users daily at 08:00 UTC
+        # Morning push notifications — daily 08:00 UTC
         "morning-notifications-daily": {
             "task": "tasks.morning.send_morning_notifications",
             "schedule": crontab(hour=8, minute=0),
         },
+        # Onboarding nudge check — every hour (catches D+3 and D+7 windows)
+        "check-onboarding-nudges": {
+            "task": "tasks.email.check_onboarding_nudges",
+            "schedule": crontab(minute=0),
+        },
+        # Inactivity ladder — hourly check (sends during local morning)
+        "check-inactivity": {
+            "task": "tasks.email.check_inactivity",
+            "schedule": crontab(minute=0),
+        },
+        # Weekly digest — hourly on Monday (sends during local morning)
+        "weekly-digest": {
+            "task": "tasks.email.send_weekly_digest_batch",
+            "schedule": crontab(minute=0, day_of_week=1),
+        },
+        # Monthly stats — 1st of every month, 10:00 UTC
+        "monthly-stats": {
+            "task": "tasks.email.send_monthly_stats_batch",
+            "schedule": crontab(hour=10, minute=0, day_of_month=1),
+        },
+        # Creator growth drip — hourly on Tuesday (sends during local morning)
+        "creator-growth-tips": {
+            "task": "tasks.email.send_growth_drip",
+            "schedule": crontab(minute=0, day_of_week=2),
+        },
+        # Social activity batch digest — daily 18:00 UTC
+        "flush-social-activity-batch": {
+            "task": "tasks.email.flush_social_batch",
+            "schedule": crontab(hour=18, minute=0),
+        },
     },
 )
+
 

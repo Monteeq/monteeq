@@ -28,6 +28,13 @@ from app.email_templates import digest           as _t_digest
 from app.email_templates import reengagement     as _t_reeng
 from app.email_templates import challenge_ending as _t_ending
 from app.email_templates import challenge_result as _t_result
+from app.email_templates import security         as _t_sec
+from app.email_templates import subscription     as _t_sub
+from app.email_templates import first_comment    as _t_fcomment
+from app.email_templates import mention          as _t_mention
+from app.email_templates import growth_drip      as _t_gdrip
+from app.email_templates import celebration      as _t_celeb
+from app.email_templates import social_batch     as _t_sbatch
 
 logger = logging.getLogger(__name__)
 
@@ -634,8 +641,8 @@ def send_monthly_stats_email(to_email: str, username: str, month: str, stats: di
 
 
 # ── 8. Re-engagement (30 days inactive) ──────────────────────────────────────
-def send_reengagement_email(to_email: str, username: str) -> bool:
-    _v = pick(_t_reeng.VARIANTS)
+def send_reengagement_email(to_email: str, username: str, inactive_days: int = 30) -> bool:
+    _v = _t_reeng.pick_reengagement(inactive_days)
     _heading = _v['heading'].format(username=username)
     _body_1  = _v['body_1'].format(username=username)
     _body_2  = _v['body_2'].format(username=username)
@@ -657,7 +664,7 @@ def send_reengagement_email(to_email: str, username: str) -> bool:
   </table>
 """
     html = _base_email_template(content_html)
-    plain = f"Hey {username}, we haven't seen you in 30 days. Come back to Monteeq: https://monteeq.com"
+    plain = f"Hey {username}, we haven't seen you in {inactive_days} days. Come back to Monteeq: https://monteeq.com"
     return _send_email_logic(to_email, _v['subject'].format(username=username), plain, html)
 
 
@@ -733,6 +740,158 @@ def send_challenge_result_email(bcc_emails: list, challenge_title: str, winner_n
     html = _base_email_template(content_html)
     plain = f"{winner_name} won {challenge_title} and took home {prize}. Watch at {winner_video_url}"
     return _send_email_logic(None, _v['subject'].format(challenge_title=challenge_title, winner_name=winner_name, prize=prize), plain, html, bcc_list=bcc_emails)
+
+
+def send_security_email(to_email: str, template_type: str, username: str, **kwargs) -> bool:
+    _v = _t_sec.pick_security(template_type)
+    subject = _v['subject'].format(username=username, **kwargs)
+    heading = _v['heading'].format(username=username, **kwargs)
+    body = _v['body'].format(username=username, **kwargs)
+    action_text = _v.get('action_text', 'Secure Account')
+    
+    content_html = f"""
+  <p style="{_H}">{heading}</p>
+  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button(action_text, "https://monteeq.com/settings/security")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{heading}\n\n{body}"
+    return _send_email_logic(to_email, subject, plain, html)
+
+
+def send_subscription_email(to_email: str, template_type: str, username: str, **kwargs) -> bool:
+    _v = _t_sub.pick_subscription(template_type)
+    subject = _v['subject'].format(username=username, **kwargs)
+    heading = _v['heading'].format(username=username, **kwargs)
+    body = _v['body'].format(username=username, **kwargs)
+    action_text = _v.get('action_text', 'Learn More')
+    
+    content_html = f"""
+  <p style="{_H}">{heading}</p>
+  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button(action_text, "https://monteeq.com/pro")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{heading}\n\n{body}"
+    return _send_email_logic(to_email, subject, plain, html)
+
+
+def send_first_comment_email(to_email: str, username: str, video_title: str, commenter_name: str, comment_content: str, video_url: str) -> bool:
+    _v = pick(_t_fcomment.VARIANTS)
+    fmt = {
+        "username": username,
+        "video_title": video_title,
+        "commenter_name": commenter_name,
+        "comment_content": comment_content,
+    }
+    subject = _v['subject'].format(**fmt)
+    heading = _v['heading'].format(**fmt)
+    body = _v['body'].format(**fmt)
+    action_text = _v.get('action_text', 'View Comment')
+
+    content_html = f"""
+  <p style="{_H}">{heading}</p>
+  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button(action_text, video_url)}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{heading}\n\n{body}"
+    return _send_email_logic(to_email, subject, plain, html)
+
+
+def send_mention_email(to_email: str, username: str, mentioner_name: str, context_text: str, action_url: str) -> bool:
+    _v = pick(_t_mention.VARIANTS)
+    fmt = {
+        "username": username,
+        "mentioner_name": mentioner_name,
+        "context_text": context_text,
+    }
+    subject = _v['subject'].format(**fmt)
+    heading = _v['heading'].format(**fmt)
+    body = _v['body'].format(**fmt)
+    action_text = _v.get('action_text', 'View Mention')
+
+    content_html = f"""
+  <p style="{_H}">{heading}</p>
+  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button(action_text, action_url)}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{heading}\n\n{body}"
+    return _send_email_logic(to_email, subject, plain, html)
+
+
+
+def send_growth_drip_email(to_email: str, username: str, week: int) -> bool:
+    _v = _t_gdrip.pick_growth_drip(week)
+    subject = _v['subject'].format(username=username)
+    heading = _v['heading'].format(username=username)
+    body = _v['body'].format(username=username)
+    action_text = _v.get('action_text', 'Learn More')
+
+    content_html = f"""
+  <p style="{_H}">{heading}</p>
+  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button(action_text, "https://monteeq.com/settings/profile")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{heading}\n\n{body}"
+    return _send_email_logic(to_email, subject, plain, html)
+
+
+def send_celebration_email(to_email: str, username: str, template_type: str, **kwargs) -> bool:
+    _v = _t_celeb.pick_celebration(template_type)
+    subject = _v['subject'].format(username=username, **kwargs)
+    heading = _v['heading'].format(username=username, **kwargs)
+    body = _v['body'].format(username=username, **kwargs)
+    action_text = _v.get('action_text', 'View Milestone')
+
+    content_html = f"""
+  <p style="{_H}">{heading}</p>
+  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button(action_text, "https://monteeq.com")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{heading}\n\n{body}"
+    return _send_email_logic(to_email, subject, plain, html)
+
+
+def send_social_batch_email(to_email: str, username: str, summary_text: str) -> bool:
+    _v = _t_sbatch.pick_social_batch()
+    subject = _v['subject'].format(username=username)
+    heading = _v['heading'].format(username=username)
+    body = _v['body'].format(username=username, summary_text=summary_text)
+    action_text = _v.get('action_text', 'View Notifications')
+
+    content_html = f"""
+  <p style="{_H}">{heading}</p>
+  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <tr><td align="center">{_primary_button(action_text, "https://monteeq.com/notifications")}</td></tr>
+  </table>
+"""
+    html = _base_email_template(content_html)
+    plain = f"{heading}\n\n{body}"
+    return _send_email_logic(to_email, subject, plain, html)
 
 
 _missing = [v for v, k in {

@@ -39,7 +39,7 @@ def send_push_notification(subscription: PushSubscription, message_data: dict):
         logger.error("Failed to send push: %s", ex)
         return False
 
-from app.utils.emails import send_email
+from app.services.email_service import send_email
 from app.models.models import User
 
 def notify_user_push(db: Session, user_id: int, title: str, body: str, link: str = None, n_type: str = "info"):

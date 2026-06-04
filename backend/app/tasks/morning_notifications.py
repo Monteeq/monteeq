@@ -98,6 +98,21 @@ def send_morning_notifications():
                     link=link,
                     n_type="morning",
                 )
+                
+                if user.email_marketing and user.email:
+                    try:
+                        from app.services.email_service import send_email
+                        send_email(
+                            to_email=user.email,
+                            subject=f"{greeting} — Your Monteeq pick today",
+                            title=greeting,
+                            message=body,
+                            action_text="Watch Now",
+                            action_url=f"https://monteeq.com{link}",
+                        )
+                    except Exception as e:
+                        logger.error(f"[morning_notif] Email failed for user {user.id}: {e}")
+
                 sent += 1
 
             except Exception as e:

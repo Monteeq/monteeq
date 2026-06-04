@@ -576,3 +576,32 @@ class DiscoveredCategory(Base):
     icon_hint = Column(String, nullable=True)                # Optional icon name hint (e.g. "trophy", "gamepad")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+
+class EmailLog(Base):
+    """
+    One row per sent email. Used for:
+      - Cooldown enforcement  (can_send checks last sent_at per template)
+      - Deduplication         (prevent double-sends on retry)
+      - Analytics             (open/click rates per template via ESP webhooks)
+      - Anti-spam             (daily/weekly send caps per user)
+    """
+    __tablename__ = "email_log"
+
+    id              = Column(Integer, primary_key=True, index=True)
+    user_id         = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    template        = Column(String(100), nullable=False, index=True)
+    subject         = Column(String(300), nullable=True)
+    # ESP tracking — populated by webhook
+    sent_at         = Column(DateTime, default=func.now(), nullable=False, index=True)
+    opened_at       = Column(DateTime, nullable=True)
+    clicked_at      = Column(DateTime, nullable=True)
+    bounced         = Column(Boolean, default=False, index=True)
+    unsubscribed    = Column(Boolean, default=False)
+    esp_message_id  = Column(String(200), nullable=True, index=True)  # Resend/Zoho message ID
+
+    user = relationship("User", backref=backref("email_logs", cascade="all, delete-orphan"))
+
+    __table_args__ = (
+        Index("ix_email_log_user_template_sent", "user_id", "template", "sent_at"),
+    )
