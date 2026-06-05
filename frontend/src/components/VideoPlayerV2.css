@@ -596,11 +596,13 @@
     gap: 0.4rem;
   }
   /* Hide redundant bottom controls on mobile */
-  .bottomControls .navSkipBtn,
   .bottomControls .btn-rewind,
   .bottomControls .btn-forward,
   .bottomControls .btn-theater,
   .bottomControls .volumeSlider {
+    display: none !important;
+  }
+  .centralControlsContainer .sideBtn {
     display: none !important;
   }
   .controlBtn {
@@ -651,4 +653,54 @@
   .group {
     gap: 0.25rem;
   }
+}
+
+/* Double Tap to Seek Feedback Overlay */
+.doubleTapFeedback {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  z-index: 25;
+  animation: fadeOutFeedback 0.6s ease forwards;
+}
+
+.doubleTapFeedback.rewind {
+  left: 0;
+  border-top-right-radius: 50%;
+  border-bottom-right-radius: 50%;
+}
+
+.doubleTapFeedback.forward {
+  right: 0;
+  border-top-left-radius: 50%;
+  border-bottom-left-radius: 50%;
+}
+
+.doubleTapIcon {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0.5rem 0.8rem;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  animation: popFeedback 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes fadeOutFeedback {
+  0% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes popFeedback {
+  0% { transform: scale(0.8); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }

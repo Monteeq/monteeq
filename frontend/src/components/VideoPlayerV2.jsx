@@ -77,6 +77,11 @@ const VideoPlayerV2 = ({
   const qualityMenuRef = useRef(null);
   const pendingSeekRef = useRef(null); // stores time to seek after quality switch
 
+  const [doubleTapFeedback, setDoubleTapFeedback] = useState(null); // 'rewind' | 'forward' | null
+  const feedbackTimeoutRef = useRef(null);
+  const clickTimeoutRef = useRef(null);
+  const lastClickTimeRef = useRef(0);
+
   // Reset resolution states when video changes
   useEffect(() => {
     setSelectedQuality(null);
@@ -516,6 +521,52 @@ const VideoPlayerV2 = ({
     }
   };
 
+  const showDoubleTapFeedback = (type) => {
+    setDoubleTapFeedback(type);
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setDoubleTapFeedback(null);
+    }, 600);
+  };
+
+  const handleVideoClick = (e) => {
+    e.preventDefault();
+    const currentTimeVal = Date.now();
+    const timeDiff = currentTimeVal - lastClickTimeRef.current;
+
+    if (timeDiff < 300) {
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+        clickTimeoutRef.current = null;
+      }
+      const rect = e.currentTarget.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+
+      if (clickX < width / 2) {
+        jump(-5);
+        showDoubleTapFeedback('rewind');
+      } else {
+        jump(5);
+        showDoubleTapFeedback('forward');
+      }
+      lastClickTimeRef.current = 0;
+    } else {
+      lastClickTimeRef.current = currentTimeVal;
+      clickTimeoutRef.current = setTimeout(() => {
+        togglePlay();
+        clickTimeoutRef.current = null;
+      }, 250);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    };
+  }, []);
+
   const handleProgressBarClick = (e) => {
     if (!progressBarRef.current || !videoRef.current) return;
     const rect = progressBarRef.current.getBoundingClientRect();
@@ -582,11 +633,19 @@ const VideoPlayerV2 = ({
         onPlaying={() => setIsBuffering(false)}
         onCanPlay={() => setIsBuffering(false)}
         onError={() => setError("Error loading video. Please try again.")}
-        onClick={togglePlay}
+        onClick={handleVideoClick}
         playsInline
         crossOrigin="anonymous"
         itemProp="contentUrl"
       />
+
+      {doubleTapFeedback && (
+        <div className={`doubleTapFeedback ${doubleTapFeedback}`}>
+          <div className="doubleTapIcon">
+            {doubleTapFeedback === 'rewind' ? '◀◀ -5s' : '+5s ▶▶'}
+          </div>
+        </div>
+      )}
 
       {isBuffering && (
         <div className="bufferingOverlayV2">
