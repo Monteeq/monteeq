@@ -18,14 +18,25 @@ echo "📍 Region: ${AWS_REGION}"
 echo "📍 ECR URL: ${ECR_URL}"
 echo "------------------------------------------------"
 
+# Resolve aws CLI binary path
+AWS_CLI="aws"
+if ! command -v aws &> /dev/null; then
+    if [ -f "$HOME/bin/aws" ]; then
+        AWS_CLI="$HOME/bin/aws"
+    else
+        echo "❌ Error: aws CLI command not found. Please install it or add it to PATH."
+        exit 1
+    fi
+fi
+
 # Step 1: Login to ECR
 echo "🔐 Logging into Amazon ECR..."
-aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_URL}"
+${AWS_CLI} ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_URL}"
 
 # Step 2: Create ECR repository if it doesn't exist
 echo "📦 Checking/creating repository ${REPO_NAME} in ECR..."
-aws ecr describe-repositories --repository-names "${REPO_NAME}" --region "${AWS_REGION}" >/dev/null 2>&1 || \
-    aws ecr create-repository --repository-name "${REPO_NAME}" --region "${AWS_REGION}"
+${AWS_CLI} ecr describe-repositories --repository-names "${REPO_NAME}" --region "${AWS_REGION}" >/dev/null 2>&1 || \
+    ${AWS_CLI} ecr create-repository --repository-name "${REPO_NAME}" --region "${AWS_REGION}"
 
 # Step 3: Build Docker Image
 echo "🏗️ Building Docker image..."
