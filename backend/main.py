@@ -152,6 +152,11 @@ async def startup():
     redis = aioredis.from_url(REDIS_URL, encoding="utf8", decode_responses=True)
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
 
+@app.get("/", tags=["System"])
+async def root_health():
+    """Default root endpoint for simple load balancer health checks."""
+    return {"status": "ok", "message": "Monteeq Backend API is running"}
+
 @app.get("/health", tags=["System"])
 async def health_check():
     """Simple liveness probe used by load balancers and uptime monitors."""
