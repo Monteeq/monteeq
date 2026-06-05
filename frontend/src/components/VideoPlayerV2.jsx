@@ -536,6 +536,7 @@ const VideoPlayerV2 = ({
 
   const handleVideoClick = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     const currentTimeVal = Date.now();
     const timeDiff = currentTimeVal - lastClickTimeRef.current;
 
@@ -559,7 +560,14 @@ const VideoPlayerV2 = ({
     } else {
       lastClickTimeRef.current = currentTimeVal;
       clickTimeoutRef.current = setTimeout(() => {
-        togglePlay();
+        setShowControls(prev => {
+          const nextVal = !prev;
+          if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+          if (nextVal && isPlaying) {
+            controlsTimeout.current = setTimeout(() => setShowControls(false), 3000);
+          }
+          return nextVal;
+        });
         clickTimeoutRef.current = null;
       }, 250);
     }
@@ -613,7 +621,18 @@ const VideoPlayerV2 = ({
       ref={containerRef}
       className={`v2Wrapper ${isTheaterMode ? 'theater' : ''}`}
       onMouseMove={handleMouseMove}
-      onClick={(e) => e.target === e.currentTarget && togglePlay()}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          setShowControls(prev => {
+            const nextVal = !prev;
+            if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+            if (nextVal && isPlaying) {
+              controlsTimeout.current = setTimeout(() => setShowControls(false), 3000);
+            }
+            return nextVal;
+          });
+        }
+      }}
       itemScope
       itemType="https://schema.org/VideoObject"
     >
