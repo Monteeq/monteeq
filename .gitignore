@@ -70,3 +70,6 @@ admin-dashboard/node_modules/
 frontend/dist/
 admin-dashboard/dist/
 *.log
+
+# AWS Deployment
+aws/
