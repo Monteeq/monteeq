@@ -12,8 +12,24 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Expose AdSense client ID for the deferred loader in index.html
-window.__ADSENSE_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID || '';
+const clientID = import.meta.env.VITE_ADSENSE_CLIENT_ID || '';
+window.__ADSENSE_ID = clientID;
+
+// Deferred load of Google AdSense with the correct publisher ID
+const loadAdSense = () => {
+  if (!clientID) return;
+  const s = document.createElement('script');
+  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${clientID}`;
+  s.async = true;
+  s.crossOrigin = 'anonymous';
+  document.head.appendChild(s);
+};
+
+if (typeof requestIdleCallback === 'function') {
+  requestIdleCallback(loadAdSense);
+} else {
+  setTimeout(loadAdSense, 3000);
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />,
