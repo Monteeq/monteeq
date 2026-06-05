@@ -42,7 +42,7 @@
   font-weight: 800;
   margin-bottom: 0.3rem;
   color: #fff;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -86,7 +86,8 @@
   display: flex;
   align-items: center;
   transition: height 0.2s ease;
-  margin-bottom: 8px; /* Breathing room above control row */
+  margin-bottom: 8px;
+  /* Breathing room above control row */
 }
 
 .seekBarContainer:hover {
@@ -144,6 +145,18 @@
   gap: 5px;
 }
 
+.playControlsGroup .btn-playpause {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.playControlsGroup .navSkipBtn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
 .controlBtn {
   background: none;
   border: none;
@@ -187,6 +200,8 @@
   font-weight: 600;
   color: rgba(255, 255, 255, 0.8);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Volume control extension */
@@ -342,11 +357,13 @@
     height: auto;
     min-height: auto;
   }
+
   .videoElement {
     height: auto;
     max-height: 75vh;
     object-fit: contain;
   }
+
   .controlsOverlay {
     padding: 2rem 1rem 1rem;
   }
@@ -380,8 +397,13 @@
 }
 
 @keyframes spinV2 {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ──────────────────────────────────────────────
@@ -436,8 +458,15 @@
 }
 
 @keyframes qualityMenuSlideIn {
-  from { opacity: 0; transform: translateY(6px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .qualityMenuHeader {
@@ -562,11 +591,13 @@
     height: auto;
     min-height: auto;
   }
+
   .videoElement {
     height: auto;
     max-height: 75vh;
     object-fit: contain;
   }
+
   .topOverlay {
     top: 0;
     left: 0;
@@ -574,6 +605,7 @@
     padding: 6px 8px;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
   }
+
   .videoTitle {
     white-space: normal;
     overflow: hidden;
@@ -583,6 +615,7 @@
     -webkit-box-orient: vertical;
     font-size: clamp(0.85rem, 3.5vw, 1rem);
   }
+
   .controlsOverlay {
     bottom: 0;
     left: 0;
@@ -590,20 +623,31 @@
     padding: 6px 8px;
     gap: 0.15rem;
   }
+
   .bottomControls {
     flex-wrap: nowrap;
     overflow: hidden;
   }
+
   .seekBarContainer {
     margin-bottom: 4px;
     height: 4px;
   }
+
   .group {
     gap: 0.15rem;
   }
+
   .playControlsGroup {
     gap: 5px;
   }
+  .playControlsGroup .btn-playpause,
+  .playControlsGroup .navSkipBtn {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+  }
+
   /* Hide redundant bottom controls on mobile */
   .bottomControls .btn-rewind,
   .bottomControls .btn-forward,
@@ -611,38 +655,50 @@
   .bottomControls .volumeSlider {
     display: none !important;
   }
+
   .centralControlsContainer .sideBtn {
     display: none !important;
   }
+
   .controlBtn {
     padding: 0.15rem;
   }
+
   .controlBtn svg {
     width: 16px !important;
     height: 16px !important;
   }
+
   .timeDisplay {
     font-size: clamp(0.6rem, 2.2vw, 0.7rem);
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
   }
+
   .volumeWrapper {
     gap: 0.1rem;
     max-width: 28px;
   }
+
   .centralControlsContainer {
     gap: clamp(0.5rem, 3vw, 1.2rem);
   }
+
   .mainPlayBtn svg {
     width: clamp(28px, 8vw, 36px) !important;
     height: clamp(28px, 8vw, 36px) !important;
   }
+
   .sideBtn svg {
     width: clamp(16px, 5vw, 22px) !important;
     height: clamp(16px, 5vw, 22px) !important;
   }
+
   .bufferingOverlayV2 {
     padding: 0.75rem;
     z-index: 30;
   }
+
   .spinnerV2 {
     width: 32px !important;
     height: 32px !important;
@@ -703,13 +759,29 @@
 }
 
 @keyframes fadeOutFeedback {
-  0% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes popFeedback {
-  0% { transform: scale(0.8); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.8);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
