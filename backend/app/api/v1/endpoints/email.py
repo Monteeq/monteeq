@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.models import User, EmailLog
 from app.utils.unsubscribe_token import verify_unsubscribe_token
-from app.api.v1.endpoints.auth import get_current_user  # reuse existing auth dependency
+from app.core.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
