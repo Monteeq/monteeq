@@ -146,26 +146,26 @@
 }
 
 .playControlsGroup .btn-playpause {
-  width: 36px;
-  height: 36px;
-  padding: 0;
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
 }
 
 .playControlsGroup .navSkipBtn {
-  width: 32px;
-  height: 32px;
-  padding: 0;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
 }
 
 .controlBtn {
-  background: none;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  padding: 0.3rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: none !important;
+  border: none !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  padding: 0.3rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   transition: transform 0.1s ease, color 0.2s ease;
 }
 
@@ -643,9 +643,9 @@
   }
   .playControlsGroup .btn-playpause,
   .playControlsGroup .navSkipBtn {
-    width: 26px;
-    height: 26px;
-    padding: 0;
+    width: 26px !important;
+    height: 26px !important;
+    padding: 0 !important;
   }
 
   /* Hide redundant bottom controls on mobile */
@@ -661,7 +661,7 @@
   }
 
   .controlBtn {
-    padding: 0.15rem;
+    padding: 0.15rem !important;
   }
 
   .controlBtn svg {
