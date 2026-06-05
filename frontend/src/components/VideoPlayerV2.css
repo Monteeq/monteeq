@@ -138,6 +138,12 @@
   gap: 0.6rem;
 }
 
+.playControlsGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
 .controlBtn {
   background: none;
   border: none;
@@ -594,6 +600,9 @@
   }
   .group {
     gap: 0.15rem;
+  }
+  .playControlsGroup {
+    gap: 0.05rem;
   }
   /* Hide redundant bottom controls on mobile */
   .bottomControls .btn-rewind,
