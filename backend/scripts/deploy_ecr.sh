@@ -29,9 +29,16 @@ if ! command -v aws &> /dev/null; then
     fi
 fi
 
+# Detect if docker requires sudo
+DOCKER_CMD="docker"
+if ! docker info &>/dev/null; then
+    DOCKER_CMD="sudo docker"
+    echo "⚠️ Note: Current user lacks Docker socket permissions. Using 'sudo docker' for container operations."
+fi
+
 # Step 1: Login to ECR
 echo "🔐 Logging into Amazon ECR..."
-${AWS_CLI} ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_URL}"
+${AWS_CLI} ecr get-login-password --region "${AWS_REGION}" | ${DOCKER_CMD} login --username AWS --password-stdin "${ECR_URL}"
 
 # Step 2: Create ECR repository if it doesn't exist
 echo "📦 Checking/creating repository ${REPO_NAME} in ECR..."
@@ -42,15 +49,15 @@ ${AWS_CLI} ecr describe-repositories --repository-names "${REPO_NAME}" --region 
 echo "🏗️ Building Docker image..."
 # Run build from backend directory
 cd "$(dirname "$0")/.."
-docker build -t "${REPO_NAME}" .
+${DOCKER_CMD} build -t "${REPO_NAME}" .
 
 # Step 4: Tag Image
 echo "🏷️ Tagging image..."
-docker tag "${REPO_NAME}:latest" "${ECR_URL}/${REPO_NAME}:${IMAGE_TAG}"
+${DOCKER_CMD} tag "${REPO_NAME}:latest" "${ECR_URL}/${REPO_NAME}:${IMAGE_TAG}"
 
 # Step 5: Push Image to ECR
 echo "🚀 Pushing image to ECR..."
-docker push "${ECR_URL}/${REPO_NAME}:${IMAGE_TAG}"
+${DOCKER_CMD} push "${ECR_URL}/${REPO_NAME}:${IMAGE_TAG}"
 
 echo "------------------------------------------------"
 echo "✅ Deployment image successfully pushed to ECR!"
