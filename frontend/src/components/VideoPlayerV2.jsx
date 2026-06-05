@@ -67,7 +67,7 @@ const VideoPlayerV2 = ({
   const [isBuffering, setIsBuffering] = useState(false);
 
   const isPremium = user?.is_premium;
-  const [isPreRollActive, setIsPreRollActive] = useState(false);
+  const [isPreRollActive, setIsPreRollActive] = useState(!isPremium);
 
   // Quality selector state — null means "Auto" (master HLS)
   const [showQualityMenu, setShowQualityMenu] = useState(false);
@@ -82,12 +82,17 @@ const VideoPlayerV2 = ({
   const clickTimeoutRef = useRef(null);
   const lastClickTimeRef = useRef(0);
 
-  // Reset resolution states when video changes
+  // Reset resolution states and trigger pre-roll ad when video changes
   useEffect(() => {
     setSelectedQuality(null);
     setDetectedResolutions([]);
     setCurrentAutoLabel('');
-  }, [videoId, src]);
+    if (!isPremium) {
+      setIsPreRollActive(true);
+    } else {
+      setIsPreRollActive(false);
+    }
+  }, [videoId, src, isPremium]);
 
   // Helper to map height to standard resolution definitions
   const getResolutionDetails = useCallback((height) => {
@@ -673,7 +678,7 @@ const VideoPlayerV2 = ({
 
       {!isPlaying && !isPreRollActive && currentTime > 0 && !isPremium && <PauseOverlayAd />}
 
-      <div className={`topOverlay ${showTopCredits || showControls ? 'visible' : ''}`}>
+      <div className={`topOverlay ${(showTopCredits || showControls) && !isPreRollActive ? 'visible' : ''}`}>
         <h2 className="videoTitle">{title}</h2>
         <p className="creatorName">@{creator}</p>
       </div>
@@ -723,7 +728,7 @@ const VideoPlayerV2 = ({
         </button>
       </div>
 
-      <div className={`controlsOverlay ${showControls || !isPlaying ? 'visible' : ''}`}>
+      <div className={`controlsOverlay ${(showControls || !isPlaying) && !isPreRollActive ? 'visible' : ''}`}>
 
         <div
           ref={progressBarRef}
