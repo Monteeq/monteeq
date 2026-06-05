@@ -738,14 +738,6 @@ const VideoPlayerV2 = ({
         <div className="bottomControls">
           <div className="group">
             <div className="playControlsGroup">
-              <button
-                className={`controlBtn navSkipBtn ${!hasPrevious ? 'navSkipDisabled' : ''}`}
-                onClick={hasPrevious ? onPrevious : undefined}
-                title="Previous video"
-                disabled={!hasPrevious}
-              >
-                <SkipBack size={22} />
-              </button>
               <button className="controlBtn btn-playpause" onClick={togglePlay}>
                 {isPlaying ? <Pause size={26} fill="white" /> : <Play size={26} fill="white" />}
               </button>
@@ -756,6 +748,14 @@ const VideoPlayerV2 = ({
                 disabled={!hasNext}
               >
                 <SkipForward size={22} />
+              </button>
+              <button
+                className={`controlBtn navSkipBtn ${!hasPrevious ? 'navSkipDisabled' : ''}`}
+                onClick={hasPrevious ? onPrevious : undefined}
+                title="Previous video"
+                disabled={!hasPrevious}
+              >
+                <SkipBack size={22} />
               </button>
             </div>
             <button className="controlBtn btn-rewind" onClick={() => jump(-10)}><RotateCcw size={22} /></button>
