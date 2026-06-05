@@ -135,7 +135,7 @@
 .group {
   display: flex;
   align-items: center;
-  gap: 1.2rem;
+  gap: 0.6rem;
 }
 
 .controlBtn {
@@ -143,7 +143,7 @@
   border: none;
   color: #fff;
   cursor: pointer;
-  padding: 0.5rem;
+  padding: 0.3rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -593,7 +593,7 @@
     height: 4px;
   }
   .group {
-    gap: 0.4rem;
+    gap: 0.15rem;
   }
   /* Hide redundant bottom controls on mobile */
   .bottomControls .btn-rewind,
@@ -606,7 +606,7 @@
     display: none !important;
   }
   .controlBtn {
-    padding: 0.3rem;
+    padding: 0.15rem;
   }
   .controlBtn svg {
     width: 16px !important;
@@ -651,7 +651,7 @@
 
 @media (max-width: 400px) {
   .group {
-    gap: 0.25rem;
+    gap: 0.1rem;
   }
 }
 
