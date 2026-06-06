@@ -548,3 +548,334 @@
   .hero { padding: 6rem 0 3rem; }
   .proStatusCard { padding: 2.5rem; }
 }
+
+/* Secure Custom Checkout Elements */
+.checkoutContainer {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 32px;
+  padding: 3rem;
+  max-width: 600px;
+  margin: 0 auto 6rem;
+  backdrop-filter: blur(30px);
+  box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.checkoutHeader {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.checkoutHeader h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.checkoutHeader p {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.95rem;
+}
+
+.checkoutHeader .price {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #ff3b30;
+  margin-top: 0.8rem;
+}
+
+.checkoutHeader .price span {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.4);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.formGridFull {
+  grid-column: span 2;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.5px;
+}
+
+.formInput {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+  color: #fff;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: #ff3b30;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.stripeElementContainer {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem;
+  transition: all 0.2s ease;
+}
+
+.stripeElementContainer.focused {
+  border-color: #ff3b30;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.securityBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.4);
+  font-weight: 600;
+}
+
+.securityBadge svg {
+  color: #ff3b30;
+}
+
+.backBtn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+  padding: 1rem;
+  border-radius: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 1rem;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.backBtn:hover {
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+}
+
+/* Success View */
+.successContainer {
+  text-align: center;
+  padding: 4rem 2rem;
+  max-width: 500px;
+  margin: 0 auto;
+  animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.successIconWrap {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(255, 60, 60, 0.1);
+  color: #ff3b30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 2.5rem;
+  border: 2px solid rgba(255, 60, 60, 0.2);
+  box-shadow: 0 20px 40px rgba(255, 60, 60, 0.2);
+}
+
+.successTitle {
+  font-size: 2.2rem;
+  font-weight: 900;
+  margin-bottom: 1rem;
+}
+
+.successText {
+  color: rgba(255,255,255,0.6);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 3rem;
+}
+
+.successActionBtn {
+  background: #ff3b30;
+  color: #fff;
+  border: none;
+  padding: 1.2rem 2.5rem;
+  border-radius: 18px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 15px 35px rgba(255, 60, 60, 0.3);
+  transition: all 0.2s ease;
+}
+
+.successActionBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 45px rgba(255, 60, 60, 0.4);
+}
+
+.portalBtnWrap {
+  margin-top: 2rem;
+}
+
+.portalBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 0.8rem 1.6rem;
+  border-radius: 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.portalBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #ff3b30;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.main-stage.pro-stage {
+  padding: 0 !important;
+  padding-top: var(--header-height) !important;
+}
+
+/* Benefits Grid Section */
+.benefitsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  margin-top: 4.5rem;
+  margin-bottom: 6rem;
+}
+
+.benefitItem {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.benefitItem:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 59, 48, 0.25);
+  transform: translateY(-6px);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+}
+
+.benefitIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 59, 48, 0.08);
+  color: #ff3b30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  border: 1px solid rgba(255, 59, 48, 0.15);
+  transition: all 0.3s ease;
+}
+
+.benefitItem:hover .benefitIcon {
+  background: #ff3b30;
+  color: #ffffff;
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(255, 59, 48, 0.2);
+}
+
+.benefitTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-bottom: 0.8rem;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.benefitDesc {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+@media (max-width: 880px) {
+  .benefitsGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 3rem;
+    margin-bottom: 4rem;
+  }
+}
+
+/* Supported Card Brands */
+.supportedCardsRow {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.cardBrandBadge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.4);
+  transition: all 0.2s ease;
+}
+
+.cardBrandBadge.visa {
+  color: #58a6ff;
+  border-color: rgba(88, 166, 255, 0.15);
+  background: rgba(88, 166, 255, 0.04);
+}
+
+.cardBrandBadge.mastercard {
+  color: #ff9f0a;
+  border-color: rgba(255, 159, 10, 0.15);
+  background: rgba(255, 159, 10, 0.04);
+}
+
+.cardBrandBadge.amex {
+  color: #0a84ff;
+  border-color: rgba(10, 132, 255, 0.15);
+  background: rgba(10, 132, 255, 0.04);
+}
+
+.cardBrandBadge.discover {
+  color: #ff453a;
+  border-color: rgba(255, 69, 58, 0.15);
+  background: rgba(255, 69, 58, 0.04);
+}

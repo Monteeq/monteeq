@@ -19,7 +19,7 @@ RUST_PID=$!
 echo "🐍 Starting FastAPI Backend (Port 8000)..."
 cd "$PROJECT_ROOT/backend"
 source .venv/bin/activate 2>/dev/null || echo "Warning: Virtualenv not found"
-uvicorn main:app --host 0.0.0.0 --port 8000 > "$LOG_DIR/backend.log" 2>&1 &
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
 
 # 3. Start Celery Worker

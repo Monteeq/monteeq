@@ -163,7 +163,7 @@ function AppContent() {
           />
         )}
 
-        <main className={hideSidebar ? "landing-page-main" : `main-stage ${location.pathname === '/chat' ? 'chat-stage' : ''} ${isFlashPage ? 'no-padding' : ''} ${isHomePage ? 'home-stage' : ''}`}>
+        <main className={hideSidebar ? "landing-page-main" : `main-stage ${location.pathname === '/chat' ? 'chat-stage' : ''} ${location.pathname === '/pro' ? 'pro-stage' : ''} ${isFlashPage ? 'no-padding' : ''} ${isHomePage ? 'home-stage' : ''}`}>
 
           <div className={hideSidebar ? "content-wrapper-fullscreen" : "content-wrapper"}>
             <div style={hideSidebar ? { width: '100%', minHeight: '100%' } : { flex: 1, minWidth: '300px' }}>

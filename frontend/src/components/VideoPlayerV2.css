@@ -101,6 +101,17 @@
   border-radius: 4px;
 }
 
+.seekBarBuffered {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  pointer-events: none;
+}
+
 .seekBarProgress {
   position: absolute;
   top: 0;

@@ -38,6 +38,7 @@ export default function PaymentCallback() {
 
   const status    = searchParams.get('status');
   const reference = searchParams.get('reference');
+  const isStripeRef = reference?.startsWith('cs_');
 
   useEffect(() => {
     if (status === 'cancelled' || !reference) {
@@ -134,7 +135,7 @@ export default function PaymentCallback() {
           {state === STATES.LOADING ? (
             <>
               <h1 style={styles.title}>Verifying Payment</h1>
-              <p style={styles.subtitle}>Please wait — we're confirming your payment with Paystack…</p>
+              <p style={styles.subtitle}>Please wait — we're confirming your payment with {isStripeRef ? 'Stripe' : 'Paystack'}…</p>
               <div style={styles.progressBar}>
                 <div style={{ ...styles.progressFill, background: palette.bar }} />
               </div>
@@ -190,12 +191,12 @@ export default function PaymentCallback() {
           )}
         </div>
 
-        {/* Paystack trust badge */}
+        {/* Trust badge */}
         <div style={styles.trust}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.5 }}>
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          Secured by Paystack
+          Secured by {isStripeRef ? 'Stripe' : 'Paystack'}
         </div>
       </div>
     </div>

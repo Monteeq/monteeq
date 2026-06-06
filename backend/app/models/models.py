@@ -75,6 +75,13 @@ class User(Base):
     is_active = Column(Boolean, default=True) # For deactivation
     created_at = Column(DateTime, default=func.now(), index=True)
 
+    # Stripe Subscriptions
+    stripe_customer_id = Column(String, nullable=True, index=True)
+    subscription_tier = Column(String, default="free")
+    subscription_status = Column(String, default="inactive")
+    subscription_id = Column(String, nullable=True)
+    current_period_end = Column(DateTime(timezone=True), nullable=True)
+
     @property
     def flash_quota_limit(self):
         return FLASH_QUOTA_LIMIT

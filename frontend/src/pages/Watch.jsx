@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo, getVideos, getRecommendedFeed, toggleFollow, getUserProfile } from '../api';
+import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo, getVideos, getRecommendedFeed, toggleFollow, getUserProfile, API_BASE_URL } from '../api';
 import VideoPreviewCard from '../components/VideoPreviewCard';
 import { Heart, Share2, Send, Download, X, Crown, Lightbulb, LightbulbOff, UserPlus, UserCheck, Users } from 'lucide-react';
 import VideoPlayerV2 from '../components/VideoPlayerV2';
@@ -243,6 +243,7 @@ const Watch = () => {
     const { showNotification } = useNotification();
     const [video, setVideo] = useState(null);
     const [comments, setComments] = useState([]);
+    const prefetchedNextIdRef = useRef(null);
     const [newComment, setNewComment] = useState("");
     const [isFollowing, setIsFollowing] = useState(false);
     const [followersCount, setFollowersCount] = useState(0);
@@ -406,6 +407,36 @@ const Watch = () => {
             window.dispatchEvent(new CustomEvent('monteeq:update-title', { detail: video.title }));
         }
     }, [video?.title]);
+
+    // Reset prefetch ref when video id changes
+    useEffect(() => {
+        prefetchedNextIdRef.current = null;
+    }, [id]);
+
+    useEffect(() => {
+        if (!hasNext || !navQueue[currentIndex + 1]) return;
+        const nextVideo = navQueue[currentIndex + 1];
+        if (prefetchedNextIdRef.current === nextVideo.id) return; // already prefetched
+
+        // Only prefetch when current video is > 70% done
+        const videoEl = document.querySelector('video');
+        if (!videoEl) return;
+
+        const checkProgress = () => {
+            if (videoEl.duration > 0 && videoEl.currentTime / videoEl.duration > 0.7) {
+                prefetchedNextIdRef.current = nextVideo.id;
+                // Silently fetch the next video's HLS manifest so the CDN/proxy warms up
+                const nextStreamUrl = `${API_BASE_URL}/videos/${nextVideo.id}/stream/master.m3u8${token ? `?token=${token}` : ''}`;
+                fetch(nextStreamUrl, {
+                    method: 'GET',
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                }).catch(() => {}); // fire and forget
+            }
+        };
+
+        videoEl.addEventListener('timeupdate', checkProgress);
+        return () => videoEl.removeEventListener('timeupdate', checkProgress);
+    }, [hasNext, currentIndex, navQueue, token]);
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();

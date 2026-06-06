@@ -27,7 +27,7 @@ const Privacy = () => {
                         <li>Account information (username, email, password)</li>
                         <li>Profile information (full name, bio, profile picture)</li>
                         <li>Content you upload (videos, comments, posts)</li>
-                        <li>Payment information (processed securely through third-party providers like Paystack)</li>
+                        <li>Payment information (processed securely through third-party providers like Stripe and Paystack)</li>
                     </ul>
                     
                     <h2>2. How We Use Your Information</h2>
@@ -47,7 +47,7 @@ const Privacy = () => {
                     <p>Monteeq uses cookies to enhance your experience, remember your preferences, and provide personalized content. You can disable cookies in your browser settings, but some features of the platform may not function properly.</p>
                     
                     <h2>5. Third-Party Services</h2>
-                    <p>We may use third-party services (such as Google OAuth for login or Paystack for payments) that collect information according to their own privacy policies.</p>
+                    <p>We may use third-party services (such as Google OAuth for login or Stripe/Paystack for payments) that collect information according to their own privacy policies.</p>
                     
                     <h2>6. Your Rights</h2>
                     <p>You have the right to access, update, or delete your personal information at any time through your account settings. For any further requests, please contact our support team.</p>

@@ -60,6 +60,7 @@ const VideoPlayerV2 = ({
     return parseFloat(localStorage.getItem('monteeq_volume')) || 1;
   });
   const [progress, setProgress] = useState(0);
+  const [bufferedPercent, setBufferedPercent] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
@@ -68,6 +69,10 @@ const VideoPlayerV2 = ({
 
   const isPremium = user?.is_premium;
   const [isPreRollActive, setIsPreRollActive] = useState(!isPremium);
+  const isPreRollActiveRef = useRef(isPreRollActive);
+  useEffect(() => {
+    isPreRollActiveRef.current = isPreRollActive;
+  }, [isPreRollActive]);
 
   // Quality selector state — null means "Auto" (master HLS)
   const [showQualityMenu, setShowQualityMenu] = useState(false);
@@ -87,6 +92,7 @@ const VideoPlayerV2 = ({
     setSelectedQuality(null);
     setDetectedResolutions([]);
     setCurrentAutoLabel('');
+    setBufferedPercent(0);
     if (!isPremium) {
       setIsPreRollActive(true);
     } else {
@@ -172,7 +178,7 @@ const VideoPlayerV2 = ({
         videoRef.current.currentTime = pendingSeekRef.current;
         pendingSeekRef.current = null;
       }
-      if ((autoPlay && !isPreRollActive) || wasPlaying) {
+      if ((autoPlay && !isPreRollActiveRef.current) || wasPlaying) {
         videoRef.current.play().catch(err => {
           console.log('Autoplay blocked or failed:', err);
         });
@@ -197,7 +203,11 @@ const VideoPlayerV2 = ({
       if (hlsRef.current) hlsRef.current.destroy();
       const hls = new Hls({
         capLevelToPlayerSize: false,
-        startLevel: -1,
+        startLevel: 0,           // start with lowest quality for fastest first frame
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        lowLatencyMode: false,
+        progressive: true,       // start playing as soon as first segment arrives
         xhrSetup: (xhr, url) => {
           if (token) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
@@ -209,6 +219,7 @@ const VideoPlayerV2 = ({
       hlsRef.current = hls;
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hls.startLoad(0); // preload from position 0 even before play
         // Detect exact available resolutions from HLS levels
         if (hls.levels && hls.levels.length > 0) {
           const levelsList = hls.levels.map((level, index) => {
@@ -306,7 +317,7 @@ const VideoPlayerV2 = ({
         }
       };
     }
-  }, [src, autoPlay, isPreRollActive, videoId, token, isPremium, getResolutionDetails]);
+  }, [src, autoPlay, videoId, token, isPremium, getResolutionDetails]);
 
   // Handle Hls.js level selection smoothly
   useEffect(() => {
@@ -518,6 +529,12 @@ const VideoPlayerV2 = ({
     setCurrentTime(cur);
     setDuration(dur);
     setProgress((cur / dur) * 100);
+
+    // Track how much is buffered
+    if (dur > 0 && videoRef.current.buffered.length > 0) {
+      const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+      setBufferedPercent((bufferedEnd / dur) * 100);
+    }
   };
 
   const jump = (secs) => {
@@ -755,6 +772,7 @@ const VideoPlayerV2 = ({
           onClick={handleProgressBarClick}
         >
           <div className="seekBarBg" />
+          <div className="seekBarBuffered" style={{ width: `${bufferedPercent}%` }} />
           <div className="seekBarProgress" style={{ width: `${progress}%` }} />
           <div className="seekBarHandle" style={{ left: `${progress}%` }} />
         </div>

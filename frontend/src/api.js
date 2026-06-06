@@ -624,6 +624,75 @@ export const initializeProSubscription = async (isYearly, token) => {
     });
 };
 
+export const createSubscription = async (isYearly, billingDetails, token) => {
+    return await apiFetch(`/monetization/subscriptions/create`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            is_yearly: isYearly,
+            full_name: billingDetails.fullName,
+            billing_email: billingDetails.billingEmail,
+            billing_country: billingDetails.billingCountry,
+            billing_zip: billingDetails.billingZip
+        })
+    });
+};
+
+export const verifySubscription = async (subscriptionId, token) => {
+    return await apiFetch(`/monetization/subscriptions/verify`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            subscription_id: subscriptionId
+        })
+    });
+};
+
+export const toggleAutoRenew = async (autoRenew, token) => {
+    return await apiFetch(`/monetization/subscriptions/auto-renew`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            auto_renew: autoRenew
+        })
+    });
+};
+
+export const cancelSubscription = async (token) => {
+    return await apiFetch(`/monetization/subscriptions/cancel`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+};
+
+export const getSubscriptionStatus = async (token) => {
+    return await apiFetch(`/monetization/subscription/status`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+};
+
+export const createCustomerPortalSession = async (token) => {
+    return await apiFetch(`/monetization/customer-portal`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+};
+
 export const verifyProSubscription = async (reference, token) => {
     const response = await fetch(`${API_BASE_URL}/monetization/verify-pro`, {
         method: 'POST',

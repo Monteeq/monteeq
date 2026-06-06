@@ -512,6 +512,7 @@ class PaymentInitialize(BaseModel):
 class PaymentInitializeResponse(BaseModel):
     status: str
     reference: str
+    checkout_url: Optional[str] = None
 
 class ProPricingResponse(BaseModel):
     monthly_price: float
@@ -521,6 +522,34 @@ class ProUpgradeResponse(BaseModel):
     status: str
     message: str
     is_premium: bool
+
+class SubscriptionCreateRequest(BaseModel):
+    is_yearly: bool = False
+    full_name: str
+    billing_email: str
+    billing_country: str
+    billing_zip: str
+
+class SubscriptionCreateResponse(BaseModel):
+    status: str
+    subscriptionId: str
+    clientSecret: str
+
+class SubscriptionVerifyRequest(BaseModel):
+    subscription_id: str
+
+class SubscriptionStatusResponse(BaseModel):
+    status: str
+    tier: str
+    current_period_end: Optional[datetime] = None
+    stripe_customer_id: Optional[str] = None
+    cancel_at_period_end: Optional[bool] = False
+
+class SubscriptionAutoRenewRequest(BaseModel):
+    auto_renew: bool
+
+class CustomerPortalResponse(BaseModel):
+    url: str
 
 class ContentAnalyticsItem(BaseModel):
     id: int
