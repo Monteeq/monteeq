@@ -46,7 +46,8 @@
 
 @media (min-width: 1024px) {
     .menuBtn {
-        display: none; /* Sidebar is permanent on desktop */
+        display: none;
+        /* Sidebar is permanent on desktop */
     }
 }
 
@@ -267,6 +268,8 @@
 .profileMenu {
     position: relative;
     margin-left: 0.5rem;
+    display: flex;
+    align-items: center;
 }
 
 .avatarLink {
@@ -275,13 +278,16 @@
     cursor: pointer;
     padding: 0;
     display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 50%;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
-    width: 52px;
-    height: 52px;
+    width: 36px;
+    height: 36px;
     border: 2px solid #eb0000;
     box-shadow: 0 0 20px rgba(235, 0, 0, 0.25);
+    flex-shrink: 0;
 }
 
 .avatarLink:hover {
@@ -468,13 +474,19 @@
     bottom: 0;
     width: 380px;
     max-width: 100%;
-    background: #0a0a0a;
-    backdrop-filter: blur(20px);
+    background-color: #0d0d0d !important;   /* solid, no alpha, !important to override any inheritance */
+    /* DELETE the line: backdrop-filter: blur(20px); */
+    /* DELETE the line: -webkit-backdrop-filter: blur(20px); — if present */
     border-left: 1px solid rgba(255, 255, 255, 0.08);
     z-index: 2001;
     display: flex;
     flex-direction: column;
-    box-shadow: -20px 0 50px rgba(0, 0, 0, 0.8);
+    box-shadow: -20px 0 60px rgba(0, 0, 0, 0.95);
+    isolation: isolate;    /* prevents stacking context bleed from parent backdrop-filter */
+}
+
+.profileDrawer * {
+    background-color: inherit; /* ensures no child accidentally inherits a glass bg */
 }
 
 .drawerHeader {
@@ -514,7 +526,8 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    background: linear-gradient(to bottom, rgba(235, 0, 0, 0.03), transparent);
+    background: linear-gradient(to bottom, rgba(235, 0, 0, 0.05), rgba(13, 13, 13, 0)) ;
+    /* change: end stop must be rgba(13,13,13,0) not just "transparent" */
 }
 
 .heroAvatar {
@@ -583,7 +596,7 @@
     display: flex;
     align-items: center;
     padding: 1rem 1.25rem;
-    background: transparent;
+    background: transparent !important;
     border: none;
     color: rgba(255, 255, 255, 0.7);
     font-size: 1rem;
