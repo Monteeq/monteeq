@@ -26,7 +26,8 @@ const IMG_SD = "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?aut
 const IMG_HD = "https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=800&q=80";
 
 // Load stripe promise using environment variable or a fallback test key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_51OpPZtGL3s4b8G0tQn6a9k2b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g');
+// const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_51OpPZtGL3s4b8G0tQn6a9k2b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g');
+const stripePromise = null;
 
 const CARD_ELEMENT_OPTIONS = {
   style: {
@@ -470,10 +471,10 @@ const JoinProContent = () => {
                     </ul>
                     <button 
                         className="ctaBtn proCta" 
-                        onClick={handleSelectPlan} 
-                        disabled={loading}
+                        disabled={true}
+                        style={{ opacity: 0.6, cursor: 'not-allowed', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: 'none' }}
                     >
-                        UPGRADE TO PRO
+                        COMING SOON
                     </button>
                 </div>
             </div>
@@ -629,12 +630,11 @@ const JoinProContent = () => {
                         <span className="textGradient">highest quality.</span>
                     </h1>
                     <p className="heroSubtitle">
-                        Get 4K playback, unlimited uploads, and priority support. 
-                        Everything you need to grow on Monteeq.
+                        Monteeq Pro is currently under development. The premium plans and features listed below will be launching soon.
                     </p>
                 </header>
 
-                {user?.is_premium ? (
+                {false && user?.is_premium ? (
                     <>
                         {cancelStep === 0 && renderProBenefits()}
                         {cancelStep === 1 && renderCancellationStep1()}
