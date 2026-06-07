@@ -4,5 +4,10 @@ export const trackingManager = {
     trackEngagement: () => {},
     trackScroll: () => {},
     trackSkip: (id) => {},
+    startSession: (videoId, duration) => {},
+    trackWatchTime: (videoId, watchMs) => {},
+    endSession: (videoId) => {},
+    markReplayed: (videoId) => {},
+    markLiked: (videoId) => {},
     flush: () => {},
 };

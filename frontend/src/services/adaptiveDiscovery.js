@@ -3,4 +3,5 @@ export const adaptiveDiscovery = {
     recordImpression: () => {},
     recordEngagement: () => {},
     recordSkip: (id, category) => ({ tier: 0 }),
+    recordWatch: (videoId, watchMs, durationMs, mood) => {},
 };
