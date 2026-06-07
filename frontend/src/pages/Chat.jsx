@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCrypto } from '../hooks/useCrypto';
 import { useGoogleDrive } from '../hooks/useGoogleDrive';
@@ -30,6 +30,7 @@ import logo from '../assets/images/logo.png';
 
 const Chat = () => {
     const { user, token, setUser } = useAuth();
+    const navigate = useNavigate();
     const { showNotification } = useNotification();
     const { saveMessage, getMessagesForConversation, saveConversation, getLocalConversations } = useChatDB();
     const location = useLocation();
@@ -72,7 +73,7 @@ const Chat = () => {
     const activeConvIdRef = useRef(null);
     const [lastBackupTime, setLastBackupTime] = useState(localStorage.getItem('monteeq_last_backup_time'));
     const [isConvsLoaded, setIsConvsLoaded] = useState(false);
-    const [syncError, setSyncError] = useState(null);
+    const [syncError, setSyncError] = useState(false);
     const [retryTrigger, setRetryTrigger] = useState(0);
 
     const drive = useGoogleDrive(async (driveToken) => {
@@ -115,33 +116,17 @@ const Chat = () => {
 
     useEffect(() => {
         let isCurrent = true;
-        let timeoutId = null;
 
         const checkKey = async () => {
-            let hasTimedOut = false;
-
-            // Start 15 second timeout protection
-            timeoutId = setTimeout(() => {
-                if (isCurrent) {
-                    hasTimedOut = true;
-                    const errMsg = "Initialization timed out. Please check your network connection or try again.";
-                    console.error("checkKey initialization timed out after 15 seconds.");
-                    setSyncError(errMsg);
-                    setIsInitialSync(false);
-                }
-            }, 15000);
-
             try {
-                setSyncError(null);
+                setSyncError(false);
                 setIsInitialSync(true);
 
                 const hasKey = await hasLocalKey();
-                if (hasTimedOut) return;
 
                 if (hasKey) {
                     setIsSetup(true);
                     const localPub = await getLocalPublicKey();
-                    if (hasTimedOut) return;
 
                     if (localPub && user.public_key && localPub !== user.public_key) {
                         console.warn("Local key mismatch detected!");
@@ -162,7 +147,6 @@ const Chat = () => {
                                     "otk_" + Math.random().toString(36).substring(2, 15)
                                 ]
                             }, token);
-                            if (hasTimedOut) return;
                             localStorage.setItem(storageKey, 'true');
                         } catch (err) {
                             console.error("Failed to upload prekey bundle in background:", err);
@@ -170,7 +154,6 @@ const Chat = () => {
                     }
                 } else if (user.google_id && drive.isAuthenticated) {
                     const synced = await performDriveSync();
-                    if (hasTimedOut) return;
                     if (synced) {
                         const now = new Date().toISOString();
                         setLastBackupTime(now);
@@ -178,27 +161,33 @@ const Chat = () => {
                     }
                 }
             } catch (err) {
-                console.error("Detailed checkKey initialization error:", err);
-                if (isCurrent && !hasTimedOut) {
-                    setSyncError(err?.message || "An unexpected error occurred during workspace initialization.");
+                console.error('Chat initialization error:', err);
+                if (isCurrent) {
+                    setSyncError(true);
                 }
             } finally {
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                }
-                if (isCurrent && !hasTimedOut) {
+                if (isCurrent) {
                     setIsInitialSync(false);
                 }
             }
         };
 
-        checkKey();
+        // Safety timeout — force exit loading state after 12s
+        const syncTimeout = setTimeout(() => {
+            if (isCurrent) {
+                setIsInitialSync(false);
+            }
+        }, 12000);
+
+        checkKey().finally(() => {
+            if (isCurrent) {
+                clearTimeout(syncTimeout);
+            }
+        });
 
         return () => {
             isCurrent = false;
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
+            clearTimeout(syncTimeout);
         };
     }, [deviceId, token, retryTrigger]);
 
@@ -843,31 +832,80 @@ const Chat = () => {
         return bytes.buffer;
     };
 
-    if (isInitialSync) return <div className="chatWorkspace-loading">Initializing Elite Workspace...</div>;
-
-    if (syncError) {
-        return (
-            <div className="chat-setup-container">
-                <div className="glass setup-card" style={{ maxWidth: '480px', textAlign: 'center', padding: '2rem' }}>
-                    <div style={{ color: '#ef4444', marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-                        <ShieldAlert size={48} />
-                    </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem', color: 'white' }}>Workspace Initialization Failed</h2>
-                    <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '2rem' }}>
-                        {syncError}
+    if (isInitialSync) return (
+        <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1.5rem',
+            background: 'var(--bg-deep, #050505)',
+            color: '#fff',
+            textAlign: 'center',
+            padding: '2rem'
+        }}>
+            {syncError ? (
+                <>
+                    <div style={{ fontSize: '2rem' }}>⚠️</div>
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>
+                        Chat initialization failed
+                    </h2>
+                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', maxWidth: '340px' }}>
+                        Could not set up your secure workspace. This may be caused by a blocked storage permission or network issue.
                     </p>
-                    <button 
-                        className="primary-btn" 
-                        onClick={() => setRetryTrigger(prev => prev + 1)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%' }}
-                    >
-                        <Zap size={20} />
-                        RETRY INITIALIZATION
-                    </button>
-                </div>
-            </div>
-        );
-    }
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        <button
+                            onClick={() => window.location.reload()}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                borderRadius: '100px',
+                                background: '#eb0000',
+                                border: 'none',
+                                color: '#fff',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            ↺ Retry
+                        </button>
+                        <button
+                            onClick={() => navigate('/home')}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                borderRadius: '100px',
+                                background: 'rgba(255,255,255,0.06)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: '#fff',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Go Home
+                        </button>
+                    </div>
+                </>
+            ) : (
+                <>
+                    <div style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        border: '3px solid rgba(235,0,0,0.2)',
+                        borderTop: '3px solid #eb0000',
+                        animation: 'spin 1s linear infinite'
+                    }} />
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: 600, opacity: 0.8 }}>
+                        Initializing Elite Workspace...
+                    </h2>
+                    <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>
+                        Setting up your encrypted keys
+                    </p>
+                    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                </>
+            )}
+        </div>
+    );
 
     if (!isSetup) {
         return (
