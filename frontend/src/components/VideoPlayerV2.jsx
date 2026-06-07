@@ -703,13 +703,16 @@ const VideoPlayerV2 = ({
       )}
 
       {isPreRollActive && (
-        <PreRollPlayer onComplete={() => {
-          setIsPreRollActive(false);
-          if (videoRef.current) {
-            videoRef.current.play().catch(() => { });
-          }
-          setIsPlaying(true);
-        }} />
+        <PreRollPlayer
+          onComplete={() => {
+            setIsPreRollActive(false);
+            if (videoRef.current) {
+              videoRef.current.play().catch(() => { });
+            }
+            setIsPlaying(true);
+          }}
+          adUrl={null}
+        />
       )}
 
       {!isPlaying && !isPreRollActive && currentTime > 0 && !isPremium && <PauseOverlayAd />}

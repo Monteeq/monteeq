@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, SkipForward, Volume2, VolumeX } from 'lucide-react';
 
-const PreRollPlayer = ({ onComplete }) => {
+const PreRollPlayer = ({ onComplete, adUrl }) => {
     const [timeLeft, setTimeLeft] = useState(10);
     const [canSkip, setCanSkip] = useState(false);
     const [isMuted, setIsMuted] = useState(true);
     const videoRef = useRef(null);
+
+    useEffect(() => {
+        if (!adUrl) {
+            onComplete();
+        }
+    }, [adUrl, onComplete]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -41,10 +47,11 @@ const PreRollPlayer = ({ onComplete }) => {
         }}>
             <video
                 ref={videoRef}
-                src="https://freetestdata.com/wp-content/uploads/2022/02/Free_Test_Data_1MB_MP4.mp4"
+                src={adUrl || ''}
                 autoPlay
                 muted={isMuted}
                 playsInline
+                onError={onComplete}
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
 
