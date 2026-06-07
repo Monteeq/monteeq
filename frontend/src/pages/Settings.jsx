@@ -207,6 +207,7 @@ const Settings = () => {
     };
 
     const handlePasswordSave = async (e) => {
+        let err;
         e.preventDefault();
         if (passwordData.new_password !== passwordData.confirm_password) {
             showNotification('error', err?.message || 'New passwords do not match');
@@ -332,6 +333,7 @@ const Settings = () => {
     };
 
     const handleDeleteAccount = async () => {
+        let err;
         if (confirmDeleteText !== 'DELETE') return;
         try {
             await axios.delete(`${API_BASE_URL}/users/me/delete`, {

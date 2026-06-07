@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, Users, Play, Zap, Sparkles, AlertCircle } from 'lucide-react';
+import { Search as SearchIcon, Users, Play, Zap, Sparkles, AlertCircle, MessageSquare } from 'lucide-react';
 import { searchUnified } from '../api';
 import { SearchUserSkeleton, SearchVideoSkeleton } from '../components/Skeleton';
 import VideoPreviewCard from '../components/VideoPreviewCard';
