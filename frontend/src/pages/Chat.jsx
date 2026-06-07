@@ -72,6 +72,8 @@ const Chat = () => {
     const activeConvIdRef = useRef(null);
     const [lastBackupTime, setLastBackupTime] = useState(localStorage.getItem('monteeq_last_backup_time'));
     const [isConvsLoaded, setIsConvsLoaded] = useState(false);
+    const [syncError, setSyncError] = useState(null);
+    const [retryTrigger, setRetryTrigger] = useState(0);
 
     const drive = useGoogleDrive(async (driveToken) => {
         // Callback when drive authenticates
@@ -112,47 +114,93 @@ const Chat = () => {
     }, [user.google_id, drive, importPrivateKey]);
 
     useEffect(() => {
-        const checkKey = async () => {
-            const hasKey = await hasLocalKey();
-            if (hasKey) {
-                setIsSetup(true);
-                const localPub = await getLocalPublicKey();
-                if (localPub && user.public_key && localPub !== user.public_key) {
-                    console.warn("Local key mismatch detected!");
-                    setHasKeyMismatch(true);
-                }
+        let isCurrent = true;
+        let timeoutId = null;
 
-                // Guard: Only upload the prekey bundle once per device session
-                const storageKey = `monteeq_prekey_uploaded_${deviceId}`;
-                if (localPub && token && !localStorage.getItem(storageKey)) {
-                    try {
-                        await uploadPrekeyBundle({
-                            device_id: deviceId,
-                            identity_key: localPub,
-                            signed_prekey: localPub,
-                            signature: "self-signed",
-                            one_time_prekeys: [
-                                "otk_" + Math.random().toString(36).substring(2, 15),
-                                "otk_" + Math.random().toString(36).substring(2, 15)
-                            ]
-                        }, token);
-                        localStorage.setItem(storageKey, 'true');
-                    } catch (err) {
-                        console.error("Failed to upload prekey bundle in background:", err);
+        const checkKey = async () => {
+            let hasTimedOut = false;
+
+            // Start 15 second timeout protection
+            timeoutId = setTimeout(() => {
+                if (isCurrent) {
+                    hasTimedOut = true;
+                    const errMsg = "Initialization timed out. Please check your network connection or try again.";
+                    console.error("checkKey initialization timed out after 15 seconds.");
+                    setSyncError(errMsg);
+                    setIsInitialSync(false);
+                }
+            }, 15000);
+
+            try {
+                setSyncError(null);
+                setIsInitialSync(true);
+
+                const hasKey = await hasLocalKey();
+                if (hasTimedOut) return;
+
+                if (hasKey) {
+                    setIsSetup(true);
+                    const localPub = await getLocalPublicKey();
+                    if (hasTimedOut) return;
+
+                    if (localPub && user.public_key && localPub !== user.public_key) {
+                        console.warn("Local key mismatch detected!");
+                        setHasKeyMismatch(true);
+                    }
+
+                    // Guard: Only upload the prekey bundle once per device session
+                    const storageKey = `monteeq_prekey_uploaded_${deviceId}`;
+                    if (localPub && token && !localStorage.getItem(storageKey)) {
+                        try {
+                            await uploadPrekeyBundle({
+                                device_id: deviceId,
+                                identity_key: localPub,
+                                signed_prekey: localPub,
+                                signature: "self-signed",
+                                one_time_prekeys: [
+                                    "otk_" + Math.random().toString(36).substring(2, 15),
+                                    "otk_" + Math.random().toString(36).substring(2, 15)
+                                ]
+                            }, token);
+                            if (hasTimedOut) return;
+                            localStorage.setItem(storageKey, 'true');
+                        } catch (err) {
+                            console.error("Failed to upload prekey bundle in background:", err);
+                        }
+                    }
+                } else if (user.google_id && drive.isAuthenticated) {
+                    const synced = await performDriveSync();
+                    if (hasTimedOut) return;
+                    if (synced) {
+                        const now = new Date().toISOString();
+                        setLastBackupTime(now);
+                        localStorage.setItem('monteeq_last_backup_time', now);
                     }
                 }
-            } else if (user.google_id && drive.isAuthenticated) {
-                const synced = await performDriveSync();
-                if (synced) {
-                    const now = new Date().toISOString();
-                    setLastBackupTime(now);
-                    localStorage.setItem('monteeq_last_backup_time', now);
+            } catch (err) {
+                console.error("Detailed checkKey initialization error:", err);
+                if (isCurrent && !hasTimedOut) {
+                    setSyncError(err?.message || "An unexpected error occurred during workspace initialization.");
+                }
+            } finally {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
+                if (isCurrent && !hasTimedOut) {
+                    setIsInitialSync(false);
                 }
             }
-            setIsInitialSync(false);
         };
+
         checkKey();
-    }, [deviceId, token]);
+
+        return () => {
+            isCurrent = false;
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+        };
+    }, [deviceId, token, retryTrigger]);
 
     // Automatic Background Backup
     useEffect(() => {
@@ -796,6 +844,30 @@ const Chat = () => {
     };
 
     if (isInitialSync) return <div className="chatWorkspace-loading">Initializing Elite Workspace...</div>;
+
+    if (syncError) {
+        return (
+            <div className="chat-setup-container">
+                <div className="glass setup-card" style={{ maxWidth: '480px', textAlign: 'center', padding: '2rem' }}>
+                    <div style={{ color: '#ef4444', marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+                        <ShieldAlert size={48} />
+                    </div>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '1rem', color: 'white' }}>Workspace Initialization Failed</h2>
+                    <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '2rem' }}>
+                        {syncError}
+                    </p>
+                    <button 
+                        className="primary-btn" 
+                        onClick={() => setRetryTrigger(prev => prev + 1)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', width: '100%' }}
+                    >
+                        <Zap size={20} />
+                        RETRY INITIALIZATION
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     if (!isSetup) {
         return (
