@@ -67,9 +67,21 @@ export async function apiFetch(path, options = {}) {
         traceId: body.trace_id || null,
     });
 
-    // Auto-logout on 401
+    // Auto-logout on 401 — but only if the user was already logged in.
+    // A 401 on /auth/token or /auth/google means wrong credentials, not expiry.
     if (response.status === 401) {
-        window.dispatchEvent(new CustomEvent('monteeq:session-expired', { detail: error }));
+        const isAuthEndpoint =
+            url.includes('/auth/token') ||
+            url.includes('/token') ||
+            url.includes('/auth/google') ||
+            url.includes('/auth/verify-2fa') ||
+            url.includes('/auth/register');
+
+        const hasExistingSession = !!localStorage.getItem('token');
+
+        if (!isAuthEndpoint && hasExistingSession) {
+            window.dispatchEvent(new CustomEvent('monteeq:session-expired', { detail: error }));
+        }
     }
 
     throw error;

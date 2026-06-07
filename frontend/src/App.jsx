@@ -118,7 +118,12 @@ function AppContent() {
 
   // Auto-logout when backend returns 401
   React.useEffect(() => {
-    const handler = () => logout();
+    const handler = (e) => {
+        // Only logout if we actually have a token — prevents double-firing
+        if (localStorage.getItem('token')) {
+            logout();
+        }
+    };
     window.addEventListener('monteeq:session-expired', handler);
     return () => window.removeEventListener('monteeq:session-expired', handler);
   }, [logout]);
