@@ -643,7 +643,34 @@ const Watch = () => {
                     <div style={{ marginTop: '4rem' }}>
                         <h3 className="commentsHeading" style={{ marginBottom: '2rem' }}>Comments ({comments.length})</h3>
                         <form onSubmit={handleCommentSubmit} className="commentForm">
-                            <div className="avatar"></div>
+                            <div className="avatar" style={{
+                                background: user?.profile_pic || user?.profile_picture
+                                    ? 'transparent'
+                                    : 'var(--accent-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 500,
+                                fontSize: '0.85rem',
+                                color: '#fff',
+                                overflow: 'hidden',
+                                flexShrink: 0,
+                            }}>
+                                {user?.profile_pic || user?.profile_picture ? (
+                                    <img
+                                        src={user.profile_pic || user.profile_picture}
+                                        alt={user.username}
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            e.target.parentNode.textContent =
+                                                user?.username?.charAt(0)?.toUpperCase() || '?';
+                                        }}
+                                    />
+                                ) : (
+                                    user?.username?.charAt(0)?.toUpperCase() || '?'
+                                )}
+                            </div>
                             <div className="inputRow">
                                 <input
                                     type="text"
