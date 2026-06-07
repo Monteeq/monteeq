@@ -6,6 +6,7 @@ import { getStreamUrl } from '../utils/streamUrl';
 import { useWatchLater, useAddToWatchLater, useRemoveFromWatchLater } from '../hooks/useLibrary';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 const HlsPool = {
     count: 0,
@@ -31,9 +32,37 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
     const { data: watchLaterData } = useWatchLater();
     const addToWatchLater = useAddToWatchLater();
     const removeFromWatchLater = useRemoveFromWatchLater();
+    const queryClient = useQueryClient();
 
     const isSaved = watchLaterData?.items?.some(item => String(item.video.id) === String(video.id)) ?? false;
     const isAddingOrRemoving = addToWatchLater.isPending || removeFromWatchLater.isPending;
+
+    // Cache watch history lookup
+    const watchHistoryFromCache = React.useMemo(() => {
+        if (!token) return null;
+        const historyQueries = queryClient.getQueriesData({ queryKey: ['history'] });
+        for (const [_, data] of historyQueries) {
+            if (data?.pages) {
+                const item = data.pages.flatMap(page => page.items || [])
+                    .find(i => String(i.video?.id) === String(video.id));
+                if (item) return item;
+            } else if (data?.items) {
+                const item = data.items.find(i => String(i.video?.id) === String(video.id));
+                if (item) return item;
+            }
+        }
+        return null;
+    }, [queryClient, video.id, token]);
+
+    const progressSeconds = video.progress_seconds ?? video.history?.progress_seconds ?? watchHistoryFromCache?.progress_seconds;
+    const durationSeconds = video.duration_seconds ?? video.duration ?? video.history?.duration_seconds ?? watchHistoryFromCache?.duration_seconds ?? watchHistoryFromCache?.video?.duration;
+    const isCompleted = video.is_completed ?? video.history?.is_completed ?? watchHistoryFromCache?.is_completed;
+
+    const progressPercentage = React.useMemo(() => {
+        if (!progressSeconds || !durationSeconds) return 0;
+        const pct = (progressSeconds / durationSeconds) * 100;
+        return Math.min(100, Math.max(0, pct));
+    }, [progressSeconds, durationSeconds]);
 
     const handleWatchLaterClick = async (e) => {
         e.stopPropagation();
@@ -252,6 +281,16 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                     {video.duration > 0 && (
                         <div className="vc-duration">
                             {formatDuration(video.duration)}
+                        </div>
+                    )}
+
+                    {/* Watch Progress Bar */}
+                    {(progressPercentage > 0 || isCompleted) && (
+                        <div className="vc-progress-bar-container">
+                            <div 
+                                className="vc-progress-bar-fill"
+                                style={{ width: `${isCompleted ? 100 : progressPercentage}%` }}
+                            />
                         </div>
                     )}
 
