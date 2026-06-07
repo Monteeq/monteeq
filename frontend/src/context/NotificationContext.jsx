@@ -20,15 +20,24 @@ export const NotificationProvider = ({ children }) => {
     const [activeAchievement, setActiveAchievement] = useState(null);
     const [unreadCount, setUnreadCount] = useState(0);
     const unreadPollRef = useRef(null);
+    const isMountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => { isMountedRef.current = false; };
+    }, []);
 
     // Centralized unread notification polling (single source of truth)
     const fetchUnreadCount = useCallback(async () => {
         if (!token) return;
         try {
             const data = await getUnreadNotifications(token);
+            // Guard: if token was cleared while the request was in flight, discard the result
+            if (!token) return;
+            if (!isMountedRef.current) return;
             setUnreadCount(Array.isArray(data) ? data.length : 0);
             return data;
         } catch (e) {
+            if (!token) return; // suppress 401s that fire after logout
             console.error('Failed to fetch unread notifications', e);
             return [];
         }
@@ -37,12 +46,19 @@ export const NotificationProvider = ({ children }) => {
     useEffect(() => {
         if (!token || !user) {
             setUnreadCount(0);
+            if (unreadPollRef.current) {
+                clearInterval(unreadPollRef.current);
+                unreadPollRef.current = null;
+            }
             return;
         }
         fetchUnreadCount();
         // Poll every 120s — much lighter on the server
         unreadPollRef.current = setInterval(fetchUnreadCount, 120000);
-        return () => clearInterval(unreadPollRef.current);
+        return () => {
+            clearInterval(unreadPollRef.current);
+            unreadPollRef.current = null;
+        };
     }, [token, user, fetchUnreadCount]);
 
     const showNotification = useCallback((type, message, options = {}) => {
