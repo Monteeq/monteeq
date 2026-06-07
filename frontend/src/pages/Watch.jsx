@@ -606,7 +606,106 @@ const Watch = () => {
     };
 
     if (loading) return <WatchSkeleton />;
-    if (!video) return <div className="page-error">Video not found</div>;
+    if (!video) return (
+        <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1.5rem',
+            padding: '2rem',
+            textAlign: 'center',
+            background: 'var(--bg-deep, #050505)',
+            color: 'var(--text-primary, #fff)'
+        }}>
+            <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: 'rgba(235, 0, 0, 0.08)',
+                border: '1px solid rgba(235, 0, 0, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '2rem'
+            }}>
+                🎬
+            </div>
+            <div>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                    Video not found
+                </h1>
+                <p style={{ color: 'var(--text-muted, rgba(255,255,255,0.4))', fontSize: '0.95rem', maxWidth: '380px' }}>
+                    This video may have been deleted, made private, or the link may be incorrect.
+                </p>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                    onClick={() => navigate(-1)}
+                    style={{
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '100px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        fontWeight: 600,
+                        fontSize: '0.9rem',
+                        cursor: 'pointer'
+                    }}
+                >
+                    ← Go Back
+                </button>
+                <button
+                    onClick={() => navigate('/home')}
+                    style={{
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '100px',
+                        background: '#eb0000',
+                        border: 'none',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 16px rgba(235, 0, 0, 0.3)'
+                    }}
+                >
+                    Browse Videos
+                </button>
+                <button
+                    onClick={() => window.location.reload()}
+                    style={{
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '100px',
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        fontWeight: 600,
+                        fontSize: '0.9rem',
+                        cursor: 'pointer'
+                    }}
+                >
+                    ↺ Retry
+                </button>
+            </div>
+            {suggestedVideos.length > 0 && (
+                <div style={{ marginTop: '2rem', width: '100%', maxWidth: '900px' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1.25rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        You might like
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+                        {suggestedVideos.slice(0, 4).map(v => (
+                            <VideoPreviewCard
+                                key={v.id}
+                                video={v}
+                                onClick={() => navigate(`/watch/${v.id}`)}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 
     return (
         <div className={`watchContainer ${isCinematic ? 'cinematic' : ''} ${isTheaterMode ? 'theaterMode' : ''}`}>
