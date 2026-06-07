@@ -3,6 +3,7 @@ import { CheckCircle, AlertCircle, Info, Loader2, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { getUnreadNotifications } from '../api';
+import AchievementCelebrationModal from '../components/AchievementCelebrationModal';
 
 const NotificationContext = createContext();
 
@@ -105,6 +106,12 @@ export const NotificationProvider = ({ children }) => {
         }}>
             {children}
             <NotificationContainer notifications={notifications} removeNotification={removeNotification} />
+            {activeAchievement && (
+                <AchievementCelebrationModal 
+                    achievement={activeAchievement} 
+                    onClose={() => setActiveAchievement(null)} 
+                />
+            )}
         </NotificationContext.Provider>
     );
 };
