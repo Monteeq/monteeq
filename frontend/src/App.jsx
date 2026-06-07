@@ -11,7 +11,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      cacheTime: 1000 * 60 * 30, // 30 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes
       refetchOnWindowFocus: false,
       retry: 1,
     },
@@ -128,12 +128,18 @@ function AppContent() {
     return () => window.removeEventListener('monteeq:session-expired', handler);
   }, [logout]);
 
+  const onboardingExcludedPaths = ['/onboarding', '/verify', '/payment', '/login', '/signup'];
+
   // Redirection guard (Onboarding & Verification)
   React.useEffect(() => {
     if (token && user) {
       if (!user.is_verified && location.pathname !== '/verify') {
         navigate('/verify');
-      } else if (user.is_verified && !user.is_onboarded && location.pathname !== '/onboarding' && location.pathname !== '/verify') {
+      } else if (
+        user.is_verified &&
+        !user.is_onboarded &&
+        !onboardingExcludedPaths.includes(location.pathname)
+      ) {
         navigate('/onboarding');
       }
     }
