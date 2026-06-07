@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, Flame, Zap, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -9,14 +9,22 @@ import SEO from '../components/SEO';
 import VirtualizedFeed from '../components/VirtualizedFeed';
 import useWindowWidth from '../hooks/useWindowWidth';
 import { useInView } from 'react-intersection-observer';
-
-const CATEGORIES = ["All", "Gaming", "Music", "Live", "Comedy", "Vlogs", "Recently uploaded", "News", "Sports", "Learning"];
+import { getCategories } from '../api';
 
 const Home = () => {
     const navigate = useNavigate();
     const { token, user } = useAuth();
     const [activeCategory, setActiveCategory] = useState("All");
     const width = useWindowWidth();
+    const [categories, setCategories] = useState(['All']);
+
+    useEffect(() => {
+        getCategories().then(cats => {
+            if (Array.isArray(cats) && cats.length > 0) {
+                setCategories(['All', ...cats.map(c => c.name || c)]);
+            }
+        }).catch(() => {});
+    }, []);
 
     const {
         data,
@@ -72,7 +80,7 @@ const Home = () => {
 
             {/* Category Chips Bar */}
             <div className="category-chips-container">
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                     <button
                         key={cat}
                         className={`category-chip ${activeCategory === cat ? 'active' : ''}`}
@@ -114,7 +122,7 @@ const Home = () => {
 
                     <div className="flash-shelf-grid">
                         {flashData.slice(0, width < 768 ? 6 : 18).map(flash => (
-                            <div key={flash.id} className="flash-shelf-item hover-scale" onClick={() => navigate('/flash')}>
+                            <div key={flash.id} className="flash-shelf-item hover-scale" onClick={() => navigate(`/flash/${flash.id}`)}>
                                 <div className="flash-thumbnail-container">
                                     <img src={flash.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
                                     <div className="flash-overlay-info">
