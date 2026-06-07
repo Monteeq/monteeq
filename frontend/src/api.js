@@ -242,6 +242,15 @@ export const likeVideo = async (videoId, token) => {
     });
 };
 
+export const likeComment = async (commentId, token) => {
+    return apiFetch(`${API_BASE_URL}/comments/${commentId}/like`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+};
+
 export const shareVideo = async (videoId) => {
     return apiFetch(`${API_BASE_URL}/videos/${videoId}/share`, {
         method: 'POST'

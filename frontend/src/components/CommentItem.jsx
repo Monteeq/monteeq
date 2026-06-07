@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Send, Edit2, Trash2, X, Flag } from 'lucide-react';
+import { Send, Edit2, Trash2, X, Flag, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useReport } from '../context/ReportContext';
+import { useNotification } from '../context/NotificationContext';
+import { likeComment } from '../api';
 
 const CommentItem = ({
     comment,
@@ -15,13 +17,47 @@ const CommentItem = ({
     isApproved = true,
     level = 0
 }) => {
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const { openReportModal } = useReport();
+    const { showNotification } = useNotification();
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
     const [showAllReplies, setShowAllReplies] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    
+    // Like states
+    const [liked, setLiked] = useState(comment.is_liked || false);
+    const [likeCount, setLikeCount] = useState(comment.likes_count || 0);
+    const [isLiking, setIsLiking] = useState(false);
+
     const isReplying = replyingTo === comment.id;
+
+    const handleLike = async () => {
+        if (!token) {
+            showNotification('info', 'Please sign in to like comments');
+            return;
+        }
+        if (isLiking) return;
+
+        // Optimistic update
+        const prevLiked = liked;
+        const prevCount = likeCount;
+        
+        setLiked(!prevLiked);
+        setLikeCount(prevLiked ? prevCount - 1 : prevCount + 1);
+        setIsLiking(true);
+
+        try {
+            await likeComment(comment.id, token);
+        } catch (err) {
+            // Rollback
+            setLiked(prevLiked);
+            setLikeCount(prevCount);
+            showNotification('error', 'Failed to update like status');
+        } finally {
+            setIsLiking(false);
+        }
+    };
 
     // Smart visibility logic:
     // "High interaction" = has its own replies.
@@ -150,6 +186,32 @@ const CommentItem = ({
                             }}
                         >
                             {isReplying ? 'Cancel' : 'Reply'}
+                        </button>
+
+                        <button
+                            title={liked ? "Unlike Comment" : "Like Comment"}
+                            onClick={handleLike}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: liked ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                padding: '4px 0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <Heart 
+                                size={14} 
+                                fill={liked ? 'currentColor' : 'none'} 
+                                style={{ transform: liked ? 'scale(1.1)' : 'scale(1)' }}
+                            />
+                            {likeCount > 0 && <span>{likeCount}</span>}
+                            <span>{liked ? 'Liked' : 'Like'}</span>
                         </button>
 
                         {user && user.id !== comment.owner_id && (
