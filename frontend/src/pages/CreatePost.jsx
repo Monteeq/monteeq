@@ -33,7 +33,12 @@ const CreatePost = () => {
         const file = e.target.files[0];
         if (file) {
             if (!file.type.startsWith('image/')) {
-                showNotification('error', err?.message || "Only images are supported for posts.");
+                showNotification('error', "Only images are supported for posts.");
+                return;
+            }
+            const MAX_SIZE = 10 * 1024 * 1024; // 10MB limit
+            if (file.size > MAX_SIZE) {
+                showNotification('error', "Image size must be less than 10MB.");
                 return;
             }
             setImage(file);
@@ -43,8 +48,25 @@ const CreatePost = () => {
 
     const handlePublish = async () => {
         if (!content.trim()) {
-            showNotification('error', err?.message || "Post content cannot be empty.");
+            showNotification('error', "Post content cannot be empty.");
             return;
+        }
+
+        // Defensive validation before upload
+        if (image) {
+            if (!(image instanceof File)) {
+                showNotification('error', "Invalid image file selected.");
+                return;
+            }
+            if (!image.type.startsWith('image/')) {
+                showNotification('error', "Only images are supported for posts.");
+                return;
+            }
+            const MAX_SIZE = 10 * 1024 * 1024; // 10MB limit
+            if (image.size > MAX_SIZE) {
+                showNotification('error', "Image size must be less than 10MB.");
+                return;
+            }
         }
 
         setIsPublishing(true);
