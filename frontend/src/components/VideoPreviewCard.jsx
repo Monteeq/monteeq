@@ -9,8 +9,17 @@ const HlsPool = {
     MAX_CONCURRENT: 2,
     release() {
         this.count = Math.max(0, this.count - 1);
+    },
+    reset() {
+        this.count = 0;
     }
 };
+
+// Safety: reset the pool count whenever the page regains focus
+// (catches cases where unmount cleanup was skipped during tab switch)
+if (typeof window !== 'undefined') {
+    window.addEventListener('focus', () => HlsPool.reset(), { once: false });
+}
 
 const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant = 'grid' }, ref) => {
     const navigate = useNavigate();
@@ -46,6 +55,8 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
     }, []);
 
     useEffect(() => {
+        let manifestParsed = false;
+
         if (!showPreview || !videoRef.current) {
             if (hlsRef.current) {
                 hlsRef.current.destroy();
@@ -66,19 +77,30 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
         if (Hls.isSupported() && streamUrl.includes('.m3u8')) {
             const hls = new Hls({
                 capLevelToPlayerSize: true,
-                autoStartLoad: true
+                autoStartLoad: true,
+                maxBufferLength: 8,
+                maxMaxBufferLength: 16,
             });
             hls.loadSource(streamUrl);
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
-            HlsPool.count++;
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                manifestParsed = true;
+                HlsPool.count++;                          // only count after confirmed init
                 videoRef.current?.play().catch(() => {});
             });
 
             hls.on(Hls.Events.FRAG_LOADED, () => {
                 hls.stopLoad();
+            });
+
+            // If HLS errors before manifest, release cleanly
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    hls.destroy();
+                    hlsRef.current = null;
+                }
             });
         } else {
             videoRef.current.src = streamUrl;
@@ -89,7 +111,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
             if (hlsRef.current) {
                 hlsRef.current.destroy();
                 hlsRef.current = null;
-                HlsPool.release();
+                if (manifestParsed) HlsPool.release();  // only release if we incremented
             }
             if (videoRef.current) {
                 videoRef.current.pause();
