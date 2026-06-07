@@ -20,6 +20,13 @@ const ManageContent = () => {
     
     const fileInputRef = useRef(null);
     const [reuploadTargetId, setReuploadTargetId] = useState(null);
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const handleReuploadSelection = async (e) => {
         const file = e.target.files[0];
@@ -545,13 +552,14 @@ const ManageContent = () => {
 
                                             <button
                                                 onClick={() => setDeleteTarget({ type: 'video', id: video.id })}
+                                                className="no-padding"
                                                 style={{
                                                     background: 'rgba(255, 59, 48, 0.08)',
                                                     color: 'var(--accent-primary)',
                                                     border: '1px solid rgba(255, 59, 48, 0.15)',
-                                                    width: '36px',
-                                                    height: '36px',
-                                                    borderRadius: '10px',
+                                                    width: '42px',
+                                                    height: '42px',
+                                                    borderRadius: '12px',
                                                     cursor: 'pointer',
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -563,7 +571,7 @@ const ManageContent = () => {
                                                 onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 59, 48, 0.08)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
                                                 title="Delete video"
                                             >
-                                                <Trash2 size={16} />
+                                                <Trash2 size={24} strokeWidth={2.5} />
                                             </button>
                                         </div>
                                     </div>
@@ -586,7 +594,7 @@ const ManageContent = () => {
                                 <div key={video.id} className="management-card glass hover-scale"
                                     style={{
                                         display: 'grid',
-                                        gridTemplateColumns: 'window.innerWidth < 768 ? "1fr" : "1.2fr 2fr 1fr 1fr 1.2fr"',
+                                        gridTemplateColumns: windowWidth < 768 ? '1fr' : '1.2fr 2fr 1fr 1fr 1.2fr',
                                         alignItems: 'center',
                                         padding: '1rem 1.5rem',
                                         borderRadius: '16px',
@@ -685,15 +693,16 @@ const ManageContent = () => {
 
                                         <button
                                             onClick={() => setDeleteTarget({ type: 'video', id: video.id })}
+                                            className="no-padding"
                                             style={{
                                                 background: 'rgba(255, 59, 48, 0.08)', color: 'var(--accent-primary)', border: '1px solid rgba(255, 59, 48, 0.15)',
-                                                width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer',
+                                                width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease'
                                             }}
                                             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = '#fff'; }}
                                             onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 59, 48, 0.08)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
                                         >
-                                            <Trash2 size={14} />
+                                            <Trash2 size={22} strokeWidth={2.5} />
                                         </button>
                                     </div>
                                 </div>
@@ -760,15 +769,16 @@ const ManageContent = () => {
 
                                         <button
                                             onClick={() => setDeleteTarget({ type: 'post', id: post.id })}
+                                            className="no-padding"
                                             style={{
                                                 background: 'rgba(255, 59, 48, 0.08)', color: 'var(--accent-primary)', border: '1px solid rgba(255, 59, 48, 0.15)',
-                                                width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer',
+                                                width: '38px', height: '38px', borderRadius: '10px', cursor: 'pointer',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease'
                                             }}
                                             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-primary)'; e.currentTarget.style.color = '#fff'; }}
                                             onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 59, 48, 0.08)'; e.currentTarget.style.color = 'var(--accent-primary)'; }}
                                         >
-                                            <Trash2 size={14} />
+                                            <Trash2 size={22} strokeWidth={2.5} />
                                         </button>
                                     </div>
                                 </div>
