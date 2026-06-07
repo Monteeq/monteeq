@@ -135,7 +135,7 @@ export const useAddToWatchLater = () => {
                     items.push({
                         id: 'temp-' + Date.now(),
                         saved_at: new Date().toISOString(),
-                        video: { id: Number(videoId) }
+                        video: { id: videoId }
                     });
                 }
                 return {

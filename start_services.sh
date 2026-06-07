@@ -42,8 +42,36 @@ echo "Logs:     $LOG_DIR"
 echo "------------------------------------------------"
 echo "Press Ctrl+C to stop all services."
 
-# Trap SIGINT to kill all background processes
-trap "kill $RUST_PID $BACKEND_PID $CELERY_PID $FRONTEND_PID; echo 'Stopped all services.'; exit" SIGINT
+# Trap SIGINT/SIGTERM to kill all processes and free up ports
+cleanup() {
+    echo ""
+    echo "Stopping all services..."
+    # Terminate background job processes gracefully
+    kill $RUST_PID $BACKEND_PID $CELERY_PID $FRONTEND_PID 2>/dev/null
+    sleep 1
+    # Force kill if still active
+    kill -9 $RUST_PID $BACKEND_PID $CELERY_PID $FRONTEND_PID 2>/dev/null
+    
+    # Explicitly kill any orphaned processes on our ports to free them up
+    for port in 8000 8081 5173; do
+        if command -v lsof >/dev/null 2>&1; then
+            pids=$(lsof -t -i:$port 2>/dev/null)
+            if [ ! -z "$pids" ]; then
+                kill -9 $pids 2>/dev/null
+            fi
+        elif command -v fuser >/dev/null 2>&1; then
+            fuser -k $port/tcp >/dev/null 2>&1
+        fi
+    done
+    
+    # Kill any dangling celery workers
+    pkill -f "celery -A app.worker.celery_app" 2>/dev/null
+    
+    echo "Stopped all services."
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM
 
 # Wait for all processes
 wait

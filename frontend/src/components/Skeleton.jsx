@@ -38,7 +38,7 @@ export const FlashSkeleton = () => (
 
 export const WatchSkeleton = () => (
     <div className="watchContainer">
-        <div className="videoSection">
+        <div className="videoSection" style={{ aspectRatio: '16 / 9', width: '100%', height: 'auto' }}>
             <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: '0' }} />
         </div>
         <div className="mainColumn">

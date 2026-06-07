@@ -181,6 +181,10 @@ class Video(Base):
     def owner_username(self):
         return self.owner.username if self.owner else "Unknown"
 
+    @property
+    def creator_name(self):
+        return self.owner.username if self.owner else "Unknown"
+
     def _resolve_url(self, url: str) -> str:
         """Helper to convert stored S3 URLs to current CDN/CloudFront URLs."""
         if not url:

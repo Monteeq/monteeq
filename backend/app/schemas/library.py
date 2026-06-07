@@ -1,11 +1,12 @@
-from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, field_serializer
+from typing import List, Optional, Union
 from datetime import datetime
 from uuid import UUID
 
 # ── Base Video Schema for Library ───────────────────────────────────────────
 class LibraryVideo(BaseModel):
-    id: int # Using existing int ID for compatibility
+    id: Union[int, str] # Using Union to allow serialization to string
+    public_id: Optional[str] = None
     title: str
     thumbnail_url: str
     duration: int # Mapping duration_seconds to duration
@@ -13,7 +14,12 @@ class LibraryVideo(BaseModel):
     owner_id: int
     created_at: datetime
     tags: Optional[str] = None
+    creator_name: Optional[str] = None
     
+    @field_serializer('id')
+    def serialize_id(self, v: int) -> Union[int, str]:
+        return self.public_id if (hasattr(self, 'public_id') and self.public_id) else v
+
     model_config = ConfigDict(from_attributes=True)
 
 # ── History ──────────────────────────────────────────────────────────────────
@@ -40,7 +46,7 @@ class HistoryProgressUpdate(BaseModel):
     is_completed: bool
 
 class HistoryTrackRequest(BaseModel):
-    video_id: int
+    video_id: Union[int, str]
     progress_seconds: float
     duration_seconds: float
     is_completed: bool

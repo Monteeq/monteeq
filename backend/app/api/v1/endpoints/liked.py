@@ -22,7 +22,9 @@ async def get_liked_videos(
     current_user = Depends(get_async_current_user)
 ):
     offset = (page - 1) * limit
-    query = select(LikedVideo).options(selectinload(LikedVideo.video)).filter(LikedVideo.user_id == current_user.id)
+    query = select(LikedVideo).options(
+        selectinload(LikedVideo.video).selectinload(Video.owner)
+    ).filter(LikedVideo.user_id == current_user.id)
     
     # Category filter (if Video model supports it)
     if category != "all":
@@ -47,41 +49,49 @@ async def get_liked_videos(
         "has_more": offset + limit < total
     }
 
+async def get_video_db_async(db: AsyncSession, video_id: str) -> Video:
+    if isinstance(video_id, str) and not video_id.isdigit():
+        result = await db.execute(select(Video).filter(Video.public_id == video_id))
+    else:
+        result = await db.execute(select(Video).filter(Video.id == int(video_id)))
+    video = result.scalar_one_or_none()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return video
+
 @router.post("/{video_id}")
 async def like_video(
-    video_id: int,
+    video_id: str,
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(get_async_current_user)
 ):
+    video = await get_video_db_async(db, video_id)
     result = await db.execute(select(LikedVideo).filter(
         LikedVideo.user_id == current_user.id,
-        LikedVideo.video_id == video_id
+        LikedVideo.video_id == video.id
     ))
     if result.scalar_one_or_none():
         return {"status": "already_liked"}
         
-    video = await db.get(Video, video_id)
-    if not video:
-        raise HTTPException(status_code=404, detail="Video not found")
-        
-    new_like = LikedVideo(user_id=current_user.id, video_id=video_id)
+    new_like = LikedVideo(user_id=current_user.id, video_id=video.id)
     db.add(new_like)
     
     # Increment like count on video (requires existing field)
-    # await db.execute(update(Video).where(Video.id == video_id).values(likes_count=Video.likes_count + 1))
+    # await db.execute(update(Video).where(Video.id == video.id).values(likes_count=Video.likes_count + 1))
     
     await db.commit()
     return {"status": "success"}
 
 @router.delete("/{video_id}")
 async def unlike_video(
-    video_id: int,
+    video_id: str,
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(get_async_current_user)
 ):
+    video = await get_video_db_async(db, video_id)
     await db.execute(delete(LikedVideo).filter(
         LikedVideo.user_id == current_user.id,
-        LikedVideo.video_id == video_id
+        LikedVideo.video_id == video.id
     ))
     await db.commit()
     return {"status": "success"}

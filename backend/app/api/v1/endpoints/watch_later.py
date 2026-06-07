@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func, delete
 from sqlalchemy.orm import selectinload
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.db.async_session import get_async_db
 from app.schemas import library as schemas
@@ -18,7 +18,9 @@ async def get_watch_later(
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(get_async_current_user)
 ):
-    query = select(LibraryWatchLater).options(selectinload(LibraryWatchLater.video)).filter(LibraryWatchLater.user_id == current_user.id).order_by(LibraryWatchLater.saved_at.desc())
+    query = select(LibraryWatchLater).options(
+        selectinload(LibraryWatchLater.video).selectinload(Video.owner)
+    ).filter(LibraryWatchLater.user_id == current_user.id).order_by(LibraryWatchLater.saved_at.desc())
     result = await db.execute(query)
     items = result.scalars().all()
     
@@ -26,8 +28,17 @@ async def get_watch_later(
     total_videos = len(items)
     total_runtime = sum([item.video.duration for item in items if item.video.duration])
     
-    week_ago = datetime.utcnow() - timedelta(days=7)
-    new_this_week = sum([1 for item in items if item.saved_at >= week_ago])
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+    
+    def is_newer_than_week(saved_at):
+        if saved_at is None:
+            return False
+        if saved_at.tzinfo is not None:
+            return saved_at >= week_ago
+        return saved_at >= week_ago.replace(tzinfo=None)
+
+    new_this_week = sum([1 for item in items if is_newer_than_week(item.saved_at)])
     
     return {
         "items": items,
@@ -38,26 +49,33 @@ async def get_watch_later(
         }
     }
 
+async def get_video_db_async(db: AsyncSession, video_id: str) -> Video:
+    if isinstance(video_id, str) and not video_id.isdigit():
+        result = await db.execute(select(Video).filter(Video.public_id == video_id))
+    else:
+        result = await db.execute(select(Video).filter(Video.id == int(video_id)))
+    video = result.scalar_one_or_none()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return video
+
 @router.post("/{video_id}")
 async def add_to_watch_later(
-    video_id: int,
+    video_id: str,
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(get_async_current_user)
 ):
+    video = await get_video_db_async(db, video_id)
     # Check if exists
     result = await db.execute(select(LibraryWatchLater).filter(
         LibraryWatchLater.user_id == current_user.id,
-        LibraryWatchLater.video_id == video_id
+        LibraryWatchLater.video_id == video.id
     ))
 
     if result.scalar_one_or_none():
         return {"status": "already_exists"}
         
-    video = await db.get(Video, video_id)
-    if not video:
-        raise HTTPException(status_code=404, detail="Video not found")
-        
-    new_item = LibraryWatchLater(user_id=current_user.id, video_id=video_id)
+    new_item = LibraryWatchLater(user_id=current_user.id, video_id=video.id)
 
     db.add(new_item)
     await db.commit()
@@ -65,13 +83,14 @@ async def add_to_watch_later(
 
 @router.delete("/{video_id}")
 async def remove_from_watch_later(
-    video_id: int,
+    video_id: str,
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(get_async_current_user)
 ):
+    video = await get_video_db_async(db, video_id)
     await db.execute(delete(LibraryWatchLater).filter(
         LibraryWatchLater.user_id == current_user.id,
-        LibraryWatchLater.video_id == video_id
+        LibraryWatchLater.video_id == video.id
     ))
 
     await db.commit()

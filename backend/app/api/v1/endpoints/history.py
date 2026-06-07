@@ -23,7 +23,9 @@ async def get_history(
     current_user = Depends(get_async_current_user)
 ):
     offset = (page - 1) * limit
-    query = select(WatchHistory).options(selectinload(WatchHistory.video)).filter(WatchHistory.user_id == current_user.id)
+    query = select(WatchHistory).options(
+        selectinload(WatchHistory.video).selectinload(Video.owner)
+    ).filter(WatchHistory.user_id == current_user.id)
     
     if filter == "today":
         today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -61,15 +63,26 @@ async def clear_history(
     await db.commit()
     return {"status": "success"}
 
+async def get_video_db_async(db: AsyncSession, video_id: str) -> Video:
+    if isinstance(video_id, str) and not video_id.isdigit():
+        result = await db.execute(select(Video).filter(Video.public_id == video_id))
+    else:
+        result = await db.execute(select(Video).filter(Video.id == int(video_id)))
+    video = result.scalar_one_or_none()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    return video
+
 @router.delete("/{video_id}")
 async def remove_from_history(
-    video_id: int,
+    video_id: str,
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(get_async_current_user)
 ):
+    video = await get_video_db_async(db, video_id)
     await db.execute(delete(WatchHistory).filter(
         WatchHistory.user_id == current_user.id,
-        WatchHistory.video_id == video_id
+        WatchHistory.video_id == video.id
     ))
     await db.commit()
     return {"status": "success"}
@@ -80,17 +93,18 @@ async def track_history(
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(get_async_current_user)
 ):
+    video = await get_video_db_async(db, str(payload.video_id))
     # UPSERT Logic
     result = await db.execute(select(WatchHistory).filter(
         WatchHistory.user_id == current_user.id,
-        WatchHistory.video_id == payload.video_id
+        WatchHistory.video_id == video.id
     ))
     history = result.scalar_one_or_none()
     
     if not history:
         history = WatchHistory(
             user_id=current_user.id,
-            video_id=payload.video_id,
+            video_id=video.id,
             progress_seconds=payload.progress_seconds,
             duration_seconds=payload.duration_seconds,
             is_completed=payload.is_completed
@@ -107,25 +121,22 @@ async def track_history(
 
 @router.patch("/{video_id}/progress")
 async def update_progress(
-    video_id: int,
+    video_id: str,
     progress: schemas.HistoryProgressUpdate,
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(get_async_current_user)
 ):
+    video = await get_video_db_async(db, video_id)
     result = await db.execute(select(WatchHistory).filter(
         WatchHistory.user_id == current_user.id,
-        WatchHistory.video_id == video_id
+        WatchHistory.video_id == video.id
     ))
     history = result.scalar_one_or_none()
     
     if not history:
-        video = await db.get(Video, video_id)
-        if not video:
-            raise HTTPException(status_code=404, detail="Video not found")
-        
         history = WatchHistory(
             user_id=current_user.id,
-            video_id=video_id,
+            video_id=video.id,
             progress_seconds=progress.progress_seconds,
             duration_seconds=progress.duration_seconds or video.duration,
             is_completed=progress.is_completed
