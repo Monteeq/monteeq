@@ -21,6 +21,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
     const [searchHistory, setSearchHistory] = useState([]);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
     const dropdownRef = useRef(null);
     const profileRef = useRef(null);
@@ -77,6 +78,49 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
         }, 300);
         return () => clearTimeout(timer);
     }, [searchQuery]);
+
+    useEffect(() => {
+        setHighlightedIndex(-1);
+    }, [suggestions]);
+
+    const handleKeyDown = (e) => {
+        if (!showSuggestions || suggestions.length === 0) {
+            if (e.key === 'Enter') {
+                handleSearch(searchQuery);
+            }
+            return;
+        }
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                setHighlightedIndex(prev =>
+                    prev < suggestions.length - 1 ? prev + 1 : 0
+                );
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                setHighlightedIndex(prev =>
+                    prev > 0 ? prev - 1 : suggestions.length - 1
+                );
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (highlightedIndex >= 0 && suggestions[highlightedIndex]) {
+                    handleSearch(suggestions[highlightedIndex].query || suggestions[highlightedIndex]);
+                } else {
+                    handleSearch(searchQuery);
+                }
+                setHighlightedIndex(-1);
+                break;
+            case 'Escape':
+                setShowSuggestions(false);
+                setHighlightedIndex(-1);
+                break;
+            default:
+                break;
+        }
+    };
 
     const handleSearch = (q) => {
         const query = (typeof q === 'string' ? q : searchQuery).trim();
@@ -140,7 +184,10 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                                     } catch (err) {}
                                 }
                             }}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                            onKeyDown={handleKeyDown}
+                            aria-autocomplete="list"
+                            aria-expanded={showSuggestions}
+                            aria-activedescendant={highlightedIndex >= 0 ? `suggestion-${highlightedIndex}` : undefined}
                         />
                         {searchQuery && (
                             <button className={s.clearBtn} onClick={() => setSearchQuery('')}>
@@ -168,7 +215,22 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                                 </>
                             ) : (
                                 suggestions.map((sug, i) => (
-                                    <div key={i} className={s.suggestionItem} onClick={() => handleSearch(sug)}>
+                                    <div
+                                        key={i}
+                                        id={`suggestion-${i}`}
+                                        role="option"
+                                        aria-selected={highlightedIndex === i}
+                                        className={s.suggestionItem}
+                                        onClick={() => handleSearch(sug)}
+                                        style={{
+                                            background: highlightedIndex === i
+                                                ? 'rgba(255, 255, 255, 0.08)'
+                                                : 'transparent',
+                                            borderRadius: '8px',
+                                        }}
+                                        onMouseEnter={() => setHighlightedIndex(i)}
+                                        onMouseLeave={() => setHighlightedIndex(-1)}
+                                    >
                                         <Search size={16} /> <span>{sug}</span>
                                     </div>
                                 ))
