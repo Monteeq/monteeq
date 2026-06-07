@@ -12,6 +12,7 @@ const ManageContent = () => {
     const [videos, setVideos] = useState([]);
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'video'|'post', id: number }
     const [isDeleting, setIsDeleting] = useState(false);
     const [activeTab, setActiveTab] = useState('videos');
@@ -127,27 +128,31 @@ const ManageContent = () => {
         }
     };
 
+    const fetchData = async () => {
+        if (!user) return;
+        setLoading(true);
+        setFetchError(false);
+        try {
+            const profile = await getUserProfile(user.username, token);
+
+            // Process videos
+            const allVideos = [
+                ...(profile.videos || []).map(v => ({ ...v, type: 'home' })),
+                ...(profile.flash_videos || []).map(v => ({ ...v, type: 'flash' }))
+            ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+            setVideos(allVideos);
+
+            // Process posts
+            setPosts(profile.posts || []);
+        } catch (err) {
+            console.error("Error fetching content:", err);
+            setFetchError(true);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            if (!user) return;
-            try {
-                const profile = await getUserProfile(user.username, token);
-
-                // Process videos
-                const allVideos = [
-                    ...(profile.videos || []).map(v => ({ ...v, type: 'home' })),
-                    ...(profile.flash_videos || []).map(v => ({ ...v, type: 'flash' }))
-                ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-                setVideos(allVideos);
-
-                // Process posts
-                setPosts(profile.posts || []);
-            } catch (err) {
-                console.error("Error fetching content:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
     }, [user, token]);
 
@@ -385,7 +390,36 @@ const ManageContent = () => {
 
             {/* Content List Area */}
             <div className="content-container">
-                {activeTab === 'videos' ? (
+                {fetchError ? (
+                    <div className="glass" style={{ padding: '6rem 2rem', textAlign: 'center', borderRadius: '32px', border: '1px solid var(--border-glass)' }}>
+                        <div style={{ 
+                            width: '80px', 
+                            height: '80px', 
+                            background: 'rgba(255, 59, 48, 0.05)', 
+                            border: '1px solid var(--border-glass)', 
+                            borderRadius: '50%', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem',
+                            color: 'var(--accent-primary)'
+                        }}>
+                            <AlertTriangle size={36} />
+                        </div>
+                        <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Unable to load your content</h3>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', maxWidth: '400px', marginInline: 'auto' }}>
+                            There was a problem connecting to the server.
+                        </p>
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button className="hero-btn" style={{ padding: '0.8rem 2rem', borderRadius: '12px' }} onClick={fetchData}>
+                                Retry
+                            </button>
+                            <button className="glass" style={{ padding: '0.8rem 2rem', borderRadius: '12px', cursor: 'pointer' }} onClick={() => window.location.reload()}>
+                                Refresh Page
+                            </button>
+                        </div>
+                    </div>
+                ) : activeTab === 'videos' ? (
                     videos.length === 0 ? (
                         <div className="glass" style={{ padding: '6rem 2rem', textAlign: 'center', borderRadius: '32px', border: '1px solid var(--border-glass)' }}>
                             <div style={{ 
