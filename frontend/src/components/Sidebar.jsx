@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { getFollowing } from '../api';
 
 import {
@@ -40,6 +40,7 @@ const NavItem = ({ to, icon, label, onClick, accent, bold }) => (
 /* ═══════════════════════════════════════════════════════ */
 const Sidebar = ({ isOpen, onClose }) => {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const [following, setFollowing] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -92,7 +93,16 @@ const Sidebar = ({ isOpen, onClose }) => {
             <NavGroup label="Following" />
             <div className="following-list">
               {following.map((creator) => (
-                <div key={creator.id} className="following-avatar-item" title={creator.username}>
+                <div
+                  key={creator.id}
+                  className="following-avatar-item"
+                  title={creator.username}
+                  onClick={() => {
+                    navigate(`/profile/${creator.username}`);
+                    if (onClose) onClose();
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className={`avatar-wrapper ${creator.is_live ? 'live' : ''}`}>
                     <img 
                       src={creator.profile_pic || `https://api.dicebear.com/7.x/avataaars/svg?seed=${creator.username}`} 
