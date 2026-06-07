@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Hls from 'hls.js';
-import { Play, AlertTriangle, Loader2 } from 'lucide-react';
+import { Play, AlertTriangle, Loader2, Bookmark } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getStreamUrl } from '../utils/streamUrl';
+import { useWatchLater, useAddToWatchLater, useRemoveFromWatchLater } from '../hooks/useLibrary';
+import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 
 const HlsPool = {
     count: 0,
@@ -23,6 +26,34 @@ if (typeof window !== 'undefined') {
 
 const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant = 'grid' }, ref) => {
     const navigate = useNavigate();
+    const { token } = useAuth();
+    const { showNotification } = useNotification();
+    const { data: watchLaterData } = useWatchLater();
+    const addToWatchLater = useAddToWatchLater();
+    const removeFromWatchLater = useRemoveFromWatchLater();
+
+    const isSaved = watchLaterData?.items?.some(item => String(item.video.id) === String(video.id)) ?? false;
+    const isAddingOrRemoving = addToWatchLater.isPending || removeFromWatchLater.isPending;
+
+    const handleWatchLaterClick = async (e) => {
+        e.stopPropagation();
+        if (!token) {
+            showNotification('info', 'Sign in to save videos to Watch Later');
+            return;
+        }
+        try {
+            if (isSaved) {
+                await removeFromWatchLater.mutateAsync(video.id);
+                showNotification('success', 'Removed from Watch Later');
+            } else {
+                await addToWatchLater.mutateAsync(video.id);
+                showNotification('success', 'Saved to Watch Later');
+            }
+        } catch (err) {
+            showNotification('error', err?.message || 'Failed to update Watch Later');
+        }
+    };
+
     const [showPreview, setShowPreview] = useState(false);
     const videoRef = useRef(null);
     const hoverTimerRef = useRef(null);
@@ -201,6 +232,21 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                             <Loader2 className="vc-spinner" size={24} />
                         </div>
                     )}
+
+                    {/* Watch Later Button Overlay */}
+                    <button
+                        className={`vc-watch-later-btn ${isSaved ? 'saved' : ''}`}
+                        onClick={handleWatchLaterClick}
+                        title={isSaved ? "Remove from Watch Later" : "Watch Later"}
+                        style={{ border: 'none' }}
+                        disabled={isAddingOrRemoving}
+                    >
+                        {isAddingOrRemoving ? (
+                            <Loader2 className="vc-spin" size={14} />
+                        ) : (
+                            <Bookmark size={14} fill={isSaved ? "currentColor" : "none"} />
+                        )}
+                    </button>
 
                     {/* Duration Badge */}
                     {video.duration > 0 && (

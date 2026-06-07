@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo, getVideos, getRecommendedFeed, toggleFollow, getUserProfile, API_BASE_URL } from '../api';
 import VideoPreviewCard from '../components/VideoPreviewCard';
-import { Heart, Share2, Send, Download, X, Crown, Lightbulb, LightbulbOff, UserPlus, UserCheck, Users } from 'lucide-react';
+import { Heart, Share2, Send, Download, X, Crown, Lightbulb, LightbulbOff, UserPlus, UserCheck, Users, Bookmark } from 'lucide-react';
 import VideoPlayerV2 from '../components/VideoPlayerV2';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { useWatchLater, useAddToWatchLater, useRemoveFromWatchLater } from '../hooks/useLibrary';
 import CommentItem from '../components/CommentItem';
 import { WatchSkeleton } from '../components/Skeleton';
 
@@ -241,6 +242,31 @@ const Watch = () => {
     const location = useLocation();
     const { token, user } = useAuth();
     const { showNotification } = useNotification();
+
+    const { data: watchLaterData } = useWatchLater();
+    const addToWatchLater = useAddToWatchLater();
+    const removeFromWatchLater = useRemoveFromWatchLater();
+
+    const isSavedToWatchLater = watchLaterData?.items?.some(item => String(item.video.id) === String(id)) ?? false;
+
+    const handleWatchLaterToggle = async () => {
+        if (!token) {
+            showNotification('info', 'Sign in to save videos to Watch Later');
+            return;
+        }
+        try {
+            if (isSavedToWatchLater) {
+                await removeFromWatchLater.mutateAsync(id);
+                showNotification('success', 'Removed from Watch Later');
+            } else {
+                await addToWatchLater.mutateAsync(id);
+                showNotification('success', 'Saved to Watch Later');
+            }
+        } catch (err) {
+            showNotification('error', err?.message || 'Failed to update Watch Later');
+        }
+    };
+
     const [video, setVideo] = useState(null);
     const [comments, setComments] = useState([]);
     const prefetchedNextIdRef = useRef(null);
@@ -641,6 +667,13 @@ const Watch = () => {
                 <div className="actionRow">
                     <button className={`actionBtn ${video.liked_by_user ? 'active' : ''}`} onClick={handleLike}>
                         <Heart size={20} fill={video.liked_by_user ? 'white' : 'none'} /> {video.likes_count}
+                    </button>
+                    <button
+                        className={`actionBtn ${isSavedToWatchLater ? 'active' : ''}`}
+                        onClick={handleWatchLaterToggle}
+                        disabled={addToWatchLater.isPending || removeFromWatchLater.isPending}
+                    >
+                        <Bookmark size={20} fill={isSavedToWatchLater ? 'white' : 'none'} /> {isSavedToWatchLater ? 'Saved' : 'Watch Later'}
                     </button>
                     <button className="actionBtn" onClick={() => setShowShareModal(true)}>
                         <Share2 size={20} /> Share

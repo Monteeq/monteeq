@@ -126,9 +126,37 @@ export const useAddToWatchLater = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (videoId) => request(`/watch-later/${videoId}`, { method: 'POST' }),
-        onSuccess: () => {
-            queryClient.invalidateQueries(['watch-later']);
-            queryClient.invalidateQueries(['library-stats']);
+        onMutate: async (videoId) => {
+            await queryClient.cancelQueries({ queryKey: ['watch-later'] });
+            const previousWatchLater = queryClient.getQueryData(['watch-later']);
+            queryClient.setQueryData(['watch-later'], (old) => {
+                const items = old?.items ? [...old.items] : [];
+                if (!items.some(item => String(item.video.id) === String(videoId))) {
+                    items.push({
+                        id: 'temp-' + Date.now(),
+                        saved_at: new Date().toISOString(),
+                        video: { id: Number(videoId) }
+                    });
+                }
+                return {
+                    ...old,
+                    items,
+                    stats: {
+                        ...(old?.stats || {}),
+                        total_videos: items.length
+                    }
+                };
+            });
+            return { previousWatchLater };
+        },
+        onError: (err, videoId, context) => {
+            if (context?.previousWatchLater) {
+                queryClient.setQueryData(['watch-later'], context.previousWatchLater);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['watch-later'] });
+            queryClient.invalidateQueries({ queryKey: ['library-stats'] });
         }
     });
 };
@@ -138,9 +166,30 @@ export const useRemoveFromWatchLater = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (videoId) => request(`/watch-later/${videoId}`, { method: 'DELETE' }),
-        onSuccess: () => {
-            queryClient.invalidateQueries(['watch-later']);
-            queryClient.invalidateQueries(['library-stats']);
+        onMutate: async (videoId) => {
+            await queryClient.cancelQueries({ queryKey: ['watch-later'] });
+            const previousWatchLater = queryClient.getQueryData(['watch-later']);
+            queryClient.setQueryData(['watch-later'], (old) => {
+                const items = old?.items ? old.items.filter(item => String(item.video.id) !== String(videoId)) : [];
+                return {
+                    ...old,
+                    items,
+                    stats: {
+                        ...(old?.stats || {}),
+                        total_videos: items.length
+                    }
+                };
+            });
+            return { previousWatchLater };
+        },
+        onError: (err, videoId, context) => {
+            if (context?.previousWatchLater) {
+                queryClient.setQueryData(['watch-later'], context.previousWatchLater);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['watch-later'] });
+            queryClient.invalidateQueries({ queryKey: ['library-stats'] });
         }
     });
 };
