@@ -210,11 +210,11 @@ const Flash = () => {
 
                     const recommendedRaw = await feedManager.fetchFeed(15, activeCategory);
                     const formattedRecommended = formatClips(recommendedRaw || [], layerResponseRef.current);
-                    const filteredRecommended = formattedRecommended.filter(v => v.id !== targetId);
+                    const filteredRecommended = formattedRecommended.filter(v => v.id !== targetVid.id);
 
                     const combined = [formattedTarget, ...filteredRecommended];
                     setClips(combined);
-                    setActiveVideoId(targetId);
+                    setActiveVideoId(targetVid.id);
                     setLoading(false);
                     feedManager.resetConsumption();
                     return;

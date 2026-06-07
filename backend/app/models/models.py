@@ -616,3 +616,42 @@ class EmailLog(Base):
     __table_args__ = (
         Index("ix_email_log_user_template_sent", "user_id", "template", "sent_at"),
     )
+
+
+class ContentReport(Base):
+    __tablename__ = "content_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reporter_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    content_type = Column(String, nullable=False) # "video", "flash", "post", "comment"
+    video_id = Column(Integer, ForeignKey("videos.id", ondelete="CASCADE"), nullable=True)
+    post_id = Column(Integer, ForeignKey("posts.id", ondelete="CASCADE"), nullable=True)
+    comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
+    reason = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String, default="pending", nullable=False) # pending, dismissed, resolved
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    reporter = relationship("User", foreign_keys=[reporter_id], backref=backref("filed_reports", cascade="all, delete-orphan"))
+    video = relationship("Video", foreign_keys=[video_id], backref=backref("reports", cascade="all, delete-orphan"))
+    post = relationship("Post", foreign_keys=[post_id], backref=backref("reports", cascade="all, delete-orphan"))
+    comment = relationship("Comment", foreign_keys=[comment_id], backref=backref("reports", cascade="all, delete-orphan"))
+    resolver = relationship("User", foreign_keys=[resolved_by])
+
+
+class ModerationAuditLog(Base):
+    __tablename__ = "moderation_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    action = Column(String, nullable=False) # e.g. report_created, report_dismissed, content_deleted, user_suspended
+    moderator_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    target_type = Column(String, nullable=False) # video, post, comment, user
+    target_id = Column(String, nullable=False)
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    moderator = relationship("User", foreign_keys=[moderator_id], backref="moderation_actions")
+

@@ -66,11 +66,13 @@ import Footer from './components/Footer';
 import MeshBackground from './components/MeshBackground';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ErrorProvider } from './context/ErrorContext';
+import { ReportProvider } from './context/ReportContext';
 import DynamicTitle from './components/DynamicTitle';
 import './index.css';
 
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { token, loading, user } = useAuth();
@@ -248,10 +250,12 @@ function App() {
           <AuthProvider>
             <NotificationProvider>
               <ErrorProvider>
-                <ErrorBoundary>
-                  <NotificationManager />
-                  <AppContent />
-                </ErrorBoundary>
+                <ReportProvider>
+                  <ErrorBoundary>
+                    <NotificationManager />
+                    <AppContent />
+                  </ErrorBoundary>
+                </ReportProvider>
               </ErrorProvider>
             </NotificationProvider>
           </AuthProvider>

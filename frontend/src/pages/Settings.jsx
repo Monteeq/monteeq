@@ -333,13 +333,12 @@ const Settings = () => {
     };
 
     const handleDeleteAccount = async () => {
-        let err;
         if (confirmDeleteText !== 'DELETE') return;
         try {
             await axios.delete(`${API_BASE_URL}/users/me/delete`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            showNotification('error', err?.message || 'Account deleted forever. Goodbye.');
+            showNotification('info', 'Account deleted forever. Goodbye.');
             setTimeout(() => window.location.href = '/', 2000);
         } catch (err) {
             showNotification('error', err?.message || 'Deletion failed');

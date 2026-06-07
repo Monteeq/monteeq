@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import Hls from 'hls.js';
-import { Heart, MessageCircle, Share2, Trophy, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Trophy, Volume2, VolumeX, Loader2, Flag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { viewVideo } from '../api';
 import { getStreamUrl } from '../utils/streamUrl';
 import { useTrackHistory } from '../hooks/useLibrary';
+import { useReport } from '../context/ReportContext';
 
 // Services
 import { adaptiveDiscovery } from '../services/adaptiveDiscovery';
@@ -23,6 +24,7 @@ const FlashCard = ({
     shouldRender = true
 }) => {
     const navigate = useNavigate();
+    const { openReportModal } = useReport();
     const videoRef = useRef(null);
     const trackHistory = useTrackHistory();
     const progressBarRef = useRef(null);
@@ -325,6 +327,11 @@ const FlashCard = ({
                 <div className={s.action} onClick={(e) => { e.stopPropagation(); onShare(video.id); }}>
                     <div className={s.iconCircle}><Share2 size={24} /></div>
                     <span className={s.label}>{video.shares || 0}</span>
+                </div>
+
+                <div className={s.action} onClick={(e) => { e.stopPropagation(); openReportModal('flash', video.id); }}>
+                    <div className={s.iconCircle}><Flag size={24} /></div>
+                    <span className={s.label}>Report</span>
                 </div>
 
                 {video.tags?.includes('challenge') && (

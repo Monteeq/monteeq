@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Sparkles } from 'lucide-react';
 
 const NativeFeedAd = React.memo(({ ad = {}, variant = 'grid' }) => {
     // Default ad content if none provided

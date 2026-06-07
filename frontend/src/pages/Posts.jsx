@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, MessageSquare, Repeat2, Send, MoreHorizontal, Loader2, X } from 'lucide-react';
+import { Heart, MessageSquare, Repeat2, Send, MoreHorizontal, Loader2, X, Flag, Trash2 } from 'lucide-react';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL, getPosts } from '../api';
+import { useReport } from '../context/ReportContext';
+import { API_BASE_URL, getPosts, deletePost } from '../api';
 import { useNavigate } from 'react-router-dom';
 import CommentsDrawer from '../components/CommentsDrawer';
 import { PostSkeleton } from '../components/Skeleton';
@@ -11,7 +12,8 @@ import styles from './Posts.module.css';
 
 const Posts = () => {
     const { showNotification } = useNotification();
-    const { token } = useAuth();
+    const { token, user } = useAuth();
+    const { openReportModal } = useReport();
     const navigate = useNavigate();
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -19,8 +21,15 @@ const Posts = () => {
     const [skip, setSkip] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [activeCommentPostId, setActiveCommentPostId] = useState(null);
+    const [activePostMenuId, setActivePostMenuId] = useState(null);
     const [selectedImage, setSelectedImage] = useState(null);
     const observer = useRef();
+
+    useEffect(() => {
+        const handleCloseMenu = () => setActivePostMenuId(null);
+        window.addEventListener('click', handleCloseMenu);
+        return () => window.removeEventListener('click', handleCloseMenu);
+    }, []);
 
     const lastPostElementRef = useCallback(node => {
         if (loading || loadingMore) return;
@@ -125,6 +134,18 @@ const Posts = () => {
         }
     };
 
+    const handleDeletePost = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this post?")) return;
+        try {
+            await deletePost(id, token);
+            showNotification('success', 'Post deleted successfully');
+            setPosts(prev => prev.filter(p => p.id !== id));
+        } catch (error) {
+            console.error("Error deleting post:", error);
+            showNotification('error', 'Failed to delete post');
+        }
+    };
+
     const handleTagClick = (tag) => {
         const query = tag.startsWith('#') ? tag : `#${tag}`;
         navigate(`/search?q=${encodeURIComponent(query)}`);
@@ -183,9 +204,79 @@ const Posts = () => {
                                             <div className={styles.postTime}>{formatTime(displayData.created_at)}</div>
                                         </div>
                                     </div>
-                                    <button className={styles.optionsBtn}>
-                                        <MoreHorizontal size={20} />
-                                    </button>
+                                    <div style={{ position: 'relative' }}>
+                                        <button 
+                                            className={styles.optionsBtn}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActivePostMenuId(activePostMenuId === displayData.id ? null : displayData.id);
+                                            }}
+                                        >
+                                            <MoreHorizontal size={20} />
+                                        </button>
+                                        {activePostMenuId === displayData.id && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '100%',
+                                                right: 0,
+                                                background: 'var(--bg-raised)',
+                                                border: '1px solid var(--border-glass)',
+                                                borderRadius: '8px',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                                                zIndex: 10,
+                                                minWidth: '130px',
+                                                overflow: 'hidden'
+                                            }}>
+                                                {user && user.id === displayData.owner_id ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            handleDeletePost(displayData.id);
+                                                            setActivePostMenuId(null);
+                                                        }}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 12px',
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: '#ff4d4d',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.85rem',
+                                                            fontWeight: 600,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <Trash2 size={14} /> Delete Post
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => {
+                                                            openReportModal('post', displayData.id);
+                                                            setActivePostMenuId(null);
+                                                        }}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '10px 12px',
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: 'var(--text-primary)',
+                                                            textAlign: 'left',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.85rem',
+                                                            fontWeight: 600,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <Flag size={14} /> Report Post
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className={styles.content}>

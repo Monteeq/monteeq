@@ -9,7 +9,7 @@ from app.crud import user as crud_user, setting as crud_setting
 from app.models.models import User, Video, View, Challenge, ChallengeEntry, Transaction, PayoutRequest
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta, datetime
-from typing import List
+from typing import List, Optional
 from sqlalchemy import cast, Date
 from app.tasks.email_tasks import queue_new_challenge_announcement
 from app.services.email_service import send_pro_upgrade_email
@@ -243,3 +243,158 @@ def delete_challenge(
     db.delete(db_challenge)
     db.commit()
     return {"message": "Challenge deleted successfully"}
+
+
+# Content Reports Admin APIs
+from app.schemas.report import ReportResponse, ReportAction, AuditLogResponse
+from app.models.models import ContentReport, ModerationAuditLog, Comment, Post
+
+@router.get("/reports", response_model=List[ReportResponse])
+def get_reports(
+    status: Optional[str] = None,
+    content_type: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user = Depends(admin_only)
+):
+    query = db.query(ContentReport)
+    if status:
+        query = query.filter(ContentReport.status == status)
+    if content_type:
+        query = query.filter(ContentReport.content_type == content_type)
+    
+    reports = query.order_by(ContentReport.created_at.desc()).offset(skip).limit(limit).all()
+    
+    response_list = []
+    for r in reports:
+        reporter_username = r.reporter.username if r.reporter else "Unknown"
+        resolver_username = r.resolver.username if r.resolver else None
+        
+        preview = "Content unavailable"
+        creator = "Unknown"
+        c_id = r.video_id or r.post_id or r.comment_id or 0
+        
+        if r.content_type in ["video", "flash"] and r.video:
+            preview = r.video.title
+            creator = r.video.owner.username if r.video.owner else "Unknown"
+            c_id = r.video.public_id if r.video.public_id else str(r.video.id)
+        elif r.content_type == "post" and r.post:
+            preview = r.post.content[:100] + "..." if len(r.post.content) > 100 else r.post.content
+            creator = r.post.owner.username if r.post.owner else "Unknown"
+            c_id = r.post.id
+        elif r.content_type == "comment" and r.comment:
+            preview = r.comment.content[:100] + "..." if len(r.comment.content) > 100 else r.comment.content
+            creator = r.comment.owner.username if r.comment.owner else "Unknown"
+            c_id = r.comment.id
+            
+        response_list.append(
+            ReportResponse(
+                id=r.id,
+                reporter_id=r.reporter_id,
+                reporter_username=reporter_username,
+                content_type=r.content_type,
+                content_id=c_id,
+                reason=r.reason,
+                description=r.description,
+                status=r.status,
+                created_at=r.created_at,
+                resolved_at=r.resolved_at,
+                resolved_by=r.resolved_by,
+                resolver_username=resolver_username,
+                notes=r.notes,
+                reported_content_preview=preview,
+                reported_content_creator=creator
+            )
+        )
+    return response_list
+
+@router.post("/reports/{report_id}/action")
+def take_report_action(
+    report_id: int,
+    action_in: ReportAction,
+    db: Session = Depends(get_db),
+    current_user = Depends(admin_only)
+):
+    report = db.query(ContentReport).filter(ContentReport.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    action = action_in.action.lower()
+    notes = action_in.notes
+    
+    # Identify content creator
+    creator_user = None
+    target_id_str = ""
+    
+    if report.content_type in ["video", "flash"] and report.video:
+        creator_user = report.video.owner
+        target_id_str = report.video.public_id or str(report.video.id)
+    elif report.content_type == "post" and report.post:
+        creator_user = report.post.owner
+        target_id_str = str(report.post.id)
+    elif report.content_type == "comment" and report.comment:
+        creator_user = report.comment.owner
+        target_id_str = str(report.comment.id)
+
+    # 1. Update Report status
+    report.status = "dismissed" if action == "dismiss" else "resolved"
+    report.resolved_at = datetime.utcnow()
+    report.resolved_by = current_user.id
+    report.notes = notes
+
+    # 2. Perform requested Action
+    details_str = f"Action taken: {action} by admin: {current_user.username}. Notes: {notes}"
+    
+    if action == "delete_content":
+        if report.content_type in ["video", "flash"] and report.video:
+            db.delete(report.video)
+        elif report.content_type == "post" and report.post:
+            db.delete(report.post)
+        elif report.content_type == "comment" and report.comment:
+            db.delete(report.comment)
+            
+    elif action == "suspend_user":
+        if creator_user:
+            creator_user.is_active = False
+            details_str += f" | Suspended user: @{creator_user.username}"
+            
+    # 3. Create Audit Log
+    audit_log = ModerationAuditLog(
+        action=f"report_{action}",
+        moderator_id=current_user.id,
+        target_type=report.content_type,
+        target_id=target_id_str,
+        details=details_str
+    )
+    db.add(audit_log)
+    db.commit()
+    
+    return {"message": f"Action '{action}' processed successfully."}
+
+@router.get("/moderation/audit-logs", response_model=List[AuditLogResponse])
+def get_moderation_audit_logs(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user = Depends(admin_only)
+):
+    logs = db.query(ModerationAuditLog).order_by(ModerationAuditLog.created_at.desc()).offset(skip).limit(limit).all()
+    
+    response_list = []
+    for l in logs:
+        mod_name = l.moderator.username if l.moderator else "System"
+        response_list.append(
+            AuditLogResponse(
+                id=l.id,
+                action=l.action,
+                moderator_id=l.moderator_id,
+                moderator_username=mod_name,
+                target_type=l.target_type,
+                target_id=l.target_id,
+                details=l.details,
+                created_at=l.created_at
+            )
+        )
+    return response_list
+

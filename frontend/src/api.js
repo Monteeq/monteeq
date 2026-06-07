@@ -36,7 +36,11 @@ export class ApiError extends Error {
  *   const data = await apiFetch('/videos/123', { headers: { Authorization: `Bearer ${token}` } });
  */
 export async function apiFetch(path, options = {}) {
-    const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+    // If the path already contains the base URL (either absolute in production or relative in dev), use it directly.
+    // Otherwise, it's a raw endpoint (e.g. '/videos'), so prepend the base URL.
+    const url = path.includes(API_BASE_URL) || path.startsWith('http')
+        ? path 
+        : `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
     
     // Auto-set Content-Type: application/json for stringified payloads if not set
     const headers = { ...options.headers };
@@ -158,10 +162,9 @@ export const getVideoById = async (id, token = null) => {
 
 export const getComments = async (videoId = null, postId = null) => {
     const endpoint = videoId
-        ? `${API_BASE_URL}/videos/${videoId}/comments`
-        : `${API_BASE_URL}/posts/${postId}/comments`;
-    const response = await fetch(endpoint);
-    return response.json();
+        ? `/videos/${videoId}/comments`
+        : `/posts/${postId}/comments`;
+    return apiFetch(endpoint);
 };
 
 export const postComment = async ({ videoId = null, postId = null, content, parent_id = null }, token) => {
@@ -171,7 +174,7 @@ export const postComment = async ({ videoId = null, postId = null, content, pare
         ? `${API_BASE_URL}/videos/${videoId}/comments`
         : `${API_BASE_URL}/posts/${postId}/comment`;
 
-    const response = await fetch(endpoint, {
+    return apiFetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -179,13 +182,6 @@ export const postComment = async ({ videoId = null, postId = null, content, pare
         },
         body: JSON.stringify({ content, parent_id })
     });
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to post comment');
-    }
-
-    return response.json();
 };
 
 export const uploadVideo = async (token, videoData) => {
@@ -206,18 +202,11 @@ export const uploadVideo = async (token, videoData) => {
         formData.append('tags', videoData.tags);
     }
 
-    const response = await fetch(`${API_BASE_URL}/videos/upload`, {
+    return apiFetch(`${API_BASE_URL}/videos/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
     });
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Upload failed');
-    }
-
-    return response.json();
 };
 
 export const getPosts = async (token = null, skip = 0, limit = 20) => {
@@ -225,8 +214,7 @@ export const getPosts = async (token = null, skip = 0, limit = 20) => {
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
-    const response = await fetch(`${API_BASE_URL}/posts/?skip=${skip}&limit=${limit}`, { headers });
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/posts/?skip=${skip}&limit=${limit}`, { headers });
 };
 
 export const createPost = async (content, imageFile, token) => {
@@ -236,76 +224,66 @@ export const createPost = async (content, imageFile, token) => {
         formData.append('image', imageFile);
     }
 
-    const response = await fetch(`${API_BASE_URL}/posts/create`, {
+    return apiFetch(`${API_BASE_URL}/posts/create`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`
         },
         body: formData
     });
-    return response.json();
 };
 
 export const likeVideo = async (videoId, token) => {
-    const response = await fetch(`${API_BASE_URL}/videos/${videoId}/like`, {
+    return apiFetch(`${API_BASE_URL}/videos/${videoId}/like`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    return response.json();
 };
 
 export const shareVideo = async (videoId) => {
-    const response = await fetch(`${API_BASE_URL}/videos/${videoId}/share`, {
+    return apiFetch(`${API_BASE_URL}/videos/${videoId}/share`, {
         method: 'POST'
     });
-    return response.json();
 };
 
 export const viewVideo = async (videoId) => {
     // This is the old naive view endpoint. We still keep it as a fallback 
     // or for cases where validation isn't required, but the new system 
     // use initView and sendHeartbeat
-    const response = await fetch(`${API_BASE_URL}/videos/${videoId}/view`, {
+    return apiFetch(`${API_BASE_URL}/videos/${videoId}/view`, {
         method: 'POST'
     });
-    return response.json();
 };
 
 export const initView = async (videoId, token = null) => {
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const response = await fetch(`${API_BASE_URL}/views/${videoId}/init-view`, {
+    return apiFetch(`${API_BASE_URL}/views/${videoId}/init-view`, {
         method: 'POST',
         headers
     });
-    return response.json();
 };
 
 export const sendHeartbeat = async (videoId, sessionId, ticket) => {
-    const response = await fetch(`${API_BASE_URL}/views/${videoId}/heartbeat?session_id=${sessionId}&ticket=${ticket}`, {
+    return apiFetch(`${API_BASE_URL}/views/${videoId}/heartbeat?session_id=${sessionId}&ticket=${ticket}`, {
         method: 'POST'
     });
-    return response.json();
 };
 
 export const searchVideos = async (query) => {
-    const response = await fetch(`${API_BASE_URL}/videos/search?q=${encodeURIComponent(query)}`);
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/videos/search?q=${encodeURIComponent(query)}`);
 };
 
 export const getSearchSuggestions = async (query) => {
-    const response = await fetch(`${API_BASE_URL}/videos/suggestions?q=${encodeURIComponent(query)}`);
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/videos/suggestions?q=${encodeURIComponent(query)}`);
 };
 
 export const getUserProfile = async (username, token = null) => {
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const response = await fetch(`${API_BASE_URL}/users/profile/${username}`, { headers });
-    if (!response.ok) throw new Error('Profile not found');
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/users/profile/${username}`, { headers });
 };
 
 export const toggleFollow = async (userId, token) => {
@@ -316,41 +294,36 @@ export const toggleFollow = async (userId, token) => {
 };
 
 export const searchUnified = async (query) => {
-    const response = await fetch(`${API_BASE_URL}/users/search?q=${encodeURIComponent(query)}`);
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/users/search?q=${encodeURIComponent(query)}`);
 };
 export const getTrendingSuggestions = async () => {
-    const response = await fetch(`${API_BASE_URL}/videos/trending-suggestions`);
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/videos/trending-suggestions`);
 };
 
 export const deleteVideo = async (videoId, token) => {
-    const response = await fetch(`${API_BASE_URL}/videos/${videoId}`, {
+    return apiFetch(`${API_BASE_URL}/videos/${videoId}`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    return response.json();
 };
 
 export const deletePost = async (postId, token) => {
-    const response = await fetch(`${API_BASE_URL}/posts/${postId}`, {
+    return apiFetch(`${API_BASE_URL}/posts/${postId}`, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    return response.json();
 };
 
 export const getUserInsights = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/users/me/insights`, {
+    return apiFetch(`${API_BASE_URL}/users/me/insights`, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    return response.json();
 };
 
 export const getAchievements = async (token) => {
@@ -358,89 +331,75 @@ export const getAchievements = async (token) => {
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
-    const response = await fetch(`${API_BASE_URL}/achievements/`, { headers });
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/achievements/`, { headers });
 };
 
 export const getUnreadNotifications = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/notifications/unread`, {
+    return apiFetch(`${API_BASE_URL}/notifications/unread`, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    if (!response.ok) throw new Error('Failed to fetch notifications');
-    return response.json();
 };
 
 export const markNotificationRead = async (token, notificationId) => {
-    const response = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
+    return apiFetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    if (!response.ok) throw new Error('Failed to mark notification read');
-    return response.json();
 };
 
 export const markAllNotificationsRead = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+    return apiFetch(`${API_BASE_URL}/notifications/read-all`, {
         method: 'PUT',
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    if (!response.ok) throw new Error('Failed to mark all notifications read');
-    return response.json();
 };
 
 export const getAllNotifications = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/notifications/`, {
+    return apiFetch(`${API_BASE_URL}/notifications/`, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    if (!response.ok) throw new Error('Failed to fetch notifications');
-    return response.json();
 };
 
 export const getAds = async () => {
-    const response = await fetch(`${API_BASE_URL}/ads`);
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/ads`);
 };
 
 export const getUserPerformance = async (token, metric = "views", days = 30) => {
-    const response = await fetch(`${API_BASE_URL}/users/me/performance?metric=${metric}&days=${days}`, {
+    return apiFetch(`${API_BASE_URL}/users/me/performance?metric=${metric}&days=${days}`, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    return response.json();
 };
 
 export const getContentAnalytics = async (token, limit = 10) => {
-    const response = await fetch(`${API_BASE_URL}/users/me/content-analytics?limit=${limit}`, {
+    return apiFetch(`${API_BASE_URL}/users/me/content-analytics?limit=${limit}`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const getAudienceSplit = async (token, days = 30) => {
-    const response = await fetch(`${API_BASE_URL}/users/me/audience-split?days=${days}`, {
+    return apiFetch(`${API_BASE_URL}/users/me/audience-split?days=${days}`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const getGrowthIntelligence = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/users/me/growth-intelligence`, {
+    return apiFetch(`${API_BASE_URL}/users/me/growth-intelligence`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const uploadPublicKey = async (publicKey, token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/keys`, {
+    return apiFetch(`${API_BASE_URL}/chat/keys`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -448,18 +407,16 @@ export const uploadPublicKey = async (publicKey, token) => {
         },
         body: JSON.stringify({ public_key: publicKey })
     });
-    return response.json();
 };
 
 export const getUserPublicKey = async (username, token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/keys/${username}`, {
+    return apiFetch(`${API_BASE_URL}/chat/keys/${username}`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const uploadPrekeyBundle = async (bundle, token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/keys/prekey-bundle`, {
+    return apiFetch(`${API_BASE_URL}/chat/keys/prekey-bundle`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -467,33 +424,29 @@ export const uploadPrekeyBundle = async (bundle, token) => {
         },
         body: JSON.stringify(bundle)
     });
-    return response.json();
 };
 
 export const getRecipientPrekeyBundles = async (username, token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/keys/prekey-bundle/${username}`, {
+    return apiFetch(`${API_BASE_URL}/chat/keys/prekey-bundle/${username}`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const listDevices = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/keys/devices`, {
+    return apiFetch(`${API_BASE_URL}/chat/keys/devices`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const revokeDevice = async (deviceId, token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/keys/devices/${deviceId}`, {
+    return apiFetch(`${API_BASE_URL}/chat/keys/devices/${deviceId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const sendChatMessage = async (messageData, token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/messages`, {
+    return apiFetch(`${API_BASE_URL}/chat/messages`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -501,31 +454,22 @@ export const sendChatMessage = async (messageData, token) => {
         },
         body: JSON.stringify(messageData)
     });
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to send message');
-    }
-
-    return response.json();
 };
 
 export const getConversations = async (token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/conversations`, {
+    return apiFetch(`${API_BASE_URL}/chat/conversations`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const getChatMessages = async (conversationId, token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/messages/${conversationId}`, {
+    return apiFetch(`${API_BASE_URL}/chat/messages/${conversationId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const acknowledgeMessages = async (messageIds, token) => {
-    const response = await fetch(`${API_BASE_URL}/chat/messages/ack`, {
+    return apiFetch(`${API_BASE_URL}/chat/messages/ack`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -533,14 +477,13 @@ export const acknowledgeMessages = async (messageIds, token) => {
         },
         body: JSON.stringify(messageIds)
     });
-    return response.json();
 };
 
 export const updateComment = async ({ videoId = null, postId = null, commentId, content }, token) => {
     const endpoint = videoId
         ? `${API_BASE_URL}/videos/${videoId}/comments/${commentId}`
         : `${API_BASE_URL}/posts/${postId}/comments/${commentId}`;
-    const response = await fetch(endpoint, {
+    return apiFetch(endpoint, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
@@ -548,69 +491,59 @@ export const updateComment = async ({ videoId = null, postId = null, commentId, 
         },
         body: JSON.stringify({ content })
     });
-    return response.json();
 };
 
 export const deleteComment = async ({ videoId = null, postId = null, commentId }, token) => {
     const endpoint = videoId
         ? `${API_BASE_URL}/videos/${videoId}/comments/${commentId}`
         : `${API_BASE_URL}/posts/${postId}/comments/${commentId}`;
-    const response = await fetch(endpoint, {
+    return apiFetch(endpoint, {
         method: 'DELETE',
         headers: {
             'Authorization': `Bearer ${token}`
         }
     });
-    return response.json();
 };
 
 export const getFollowers = async (username, skip = 0, limit = 100) => {
-    const response = await fetch(`${API_BASE_URL}/users/${username}/followers?skip=${skip}&limit=${limit}`);
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/users/${username}/followers?skip=${skip}&limit=${limit}`);
 };
 
 export const getFollowing = async (username, skip = 0, limit = 100) => {
-    const response = await fetch(`${API_BASE_URL}/users/${username}/following?skip=${skip}&limit=${limit}`);
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/users/${username}/following?skip=${skip}&limit=${limit}`);
 };
 
 // Challenges API
 export const getChallenges = async () => {
-    const response = await fetch(`${API_BASE_URL}/challenges/`);
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/challenges/`);
 };
 
 export const getChallengeById = async (id) => {
-    const response = await fetch(`${API_BASE_URL}/challenges/${id}`);
-    if (!response.ok) throw new Error('Challenge not found');
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/challenges/${id}`);
 };
 
 export const enterChallenge = async (challengeId, formData, token) => {
-    const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/enter`, {
+    return apiFetch(`${API_BASE_URL}/challenges/${challengeId}/enter`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`
         },
         body: formData
     });
-    return response.json();
 };
 
 export const checkChallengeEntry = async (challengeId, token) => {
-    const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/entry`, {
+    return apiFetch(`${API_BASE_URL}/challenges/${challengeId}/entry`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
-    return response.json();
 };
 
 export const getChallengeLeaderboard = async (challengeId) => {
-    const response = await fetch(`${API_BASE_URL}/challenges/${challengeId}/leaderboard`);
-    return response.json();
+    return apiFetch(`${API_BASE_URL}/challenges/${challengeId}/leaderboard`);
 };
 
 export const createChallenge = async (challengeData, token) => {
-    const response = await fetch(`${API_BASE_URL}/admin/challenges`, {
+    return apiFetch(`${API_BASE_URL}/admin/challenges`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -618,7 +551,6 @@ export const createChallenge = async (challengeData, token) => {
         },
         body: JSON.stringify(challengeData)
     });
-    return response.json();
 };
 
 export const fetchProPricing = async () => {
@@ -706,7 +638,7 @@ export const createCustomerPortalSession = async (token) => {
 };
 
 export const verifyProSubscription = async (reference, token) => {
-    const response = await fetch(`${API_BASE_URL}/monetization/verify-pro`, {
+    return apiFetch(`${API_BASE_URL}/monetization/verify-pro`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -714,11 +646,10 @@ export const verifyProSubscription = async (reference, token) => {
         },
         body: JSON.stringify({ reference })
     });
-    return response.json();
 };
 
 export const verifyDeposit = async (reference, token) => {
-    const response = await fetch(`${API_BASE_URL}/monetization/deposit/verify`, {
+    return apiFetch(`${API_BASE_URL}/monetization/deposit/verify`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -726,7 +657,6 @@ export const verifyDeposit = async (reference, token) => {
         },
         body: JSON.stringify({ reference })
     });
-    return response.json();
 };
 
 
@@ -735,29 +665,27 @@ export const uploadChatAttachment = async (file, token) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/chat/upload`, {
+    return apiFetch(`${API_BASE_URL}/chat/upload`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`
         },
         body: formData
     });
-    return response.json();
 };
 
 export const submitPartnerBrief = async (briefData) => {
-    const response = await fetch(`${API_BASE_URL}/partners/brief`, {
+    return apiFetch(`${API_BASE_URL}/partners/brief`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(briefData)
     });
-    return response.json();
 };
 
 export const linkGoogleAccount = async (idToken, token) => {
-    const response = await fetch(`${API_BASE_URL}/users/me/link-google`, {
+    return apiFetch(`${API_BASE_URL}/users/me/link-google`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -765,23 +693,26 @@ export const linkGoogleAccount = async (idToken, token) => {
         },
         body: JSON.stringify({ id_token: idToken })
     });
-    return response.json();
 };
 
 // ── Categories ───────────────────────────────────────────────────────────────
 
 export const getCategories = async () => {
-    const response = await fetch(`${API_BASE_URL}/categories/`);
-    if (!response.ok) return [];
-    return response.json();
+    try {
+        return await apiFetch(`${API_BASE_URL}/categories/`);
+    } catch (e) {
+        return [];
+    }
 };
 
 export const getCategoryVideos = async (categoryName, videoType = 'flash', limit = 30) => {
-    const response = await fetch(
-        `${API_BASE_URL}/categories/${encodeURIComponent(categoryName)}/videos?video_type=${videoType}&limit=${limit}`
-    );
-    if (!response.ok) return [];
-    return response.json();
+    try {
+        return await apiFetch(
+            `${API_BASE_URL}/categories/${encodeURIComponent(categoryName)}/videos?video_type=${videoType}&limit=${limit}`
+        );
+    } catch (e) {
+        return [];
+    }
 };
 
 export const getFollowingFeed = async (token, skip = 0, limit = 20, contentType = 'all') => {

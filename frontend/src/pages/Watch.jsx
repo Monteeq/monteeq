@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { getVideoById, getComments, postComment, updateComment, deleteComment, likeVideo, shareVideo, getVideos, getRecommendedFeed, toggleFollow, getUserProfile, API_BASE_URL } from '../api';
 import VideoPreviewCard from '../components/VideoPreviewCard';
-import { Heart, Share2, Send, Download, X, Crown, Lightbulb, LightbulbOff, UserPlus, UserCheck, Users, Bookmark } from 'lucide-react';
+import { Heart, Share2, Send, Download, X, Crown, Lightbulb, LightbulbOff, UserPlus, UserCheck, Users, Bookmark, Flag } from 'lucide-react';
 import VideoPlayerV2 from '../components/VideoPlayerV2';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import { useReport } from '../context/ReportContext';
 import { useWatchLater, useAddToWatchLater, useRemoveFromWatchLater } from '../hooks/useLibrary';
 import CommentItem from '../components/CommentItem';
 import { WatchSkeleton } from '../components/Skeleton';
@@ -242,6 +243,7 @@ const Watch = () => {
     const location = useLocation();
     const { token, user } = useAuth();
     const { showNotification } = useNotification();
+    const { openReportModal } = useReport();
 
     const { data: watchLaterData } = useWatchLater();
     const addToWatchLater = useAddToWatchLater();
@@ -680,6 +682,9 @@ const Watch = () => {
                     </button>
                     <button className="actionBtn" onClick={() => setShowDownloadModal(true)}>
                         <Download size={20} /> Download
+                    </button>
+                    <button className="actionBtn" onClick={() => openReportModal('video', video.id)}>
+                        <Flag size={20} /> Report
                     </button>
                 </div>
 

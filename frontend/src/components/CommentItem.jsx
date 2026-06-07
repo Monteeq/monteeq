@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Send, Edit2, Trash2, X } from 'lucide-react';
+import { Send, Edit2, Trash2, X, Flag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useReport } from '../context/ReportContext';
 
 const CommentItem = ({
     comment,
@@ -15,6 +16,7 @@ const CommentItem = ({
     level = 0
 }) => {
     const { user } = useAuth();
+    const { openReportModal } = useReport();
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState(comment.content);
     const [showAllReplies, setShowAllReplies] = useState(false);
@@ -149,6 +151,26 @@ const CommentItem = ({
                         >
                             {isReplying ? 'Cancel' : 'Reply'}
                         </button>
+
+                        {user && user.id !== comment.owner_id && (
+                            <button
+                                title="Report Comment"
+                                onClick={() => openReportModal('comment', comment.id)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--text-muted)',
+                                    fontSize: '0.8rem',
+                                    cursor: 'pointer',
+                                    padding: '4px 0',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                }}
+                            >
+                                <Flag size={14} /> Report
+                            </button>
+                        )}
 
                         {!isEditing && user && user.id === comment.owner_id && !showDeleteConfirm && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
