@@ -650,6 +650,42 @@ const Settings = () => {
                     </div>
                 )}
 
+                {activeTab === 'notifications' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <section className="settings-card">
+                            <div className="settings-card-title">
+                                <Bell size={24} color="#eb0000" />
+                                Push Notifications
+                            </div>
+                            <div className="settings-group-box">
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                                    Control what alerts you receive directly on the platform and mobile apps.
+                                </p>
+                                <ToggleSwitch name="notif_new_follower" label="New Followers" checked={!!formData.notif_new_follower} onChange={handleFormChange} />
+                                <ToggleSwitch name="notif_likes" label="Video Likes" checked={!!formData.notif_likes} onChange={handleFormChange} />
+                                <ToggleSwitch name="notif_comments" label="Video Comments" checked={!!formData.notif_comments} onChange={handleFormChange} />
+                                <ToggleSwitch name="notif_challenge_win" label="Challenge Wins & Trophies" checked={!!formData.notif_challenge_win} onChange={handleFormChange} />
+                            </div>
+                        </section>
+
+                        <section className="settings-card">
+                            <div className="settings-card-title">
+                                <Mail size={24} color="#eb0000" />
+                                Email Preferences
+                            </div>
+                            <div className="settings-group-box">
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                                    Manage the communications sent to your registered email address.
+                                </p>
+                                <ToggleSwitch name="email_weekly" label="Weekly Performance Summary" checked={!!formData.email_weekly} onChange={handleFormChange} />
+                                <ToggleSwitch name="email_challenges" label="New Trending Challenges" checked={!!formData.email_challenges} onChange={handleFormChange} />
+                                <ToggleSwitch name="email_payouts" label="Payout & Earnings Updates" checked={!!formData.email_payouts} onChange={handleFormChange} />
+                                <ToggleSwitch name="email_marketing" label="Monteeq News & Offers" checked={!!formData.email_marketing} onChange={handleFormChange} />
+                            </div>
+                        </section>
+                    </div>
+                )}
+
                 <div style={{ marginTop: '3rem' }}>
                     <DashboardBannerAd
                         title="Secure Your Channel"
@@ -727,42 +763,6 @@ const Settings = () => {
                         </div>
                     </div>
                 </div>
-            )}
-
-            {activeTab === 'notifications' && (
-                <>
-                    <section className="settings-card">
-                        <div className="settings-card-title">
-                            <Bell size={24} color="#eb0000" />
-                            Push Notifications
-                        </div>
-                        <div className="settings-group-box">
-                            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                                Control what alerts you receive directly on the platform and mobile apps.
-                            </p>
-                            <ToggleSwitch name="notif_new_follower" label="New Followers" checked={!!formData.notif_new_follower} onChange={handleFormChange} />
-                            <ToggleSwitch name="notif_likes" label="Video Likes" checked={!!formData.notif_likes} onChange={handleFormChange} />
-                            <ToggleSwitch name="notif_comments" label="Video Comments" checked={!!formData.notif_comments} onChange={handleFormChange} />
-                            <ToggleSwitch name="notif_challenge_win" label="Challenge Wins & Trophies" checked={!!formData.notif_challenge_win} onChange={handleFormChange} />
-                        </div>
-                    </section>
-
-                    <section className="settings-card">
-                        <div className="settings-card-title">
-                            <Mail size={24} color="#eb0000" />
-                            Email Preferences
-                        </div>
-                        <div className="settings-group-box">
-                            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                                Manage the communications sent to your registered email address.
-                            </p>
-                            <ToggleSwitch name="email_weekly" label="Weekly Performance Summary" checked={!!formData.email_weekly} onChange={handleFormChange} />
-                            <ToggleSwitch name="email_challenges" label="New Trending Challenges" checked={!!formData.email_challenges} onChange={handleFormChange} />
-                            <ToggleSwitch name="email_payouts" label="Payout & Earnings Updates" checked={!!formData.email_payouts} onChange={handleFormChange} />
-                            <ToggleSwitch name="email_marketing" label="Monteeq News & Offers" checked={!!formData.email_marketing} onChange={handleFormChange} />
-                        </div>
-                    </section>
-                </>
             )}
 
             {hasChanges && (
