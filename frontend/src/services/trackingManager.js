@@ -3,5 +3,6 @@ export const trackingManager = {
     trackView: () => {},
     trackEngagement: () => {},
     trackScroll: () => {},
+    trackSkip: (id) => {},
     flush: () => {},
 };
