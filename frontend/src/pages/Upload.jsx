@@ -53,6 +53,7 @@ const Upload = () => {
     const [videoType, setVideoType] = useState('home');
     const [file, setFile] = useState(null);
     const [thumbnailFile, setThumbnailFile] = useState(null);
+    const [thumbnailPreview, setThumbnailPreview] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [dbVideoId, setDbVideoId] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -97,6 +98,25 @@ const Upload = () => {
 
     const fileInputRef = useRef(null);
     const thumbnailInputRef = useRef(null);
+    const postImageInputRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+        };
+    }, [previewUrl]);
+
+    useEffect(() => {
+        return () => {
+            if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+        };
+    }, [thumbnailPreview]);
+
+    useEffect(() => {
+        return () => {
+            if (postPreview) URL.revokeObjectURL(postPreview);
+        };
+    }, [postPreview]);
 
     const handleFileSelect = (selectedFile) => {
         if (!selectedFile) return;
@@ -529,6 +549,71 @@ const Upload = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                <div className={s.formGroup}>
+                                    <label className={s.label}>Video Thumbnail (Optional)</label>
+                                    <div 
+                                        className={s.imageDropzone || s.dropzone}
+                                        onClick={() => thumbnailInputRef.current.click()}
+                                        style={{ 
+                                            cursor: 'pointer', 
+                                            border: '2px dashed rgba(255,255,255,0.1)', 
+                                            padding: '1.5rem', 
+                                            borderRadius: '12px', 
+                                            textAlign: 'center', 
+                                            position: 'relative',
+                                            background: 'rgba(255, 255, 255, 0.02)'
+                                        }}
+                                    >
+                                        <input 
+                                            type="file" 
+                                            ref={thumbnailInputRef} 
+                                            hidden 
+                                            accept="image/*" 
+                                            onChange={(e) => {
+                                                const f = e.target.files[0];
+                                                if (f) {
+                                                    setThumbnailFile(f);
+                                                    setThumbnailPreview(URL.createObjectURL(f));
+                                                }
+                                            }} 
+                                        />
+                                        {thumbnailPreview ? (
+                                            <div style={{ position: 'relative', width: '100%', maxHeight: '180px', overflow: 'hidden', borderRadius: '8px' }}>
+                                                <img src={thumbnailPreview} alt="Thumbnail Preview" style={{ width: '100%', height: 'auto', objectFit: 'cover' }} />
+                                                <button 
+                                                    className={s.removeImage}
+                                                    style={{ 
+                                                        position: 'absolute', 
+                                                        top: '5px', 
+                                                        right: '5px', 
+                                                        background: 'rgba(0,0,0,0.6)', 
+                                                        border: 'none', 
+                                                        borderRadius: '50%', 
+                                                        color: 'white', 
+                                                        padding: '4px', 
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}
+                                                    onClick={(e) => { 
+                                                        e.stopPropagation(); 
+                                                        setThumbnailPreview(null); 
+                                                        setThumbnailFile(null); 
+                                                    }}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--text-muted)' }}>
+                                                <PhotoIcon size={32} />
+                                                <span style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Upload thumbnail photo</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </>
                         ) : (
                             <>
@@ -549,11 +634,11 @@ const Upload = () => {
                                     <label className={s.label}>Attach Image (Optional)</label>
                                     <div 
                                         className={s.imageDropzone}
-                                        onClick={() => thumbnailInputRef.current.click()}
+                                        onClick={() => postImageInputRef.current.click()}
                                     >
                                         <input 
                                             type="file" 
-                                            ref={thumbnailInputRef} 
+                                            ref={postImageInputRef} 
                                             hidden 
                                             accept="image/*" 
                                             onChange={(e) => {
