@@ -121,23 +121,70 @@ const Following = () => {
                         </h3>
                         {recLoading ? (
                             <div className={styles.loadingContainer}><Loader2 className="animate-spin" /></div>
+                        ) : recommendations.length === 0 ? (
+                            <div style={{
+                                textAlign: 'center',
+                                padding: '2rem 1rem',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.9rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '0.75rem'
+                            }}>
+                                <UserPlus size={32} style={{ opacity: 0.25 }} />
+                                <p>No creator recommendations right now — check back soon.</p>
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => navigate('/search')}
+                                    style={{ marginTop: '0.5rem' }}
+                                >
+                                    Search for creators
+                                </button>
+                            </div>
                         ) : (
                             <div className={styles.recommendationsGrid}>
                                 {recommendations.map(creator => (
                                     <div key={creator.id} className={styles.creatorCard}>
-                                        <img 
-                                            src={creator.profile_pic || 'https://via.placeholder.com/150'} 
-                                            alt={creator.username} 
-                                            className={styles.creatorAvatar} 
+                                        <img
+                                            src={creator.profile_pic || null}
+                                            alt={creator.username}
+                                            className={styles.creatorAvatar}
                                             onClick={() => navigate(`/profile/${creator.username}`)}
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                e.target.nextSibling.style.display = 'flex';
+                                            }}
                                         />
-                                        <div className={styles.creatorName} onClick={() => navigate(`/profile/${creator.username}`)}>
+                                        <div
+                                            className={styles.creatorAvatar}
+                                            style={{
+                                                display: 'none',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                background: 'var(--accent-primary)',
+                                                color: '#fff',
+                                                fontWeight: 700,
+                                                fontSize: '1.2rem',
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => navigate(`/profile/${creator.username}`)}
+                                        >
+                                            {creator.username?.charAt(0)?.toUpperCase()}
+                                        </div>
+                                        <div
+                                            className={styles.creatorName}
+                                            onClick={() => navigate(`/profile/${creator.username}`)}
+                                        >
                                             {creator.username}
                                         </div>
                                         <div className={styles.creatorStats}>
                                             {creator.full_name || 'Creator'}
                                         </div>
-                                        <button className={`${styles.followBtn} btn-active`} onClick={() => handleFollow(creator.id)}>
+                                        <button
+                                            className={`${styles.followBtn} btn-active`}
+                                            onClick={() => handleFollow(creator.id)}
+                                        >
                                             FOLLOW
                                         </button>
                                     </div>
