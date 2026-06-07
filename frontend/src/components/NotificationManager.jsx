@@ -1,23 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { markNotificationRead } from '../api';
-import AchievementPopup from './AchievementPopup';
 
 const NotificationManager = () => {
     const { token, user } = useAuth();
     const { showNotification, activeAchievement, showAchievementCelebration, fetchUnreadCount } = useNotification();
-
-    const handleClosePopup = async () => {
-        if (activeAchievement) {
-            try {
-                await markNotificationRead(token, activeAchievement.id);
-            } catch (err) {
-                console.error("Failed to mark achievement read:", err);
-            }
-            showAchievementCelebration(null);
-        }
-    };
 
     useEffect(() => {
         if (!user || !token) return;
@@ -57,16 +45,7 @@ const NotificationManager = () => {
 
     }, [user, token, showNotification, activeAchievement]);
 
-    return (
-        <>
-            {activeAchievement && (
-                <AchievementPopup
-                    achievement={activeAchievement}
-                    onClose={handleClosePopup}
-                />
-            )}
-        </>
-    );
+    return null;
 };
 
 export default NotificationManager;

@@ -23,6 +23,21 @@ export const NotificationProvider = ({ children }) => {
     const unreadPollRef = useRef(null);
     const isMountedRef = useRef(true);
 
+    const handleCloseAchievement = useCallback(async () => {
+        if (activeAchievement && token) {
+            try {
+                // Background update, don't await/block UI
+                const { markNotificationRead } = await import('../api');
+                markNotificationRead(token, activeAchievement.id).catch(err => {
+                    console.error("Failed to mark achievement read:", err);
+                });
+            } catch (err) {
+                console.error("Failed to load api for markNotificationRead:", err);
+            }
+        }
+        setActiveAchievement(null);
+    }, [activeAchievement, token]);
+
     useEffect(() => {
         return () => { isMountedRef.current = false; };
     }, []);
@@ -109,7 +124,7 @@ export const NotificationProvider = ({ children }) => {
             {activeAchievement && (
                 <AchievementCelebrationModal 
                     achievement={activeAchievement} 
-                    onClose={() => setActiveAchievement(null)} 
+                    onClose={handleCloseAchievement} 
                 />
             )}
         </NotificationContext.Provider>
