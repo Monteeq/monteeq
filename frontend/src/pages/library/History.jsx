@@ -26,6 +26,25 @@ import {
 } from '../../hooks/useLibrary';
 import { formatDuration } from '../../lib/format';
 import s from './Library.module.css';
+const HistorySkeleton = () => (
+    <div className="page-container">
+        {[...Array(6)].map((_, i) => (
+            <div key={i} style={{
+                display: 'flex',
+                gap: '12px',
+                padding: '12px 0',
+                borderBottom: '1px solid var(--border-color)'
+            }}>
+                <div className="skeleton" style={{ width: 160, height: 90, borderRadius: 8, flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="skeleton" style={{ height: 16, width: '70%', borderRadius: 4 }} />
+                    <div className="skeleton" style={{ height: 13, width: '40%', borderRadius: 4 }} />
+                    <div className="skeleton" style={{ height: 13, width: '30%', borderRadius: 4 }} />
+                </div>
+            </div>
+        ))}
+    </div>
+);
 
 const History = () => {
     const navigate = useNavigate();
@@ -228,25 +247,4 @@ const History = () => {
         </div>
     );
 };
-
-const HistorySkeleton = () => (
-    <div className="page-container">
-        <div className={s.headerSkeleton}>
-            <div className="skeleton" style={{ width: '200px', height: '32px' }} />
-            <div className="skeleton" style={{ width: '300px', height: '40px', borderRadius: '20px' }} />
-        </div>
-        <div className={s.listContainer} style={{ marginTop: '2rem' }}>
-            {[1, 2, 3, 4].map(i => (
-                <div key={i} className="video-card-v2 vc-list">
-                    <div className="skeleton-thumbnail" style={{ width: '240px', aspectRatio: '16/9' }} />
-                    <div style={{ flex: 1, padding: '1rem' }}>
-                        <div className="skeleton" style={{ width: '60%', height: '20px', marginBottom: '1rem' }} />
-                        <div className="skeleton" style={{ width: '40%', height: '14px' }} />
-                    </div>
-                </div>
-            ))}
-        </div>
-    </div>
-);
-
 export default History;
