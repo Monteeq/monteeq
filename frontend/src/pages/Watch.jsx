@@ -254,10 +254,20 @@ const Watch = () => {
     const [showDownloadModal, setShowDownloadModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [suggestedVideos, setSuggestedVideos] = useState([]);
-    // Full unfiltered list used only for prev/next navigation index lookup
     const [navQueue, setNavQueue] = useState([]);
     // Whether we're doing a background refresh (prev/next nav) vs a cold load
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    // Merge any incoming queue from state (e.g. from Watch Later "Play all")
+    useEffect(() => {
+        if (location.state?.queue?.length > 0) {
+            setNavQueue(prev => {
+                const incomingIds = new Set(location.state.queue.map(v => v.id));
+                const merged = [...prev.filter(v => !incomingIds.has(v.id)), ...location.state.queue];
+                return merged;
+            });
+        }
+    }, [location.state]);
 
     // Find the current video inside the full nav queue (includes current video)
     const currentIndex = navQueue.findIndex(v => v.id.toString() === id.toString());

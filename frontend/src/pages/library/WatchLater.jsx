@@ -15,6 +15,25 @@ const WatchLater = () => {
 
     const stats = data?.stats || { total_videos: 0, total_runtime_seconds: 0, new_this_week: 0 };
 
+    const handlePlayAll = () => {
+        if (!data?.items || data.items.length === 0) return;
+
+        const [first, ...rest] = data.items;
+
+        navigate(`/watch/${first.video.id}`, {
+            state: {
+                queue: rest.map(item => ({
+                    id: item.video.id,
+                    title: item.video.title,
+                    thumbnail_url: item.video.thumbnail_url,
+                    duration: item.video.duration,
+                    creator_name: item.video.creator_name,
+                })),
+                queueSource: 'watchlater',
+            }
+        });
+    };
+
     return (
         <div className="page-container">
             <header className={s.header}>
@@ -24,7 +43,11 @@ const WatchLater = () => {
                 </div>
                 
                 <div className={s.headerActions}>
-                    <button className="btn-primary">
+                    <button
+                        className="btn-primary"
+                        onClick={handlePlayAll}
+                        disabled={!data?.items || data.items.length === 0}
+                    >
                         <Play size={18} fill="currentColor" /> Play all
                     </button>
                     <button className="btn-secondary" onClick={() => clearAll.mutate()} disabled={!stats.total_videos}>
