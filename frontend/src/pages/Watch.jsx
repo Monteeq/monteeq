@@ -607,103 +607,232 @@ const Watch = () => {
 
     if (loading) return <WatchSkeleton />;
     if (!video) return (
-        <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '1.5rem',
-            padding: '2rem',
-            textAlign: 'center',
-            background: 'var(--bg-deep, #050505)',
-            color: 'var(--text-primary, #fff)'
-        }}>
-            <div style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: 'rgba(235, 0, 0, 0.08)',
-                border: '1px solid rgba(235, 0, 0, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '2rem'
-            }}>
-                🎬
-            </div>
-            <div>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                    Video not found
-                </h1>
-                <p style={{ color: 'var(--text-muted, rgba(255,255,255,0.4))', fontSize: '0.95rem', maxWidth: '380px' }}>
-                    This video may have been deleted, made private, or the link may be incorrect.
-                </p>
-            </div>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button
-                    onClick={() => navigate(-1)}
-                    style={{
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '100px',
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        color: '#fff',
-                        fontWeight: 600,
-                        fontSize: '0.9rem',
-                        cursor: 'pointer'
-                    }}
-                >
-                    ← Go Back
-                </button>
-                <button
-                    onClick={() => navigate('/home')}
-                    style={{
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '100px',
-                        background: '#eb0000',
-                        border: 'none',
-                        color: '#fff',
-                        fontWeight: 700,
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 16px rgba(235, 0, 0, 0.3)'
-                    }}
-                >
-                    Browse Videos
-                </button>
-                <button
-                    onClick={() => window.location.reload()}
-                    style={{
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '100px',
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        color: '#fff',
-                        fontWeight: 600,
-                        fontSize: '0.9rem',
-                        cursor: 'pointer'
-                    }}
-                >
-                    ↺ Retry
-                </button>
-            </div>
-            {suggestedVideos.length > 0 && (
-                <div style={{ marginTop: '2rem', width: '100%', maxWidth: '900px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1.25rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                        You might like
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
-                        {suggestedVideos.slice(0, 4).map(v => (
-                            <VideoPreviewCard
-                                key={v.id}
-                                video={v}
-                                onClick={() => navigate(`/watch/${v.id}`)}
-                            />
-                        ))}
-                    </div>
+        <div className="nf-overlay" style={{ position: 'relative' }}>
+            {/* Ambient glows */}
+            <div className="nf-glow nf-glow-a" />
+            <div className="nf-glow nf-glow-b" />
+
+            <div className="nf-content">
+                {/* Glitch number */}
+                <div className="nf-number" aria-hidden="true">
+                    <span className="nf-4 nf-4-left">4</span>
+                    <span className="nf-0">0</span>
+                    <span className="nf-4 nf-4-right">4</span>
                 </div>
-            )}
+
+                <h1 className="nf-title">Looks like this content went dark.</h1>
+                <p className="nf-body">
+                    The video you&apos;re looking for has been moved, deleted, or never existed.
+                    Head back and keep exploring.
+                </p>
+
+                <div className="nf-actions">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="nf-btn-ghost"
+                    >
+                        ← Go Back
+                    </button>
+                    <button
+                        onClick={() => navigate('/home')}
+                        className="nf-btn-primary"
+                    >
+                        Browse Videos
+                    </button>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="nf-btn-ghost"
+                    >
+                        ↺ Retry
+                    </button>
+                </div>
+
+                {suggestedVideos.length > 0 && (
+                    <div style={{ marginTop: '4rem', width: '100%', textAlign: 'left' }}>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1.25rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px', fontFamily: "'Outfit', sans-serif" }}>
+                            You might like
+                        </h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
+                            {suggestedVideos.slice(0, 4).map(v => (
+                                <VideoPreviewCard
+                                    key={v.id}
+                                    video={v}
+                                    onClick={() => navigate(`/watch/${v.id}`)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <style>{`
+                .nf-overlay {
+                    min-height: 100vh;
+                    background: var(--bg-deep, #000);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 4rem 2rem;
+                    overflow-x: hidden;
+                    font-family: 'Outfit', 'Inter', sans-serif;
+                    width: 100%;
+                    box-sizing: border-box;
+                }
+
+                .nf-glow {
+                    position: absolute;
+                    border-radius: 50%;
+                    pointer-events: none;
+                }
+
+                .nf-glow-a {
+                    top: 5%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 600px;
+                    height: 300px;
+                    background: radial-gradient(ellipse, rgba(255,59,48,0.18) 0%, transparent 70%);
+                    animation: nf-breathe 6s ease-in-out infinite;
+                }
+
+                .nf-glow-b {
+                    bottom: 0;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 400px;
+                    height: 200px;
+                    background: radial-gradient(ellipse, rgba(255,59,48,0.08) 0%, transparent 70%);
+                    animation: nf-breathe 8s ease-in-out infinite reverse;
+                }
+
+                .nf-content {
+                    text-align: center;
+                    position: relative;
+                    z-index: 10;
+                    max-width: 900px;
+                    width: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+
+                .nf-number {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-family: 'Outfit', sans-serif;
+                    font-size: clamp(6rem, 15vw, 10rem);
+                    font-weight: 800;
+                    line-height: 1;
+                    letter-spacing: -0.05em;
+                    margin-bottom: 1.5rem;
+                    color: transparent;
+                    -webkit-text-stroke: 2px rgba(255,255,255,0.15);
+                    position: relative;
+                    user-select: none;
+                }
+
+                .nf-4-left {
+                    animation: nf-glitch-left 4s ease-in-out infinite;
+                    color: transparent;
+                    -webkit-text-stroke: 2px rgba(255, 59, 48, 0.6);
+                }
+
+                .nf-0 {
+                    color: rgba(255,255,255,0.9);
+                    -webkit-text-stroke: 0;
+                    text-shadow: 0 0 80px rgba(255,59,48,0.4);
+                }
+
+                .nf-4-right {
+                    animation: nf-glitch-right 4s ease-in-out infinite;
+                    color: transparent;
+                    -webkit-text-stroke: 2px rgba(255, 59, 48, 0.6);
+                }
+
+                .nf-title {
+                    font-size: clamp(1.4rem, 4vw, 2.3rem);
+                    font-weight: 700;
+                    color: #fff;
+                    margin-bottom: 1rem;
+                    letter-spacing: -0.3px;
+                }
+
+                .nf-body {
+                    font-size: 1.05rem;
+                    color: var(--text-muted, #8e8e93);
+                    line-height: 1.7;
+                    margin-bottom: 2.5rem;
+                    max-width: 500px;
+                }
+
+                .nf-actions {
+                    display: flex;
+                    gap: 0.75rem;
+                    justify-content: center;
+                    flex-wrap: wrap;
+                }
+
+                .nf-btn-primary {
+                    background: #FF3B30;
+                    color: #fff;
+                    border: none;
+                    border-radius: 50px;
+                    padding: 0.8rem 2rem;
+                    font-weight: 700;
+                    font-size: 0.95rem;
+                    cursor: pointer;
+                    text-decoration: none;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    transition: background 0.2s ease, transform 0.15s ease;
+                    font-family: inherit;
+                    box-shadow: 0 4px 16px rgba(255, 59, 48, 0.3);
+                }
+
+                .nf-btn-primary:hover {
+                    background: #D0021B;
+                    transform: translateY(-2px);
+                }
+
+                .nf-btn-ghost {
+                    background: rgba(255,255,255,0.06);
+                    color: var(--text-muted, #8e8e93);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 50px;
+                    padding: 0.8rem 2rem;
+                    font-weight: 600;
+                    font-size: 0.95rem;
+                    cursor: pointer;
+                    transition: background 0.2s ease;
+                    font-family: inherit;
+                }
+
+                .nf-btn-ghost:hover {
+                    background: rgba(255,255,255,0.1);
+                    color: #fff;
+                }
+
+                @keyframes nf-breathe {
+                    0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+                    50%       { opacity: 0.7; transform: translateX(-50%) scale(1.05); }
+                }
+
+                @keyframes nf-glitch-left {
+                    0%, 90%, 100% { transform: translateX(0); opacity: 1; }
+                    92%            { transform: translateX(-6px); opacity: 0.8; }
+                    94%            { transform: translateX(4px); opacity: 0.9; }
+                    96%            { transform: translateX(-2px); opacity: 1; }
+                }
+
+                @keyframes nf-glitch-right {
+                    0%, 90%, 100% { transform: translateX(0); opacity: 1; }
+                    92%            { transform: translateX(6px); opacity: 0.8; }
+                    94%            { transform: translateX(-4px); opacity: 0.9; }
+                    96%            { transform: translateX(2px); opacity: 1; }
+                }
+            `}</style>
         </div>
     );
 
