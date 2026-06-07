@@ -93,14 +93,20 @@ export const useVideoLike = () => {
     });
 };
 
-export const useFollowingFeed = (token, contentType = 'all') => {
+export const useFollowingFeed = (token, category = 'All') => {
     return useInfiniteQuery({
-        queryKey: ['feed', 'following', contentType],
-        queryFn: ({ pageParam = 0 }) => getFollowingFeed(token, pageParam, 3, contentType),
-        getNextPageParam: (lastPage, allPages) => {
-            return lastPage.length === 3 ? allPages.length * 3 : undefined;
+        queryKey: ['feed', 'following', category],
+        queryFn: async ({ pageParam = 0 }) => {
+            const mood = category === 'All' ? '' : category;
+            const data = await getFollowingFeed(token, pageParam, HOME_PAGE_SIZE, mood);
+            return data;
         },
-        staleTime: 1000 * 60 * 2, // 2 minutes
+        getNextPageParam: (lastPage, allPages) => {
+            return lastPage.length === HOME_PAGE_SIZE
+                ? allPages.length * HOME_PAGE_SIZE
+                : undefined;
+        },
+        staleTime: 1000 * 60 * 5,
         enabled: !!token,
     });
 };

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext();
@@ -11,8 +11,10 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token'));
     const [loading, setLoading] = useState(true);
+    const lastRefreshRef = useRef(0);
+    const REFRESH_COOLDOWN_MS = 30000;
 
-    const fetchUser = async (authToken) => {
+    const fetchUser = useCallback(async (authToken) => {
         const currentToken = authToken || token;
         if (currentToken) {
             try {
@@ -22,17 +24,27 @@ export const AuthProvider = ({ children }) => {
                 setUser(response.data);
                 return response.data;
             } catch (error) {
-                console.error("Failed to fetch user:", error);
                 if (!authToken && error.response?.status === 401) {
                     logout();
+                } else {
+                    console.error("Failed to fetch user:", error);
                 }
             }
         }
-    };
+    }, [token]);
+
+    const refreshUser = useCallback(async () => {
+        const now = Date.now();
+        if (now - lastRefreshRef.current < REFRESH_COOLDOWN_MS) {
+            return user;
+        }
+        lastRefreshRef.current = now;
+        return await fetchUser();
+    }, [fetchUser, user]);
 
     useEffect(() => {
         fetchUser().finally(() => setLoading(false));
-    }, [token]);
+    }, [token, fetchUser]);
 
     const login = async (credentials) => {
         const params = new URLSearchParams();
@@ -109,7 +121,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, loading, login, signup, googleLogin, logout, updateAuthToken, setUser, refreshUser: fetchUser, verifyLogin2FA }}>
+        <AuthContext.Provider value={{ user, token, loading, login, signup, googleLogin, logout, updateAuthToken, setUser, refreshUser, verifyLogin2FA }}>
             {children}
         </AuthContext.Provider>
     );
