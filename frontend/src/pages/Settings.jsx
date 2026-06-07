@@ -207,10 +207,9 @@ const Settings = () => {
     };
 
     const handlePasswordSave = async (e) => {
-        let err;
         e.preventDefault();
         if (passwordData.new_password !== passwordData.confirm_password) {
-            showNotification('error', err?.message || 'New passwords do not match');
+            showNotification('error', 'New passwords do not match');
             return;
         }
 
