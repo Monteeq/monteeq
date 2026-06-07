@@ -245,6 +245,8 @@ const Watch = () => {
     const [comments, setComments] = useState([]);
     const prefetchedNextIdRef = useRef(null);
     const [newComment, setNewComment] = useState("");
+    const [replyingTo, setReplyingTo] = useState(null);
+    const [replyComment, setReplyComment] = useState('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [followersCount, setFollowersCount] = useState(0);
     const [followLoading, setFollowLoading] = useState(false);
@@ -457,6 +459,40 @@ const Watch = () => {
             setNewComment("");
         } catch (err) {
             showNotification('error', err?.message || "Failed to post comment");
+        }
+    };
+
+    const handleEditComment = async (commentId, content) => {
+        try {
+            const updated = await updateComment({ videoId: id, commentId, content }, token);
+            setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: updated.content } : c));
+        } catch (err) {
+            showNotification('error', err?.message || 'Failed to edit comment');
+        }
+    };
+
+    const handleDeleteComment = async (commentId) => {
+        try {
+            await deleteComment({ videoId: id, commentId }, token);
+            setComments(prev => prev.filter(c => c.id !== commentId));
+        } catch (err) {
+            showNotification('error', err?.message || 'Failed to delete comment');
+        }
+    };
+
+    const handleSubmitReply = async (parentId) => {
+        if (!replyComment.trim() || !token) return;
+        try {
+            const added = await postComment({ videoId: id, content: replyComment, parent_id: parentId }, token);
+            setComments(prev => prev.map(c =>
+                c.id === parentId
+                    ? { ...c, replies: [...(c.replies || []), added] }
+                    : c
+            ));
+            setReplyComment('');
+            setReplyingTo(null);
+        } catch (err) {
+            showNotification('error', err?.message || 'Failed to post reply');
         }
     };
 
@@ -685,7 +721,20 @@ const Watch = () => {
                         </form>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                            {comments.map(c => <CommentItem key={c.id} comment={c} isApproved={true} />)}
+                            {comments.map(c => (
+                                <CommentItem
+                                    key={c.id}
+                                    comment={c}
+                                    isApproved={true}
+                                    onEdit={handleEditComment}
+                                    onDelete={handleDeleteComment}
+                                    onReply={(commentId) => setReplyingTo(commentId)}
+                                    replyingTo={replyingTo}
+                                    replyComment={replyComment}
+                                    setReplyComment={setReplyComment}
+                                    onSubmitReply={handleSubmitReply}
+                                />
+                            ))}
                         </div>
                     </div>
                 </div>
