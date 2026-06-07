@@ -856,7 +856,11 @@ const Chat = () => {
                     </p>
                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                         <button
-                            onClick={() => window.location.reload()}
+                            onClick={() => {
+                                setSyncError(false);
+                                setIsInitialSync(true);
+                                setRetryTrigger(t => t + 1);
+                            }}
                             style={{
                                 padding: '0.75rem 1.5rem',
                                 borderRadius: '100px',
