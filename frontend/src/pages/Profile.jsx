@@ -199,7 +199,7 @@ const Profile = () => {
                                         whileTap={{ scale: 0.95 }}
                                         className={styles.glass} 
                                         style={{ aspectRatio: '2/3', borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
-                                        onClick={() => navigate('/flash')}
+                                        onClick={() => navigate(`/flash/${v.id}`)}
                                     >
                                         <img src={v.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         <div style={{
@@ -233,7 +233,8 @@ const Profile = () => {
                                         key={p.id} 
                                         whileHover={{ scale: 1.02 }}
                                         className={styles.glass} 
-                                        style={{ padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.08)' }}
+                                        style={{ padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' }}
+                                        onClick={() => navigate('/posts')}
                                     >
                                         <p style={{ margin: 0, lineHeight: 1.6, fontSize: '1.1rem' }}>{p.content}</p>
                                         {p.image_url && (
@@ -248,19 +249,33 @@ const Profile = () => {
 
                         {activeTab === 'likes' && (
                             <div className={styles.videoGrid}>
-                                {profile.liked_videos && profile.liked_videos.length > 0 ? profile.liked_videos.map(v => (
-                                    <motion.div 
-                                        key={v.id} 
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        className={styles.videoGridItem}
-                                    >
-                                        <VideoPreviewCard
-                                            video={v}
-                                            onClick={() => navigate(`/watch/${v.id}`)}
-                                        />
-                                    </motion.div>
-                                )) : <div className={styles.emptyState}>No liked videos yet</div>}
+                                {profile.liked_videos && profile.liked_videos.length > 0 ? (
+                                    <>
+                                        {profile.liked_videos.slice(0, 18).map(v => (
+                                            <motion.div
+                                                key={v.id}
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                className={styles.videoGridItem}
+                                            >
+                                                <VideoPreviewCard
+                                                    video={v}
+                                                    onClick={() => navigate(`/watch/${v.id}`)}
+                                                />
+                                            </motion.div>
+                                        ))}
+                                        {profile.liked_videos.length > 18 && (
+                                            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '1rem' }}>
+                                                <button
+                                                    className={styles.btnSecondary || 'btn-secondary'}
+                                                    onClick={() => navigate('/liked')}
+                                                >
+                                                    See all {profile.liked_videos.length} liked videos
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : <div className={styles.emptyState}>No liked videos yet</div>}
                             </div>
                         )}
                     </motion.div>
