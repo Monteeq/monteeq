@@ -160,11 +160,13 @@ export const getVideoById = async (id, token = null) => {
 };
 
 
-export const getComments = async (videoId = null, postId = null) => {
+export const getComments = async (videoId = null, postId = null, token = null) => {
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     const endpoint = videoId
         ? `/videos/${videoId}/comments`
         : `/posts/${postId}/comments`;
-    return apiFetch(endpoint);
+    return apiFetch(endpoint, { headers });
 };
 
 export const postComment = async ({ videoId = null, postId = null, content, parent_id = null }, token) => {

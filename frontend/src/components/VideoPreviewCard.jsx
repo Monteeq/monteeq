@@ -267,7 +267,6 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                         className={`vc-watch-later-btn ${isSaved ? 'saved' : ''}`}
                         onClick={handleWatchLaterClick}
                         title={isSaved ? "Remove from Watch Later" : "Watch Later"}
-                        style={{ border: 'none' }}
                         disabled={isAddingOrRemoving}
                     >
                         {isAddingOrRemoving ? (

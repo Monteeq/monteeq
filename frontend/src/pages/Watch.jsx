@@ -333,7 +333,7 @@ const Watch = () => {
                 try {
                     const [videoData, commentsData] = await Promise.all([
                         getVideoById(id, token),
-                        getComments(id)
+                        getComments(id, null, token)
                     ]);
                     if (cancelled) return;
                     setVideo(videoData);
@@ -386,7 +386,7 @@ const Watch = () => {
             try {
                 const [videoData, commentsData] = await Promise.all([
                     getVideoById(id, token),
-                    getComments(id)
+                    getComments(id, null, token)
                 ]);
                 if (cancelled) return;
                 setVideo(videoData);

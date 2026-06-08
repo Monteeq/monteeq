@@ -237,11 +237,13 @@ class Like(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     video_id = Column(Integer, ForeignKey("videos.id"), nullable=True, index=True)
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=True, index=True)
+    comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True, index=True)
     created_at = Column(DateTime, default=func.now())
 
     user = relationship("User", back_populates="likes")
     video = relationship("Video", back_populates="likes")
     post = relationship("Post", back_populates="likes")
+    comment = relationship("Comment", back_populates="likes")
 
 class Post(Base):
     __tablename__ = "posts"
@@ -276,12 +278,14 @@ class Comment(Base):
     post_id = Column(Integer, ForeignKey("posts.id"), nullable=True, index=True)
     parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True, index=True) # Threaded replies
     owner_id = Column(Integer, ForeignKey("users.id"), index=True)
+    likes_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=func.now())
 
     owner = relationship("User", back_populates="comments")
     video = relationship("Video", back_populates="comments")
     post = relationship("Post", back_populates="comments")
     replies = relationship("Comment", backref=backref("parent", remote_side=[id]), cascade="all, delete-orphan")
+    likes = relationship("Like", back_populates="comment", cascade="all, delete-orphan")
 
 class Follow(Base):
     __tablename__ = "follows"

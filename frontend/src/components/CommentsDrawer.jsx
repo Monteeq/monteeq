@@ -23,7 +23,7 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose }) => {
         const fetchComments = async () => {
             setLoading(true);
             try {
-                const data = await getComments(videoId, postId);
+                const data = await getComments(videoId, postId, token);
                 setComments(Array.isArray(data) ? data : []);
             } catch (err) {
                 console.error("Failed comments", err);

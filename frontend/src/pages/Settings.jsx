@@ -80,6 +80,13 @@ const Settings = () => {
 
     const [avatarPreview, setAvatarPreview] = useState(null);
     const [googleLinking, setGoogleLinking] = useState(false);
+    const [notificationPermission, setNotificationPermission] = useState('default');
+
+    useEffect(() => {
+        if ('Notification' in window) {
+            setNotificationPermission(Notification.permission);
+        }
+    }, []);
 
     useEffect(() => {
         if (user) {
@@ -350,6 +357,19 @@ const Settings = () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         showNotification('success', 'Secret key copied to clipboard');
+    };
+
+    const requestPermission = async () => {
+        if (!('Notification' in window)) return;
+        try {
+            const permission = await Notification.requestPermission();
+            setNotificationPermission(permission);
+            if (permission === 'granted') {
+                showNotification('success', 'Notifications enabled successfully');
+            }
+        } catch (err) {
+            console.error("Failed to request permission", err);
+        }
     };
 
     const handleGoogleLink = useGoogleLogin({
@@ -650,6 +670,55 @@ const Settings = () => {
 
                 {activeTab === 'notifications' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {notificationPermission === 'denied' && (
+                            <div className="settings-group-box" style={{ 
+                                borderColor: 'rgba(255, 68, 68, 0.4)', 
+                                background: 'rgba(255, 68, 68, 0.08)',
+                                marginBottom: '1.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '1.2rem'
+                            }}>
+                                <AlertCircle size={24} color="#ff4444" />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 800, color: '#ff8888', marginBottom: '0.2rem' }}>
+                                        Push notifications are blocked in your browser settings.
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                        To receive real-time alerts, you must manually enable them in your browser's site settings.
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.6rem' }}>
+                                    <button className="tile-btn-minimal" onClick={() => window.open('https://support.google.com/chrome/answer/3220216', '_blank')}>Instructions</button>
+                                    <button className="tile-btn-minimal" onClick={() => window.open('/help/notifications', '_blank')}>Learn More</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {notificationPermission === 'default' && (
+                            <div className="settings-group-box" style={{ 
+                                borderColor: 'rgba(255, 255, 255, 0.1)', 
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                marginBottom: '1.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '1.2rem'
+                            }}>
+                                <Bell size={24} color="var(--accent-primary)" />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 800, color: 'white', marginBottom: '0.2rem' }}>
+                                        Browser permission has not been granted yet.
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                        Enable browser notifications to stay updated on likes, comments, and wins.
+                                    </div>
+                                </div>
+                                <button className="save-btn" onClick={requestPermission} style={{ padding: '0.6rem 1.4rem' }}>
+                                    Enable Notifications
+                                </button>
+                            </div>
+                        )}
+
                         <section className="settings-card">
                             <div className="settings-card-title">
                                 <Bell size={24} color="#eb0000" />

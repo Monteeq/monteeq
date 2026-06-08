@@ -303,6 +303,8 @@ class Comment(CommentBase):
     owner_id: int
     owner: Optional[UserPublic] = None
     created_at: Optional[datetime] = None
+    likes_count: Optional[int] = 0
+    is_liked: bool = False
     replies: List["Comment"] = []
 
     model_config = ConfigDict(from_attributes=True)

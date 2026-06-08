@@ -1,10 +1,10 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getComments, postComment } from '../api';
+import { getComments, postComment, likeComment } from '../api';
 
 export const useComments = (videoId, token) => {
     return useInfiniteQuery({
         queryKey: ['comments', videoId],
-        queryFn: ({ pageParam = 0 }) => getComments(videoId, token, pageParam, 20),
+        queryFn: ({ pageParam = 0 }) => getComments(videoId, null, token),
         getNextPageParam: (lastPage, allPages) => {
             return lastPage.length === 20 ? allPages.length * 20 : undefined;
         },
@@ -19,5 +19,11 @@ export const useAddComment = () => {
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['comments', variables.videoId] });
         }
+    });
+};
+
+export const useLikeComment = () => {
+    return useMutation({
+        mutationFn: ({ commentId, token }) => likeComment(commentId, token),
     });
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, Edit2, Trash2, X, Flag, Heart } from 'lucide-react';
+import { Send, Edit2, Trash2, X, Flag } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useReport } from '../context/ReportContext';
 import { useNotification } from '../context/NotificationContext';
@@ -30,6 +30,16 @@ const CommentItem = ({
     const [likeCount, setLikeCount] = useState(comment.likes_count || 0);
     const [isLiking, setIsLiking] = useState(false);
 
+    // Sync with props if they change (e.g. background refetch)
+    React.useEffect(() => {
+        if (comment.is_liked !== undefined && comment.is_liked !== liked) {
+            setLiked(comment.is_liked);
+        }
+        if (comment.likes_count !== undefined && comment.likes_count !== likeCount) {
+            setLikeCount(comment.likes_count);
+        }
+    }, [comment.is_liked, comment.likes_count]);
+
     const isReplying = replyingTo === comment.id;
 
     const handleLike = async () => {
@@ -48,7 +58,12 @@ const CommentItem = ({
         setIsLiking(true);
 
         try {
-            await likeComment(comment.id, token);
+            const data = await likeComment(comment.id, token);
+            // Synchronize with server response
+            if (data) {
+                setLiked(data.liked);
+                setLikeCount(data.likes_count);
+            }
         } catch (err) {
             // Rollback
             setLiked(prevLiked);
@@ -165,23 +180,15 @@ const CommentItem = ({
                         </p>
                     )}
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div className="comment-actions">
                         <button
+                            className="comment-action-btn reply-btn"
                             title={isReplying ? "Cancel Reply" : "Reply to Comment"}
                             onClick={() => {
                                 if (isApproved) onReply(isReplying ? null : comment.id);
                             }}
                             style={{
-                                background: 'none',
-                                border: 'none',
-                                color: 'var(--accent-primary)',
-                                fontSize: '0.8rem',
-                                fontWeight: 700,
                                 cursor: isApproved ? 'pointer' : 'not-allowed',
-                                padding: '4px 0',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
                                 opacity: isApproved ? 1 : 0.5
                             }}
                         >
@@ -189,46 +196,22 @@ const CommentItem = ({
                         </button>
 
                         <button
+                            className={`comment-action-btn ${liked ? 'liked' : ''}`}
                             title={liked ? "Unlike Comment" : "Like Comment"}
                             onClick={handleLike}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                color: liked ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                fontSize: '0.8rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                padding: '4px 0',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.2s ease'
-                            }}
                         >
-                            <Heart 
-                                size={14} 
-                                fill={liked ? 'currentColor' : 'none'} 
-                                style={{ transform: liked ? 'scale(1.1)' : 'scale(1)' }}
-                            />
+                            <span className="like-heart">
+                                {liked ? '♥' : '♡'}
+                            </span>
                             {likeCount > 0 && <span>{likeCount}</span>}
                             <span>{liked ? 'Liked' : 'Like'}</span>
                         </button>
 
                         {user && user.id !== comment.owner_id && (
                             <button
+                                className="comment-action-btn"
                                 title="Report Comment"
                                 onClick={() => openReportModal('comment', comment.id)}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: 'var(--text-muted)',
-                                    fontSize: '0.8rem',
-                                    cursor: 'pointer',
-                                    padding: '4px 0',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                }}
                             >
                                 <Flag size={14} /> Report
                             </button>

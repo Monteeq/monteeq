@@ -204,38 +204,56 @@ def create_post(db: Session, post: schemas.PostCreate, user_id: int):
     db.refresh(db_post)
     return db_post
 
-def toggle_like(db: Session, user_id: int, video_id: Optional[int] = None, post_id: Optional[int] = None):
-    query = db.query(Like).filter(Like.user_id == user_id)
+def toggle_like(db: Session, user_id: int, video_id: Optional[int] = None, post_id: Optional[int] = None, comment_id: Optional[int] = None):
     if video_id:
-        query = query.filter(Like.video_id == video_id)
-    elif post_id:
-        query = query.filter(Like.post_id == post_id)
-    else:
-        return False
+        existing = db.query(Like).filter(Like.user_id == user_id, Like.video_id == video_id).first()
+        if existing:
+            db.delete(existing)
+            db.query(Video).filter(Video.id == video_id).update({"likes_count": Video.likes_count - 1}, synchronize_session=False)
+            db.commit()
+            return False
+        else:
+            new_like = Like(user_id=user_id, video_id=video_id)
+            db.add(new_like)
+            db.query(Video).filter(Video.id == video_id).update({"likes_count": Video.likes_count + 1}, synchronize_session=False)
+            db.commit()
+            return True
+            
+    if post_id:
+        existing = db.query(Like).filter(Like.user_id == user_id, Like.post_id == post_id).first()
+        if existing:
+            db.delete(existing)
+            db.query(Post).filter(Post.id == post_id).update({"likes_count": Post.likes_count - 1}, synchronize_session=False)
+            db.commit()
+            return False
+        else:
+            new_like = Like(user_id=user_id, post_id=post_id)
+            db.add(new_like)
+            db.query(Post).filter(Post.id == post_id).update({"likes_count": Post.likes_count + 1}, synchronize_session=False)
+            db.commit()
+            return True
 
+    if comment_id:
+        existing = db.query(Like).filter(Like.user_id == user_id, Like.comment_id == comment_id).first()
+        if existing:
+            db.delete(existing)
+            comment = db.query(Comment).filter(Comment.id == comment_id).first()
+            if comment:
+                comment.likes_count = (comment.likes_count or 0) - 1
+            db.commit()
+            return False
+        else:
+            new_like = Like(user_id=user_id, comment_id=comment_id)
+            db.add(new_like)
+            comment = db.query(Comment).filter(Comment.id == comment_id).first()
+            if comment:
+                comment.likes_count = (comment.likes_count or 0) + 1
+            db.commit()
+            return True
 
+    return False
 
-    existing = query.first()
-    if existing:
-        db.delete(existing)
-        if video_id:
-            db.query(Video).filter(Video.id == video_id).update({"likes_count": Video.likes_count - 1})
-        elif post_id:
-            db.query(Post).filter(Post.id == post_id).update({"likes_count": Post.likes_count - 1})
-        db.commit()
-        return False
-    else:
-        new_like = Like(user_id=user_id, video_id=video_id, post_id=post_id)
-        db.add(new_like)
-        if video_id:
-            db.query(Video).filter(Video.id == video_id).update({"likes_count": Video.likes_count + 1})
-        elif post_id:
-            db.query(Post).filter(Post.id == post_id).update({"likes_count": Post.likes_count + 1})
-        db.commit()
-
-        return True
-
-def handle_like_side_effects(db: Session, user_id: int, video_id: Optional[int] = None, post_id: Optional[int] = None):
+def handle_like_side_effects(db: Session, user_id: int, video_id: Optional[int] = None, post_id: Optional[int] = None, comment_id: Optional[int] = None):
     """
     Perform secondary tasks after a like is created:
     - Update discovery score
@@ -266,6 +284,15 @@ def handle_like_side_effects(db: Session, user_id: int, video_id: Optional[int] 
             if target:
                 msg = f"{liker.username} liked your post"
                 link = "/posts"
+        elif comment_id:
+            target = db.query(Comment).filter(Comment.id == comment_id).first()
+            if target:
+                msg = f"{liker.username} liked your comment"
+                # If it's a comment on a video, link to the video
+                if target.video_id:
+                    link = f"/watch/{target.video_id}"
+                elif target.post_id:
+                    link = "/posts"
 
         if target and target.owner_id != user_id:
             notify_user_push(db, target.owner_id, "New Like!", msg, link=link, n_type="like")
@@ -407,13 +434,42 @@ def handle_comment_side_effects(db: Session, user_id: int, video_id: Optional[in
         import logging
         logging.getLogger(__name__).error(f"Failed to handle comment side effects: {e}")
 
-def get_comments(db: Session, video_id: Optional[int] = None, post_id: Optional[int] = None):
+def get_comments(db: Session, video_id: Optional[int] = None, post_id: Optional[int] = None, current_user_id: Optional[int] = None):
     query = db.query(Comment).filter(Comment.parent_id == None) # Only get root comments
     if video_id:
         query = query.filter(Comment.video_id == video_id)
     elif post_id:
         query = query.filter(Comment.post_id == post_id)
-    return query.order_by(Comment.created_at.desc()).all()
+    
+    comments = query.order_by(Comment.created_at.desc()).all()
+    
+    if current_user_id and comments:
+        comment_ids = []
+        def collect_ids(cms):
+            for c in cms:
+                comment_ids.append(c.id)
+                if c.replies:
+                    collect_ids(c.replies)
+        collect_ids(comments)
+        
+        liked_result = db.query(Like.comment_id).filter(Like.user_id == current_user_id, Like.comment_id.in_(comment_ids)).all()
+        liked_comment_ids = {r[0] for r in liked_result}
+        
+        def mark_liked(cms):
+            for c in cms:
+                c.is_liked = c.id in liked_comment_ids
+                if c.replies:
+                    mark_liked(c.replies)
+        mark_liked(comments)
+    else:
+        def mark_not_liked(cms):
+            for c in cms:
+                c.is_liked = False
+                if c.replies:
+                    mark_not_liked(c.replies)
+        mark_not_liked(comments)
+        
+    return comments
 
 def delete_video(db: Session, video_id: int):
     video = db.query(Video).filter(Video.id == video_id).first()

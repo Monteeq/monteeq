@@ -3215,6 +3215,46 @@ button,
   word-break: break-word;
 }
 
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-top: 0.5rem;
+}
+
+.comment-action-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.comment-action-btn:hover {
+  color: var(--text-primary);
+}
+
+.comment-action-btn.liked {
+  color: var(--accent-primary);
+}
+
+.comment-action-btn.reply-btn {
+  color: var(--accent-primary);
+  font-weight: 700;
+}
+
+.like-heart {
+  font-size: 1.1rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -4765,7 +4805,7 @@ input.error-input {
   color: white;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;

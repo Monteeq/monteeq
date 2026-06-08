@@ -987,11 +987,11 @@ def create_comment(
     return db_comment
 
 @router.get("/{video_id}/comments", response_model=List[schemas.Comment])
-def read_comments(video_id: str, db: Session = Depends(get_db)):
+def read_comments(video_id: str, db: Session = Depends(get_db), current_user: Optional[User] = Depends(get_current_user_optional)):
     video = crud_video.get_video(db, video_id=video_id)
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
-    return crud_video.get_comments(db, video_id=video.id)
+    return crud_video.get_comments(db, video_id=video.id, current_user_id=current_user.id if current_user else None)
 
 def handle_like_background(user_id: int, video_id: int):
     """Background task to handle side effects of a video like."""

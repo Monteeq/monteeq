@@ -7,7 +7,7 @@ from app.db.session import get_db, SessionLocal
 from app.core.dependencies import get_current_user, get_current_user_optional
 from app.schemas import schemas
 from app.core import config
-from app.models.models import Post, Follow, Like, Comment
+from app.models.models import Post, Follow, Like, Comment, User
 from app.crud import video as crud_video
 from sqlalchemy import case, func
 
@@ -181,8 +181,8 @@ def comment_post(
     return db_comment
 
 @router.get("/{post_id}/comments", response_model=List[schemas.Comment])
-def read_post_comments(post_id: int, db: Session = Depends(get_db)):
-    return crud_video.get_comments(db, post_id=post_id)
+def read_post_comments(post_id: int, db: Session = Depends(get_db), current_user: Optional[User] = Depends(get_current_user_optional)):
+    return crud_video.get_comments(db, post_id=post_id, current_user_id=current_user.id if current_user else None)
 
 @router.delete("/{post_id}")
 def delete_post(
