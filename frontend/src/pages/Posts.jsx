@@ -88,9 +88,8 @@ const Posts = () => {
     };
 
     const handleLike = async (id) => {
-        let error;
         if (!token) {
-            showNotification('error', error?.message || 'Please login to like');
+            showNotification('error', 'Please login to like');
             return;
         }
         try {
@@ -112,9 +111,8 @@ const Posts = () => {
     };
 
     const handleRepost = async (id) => {
-        let error;
         if (!token) {
-            showNotification('error', error?.message || 'Please login to repost');
+            showNotification('error', 'Please login to repost');
             return;
         }
         try {
@@ -127,7 +125,7 @@ const Posts = () => {
                 setSkip(0);
                 fetchPosts(true);
             } else {
-                showNotification('error', error?.message || 'Failed to repost');
+                showNotification('error', 'Failed to repost');
             }
         } catch (error) {
             showNotification('error', error?.message || 'Something went wrong while reposting');

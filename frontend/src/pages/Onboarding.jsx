@@ -15,8 +15,8 @@ const Onboarding = () => {
     const navigate = useNavigate();
 
     const categories = [
-        "AMV/GMV", "Velocity", "3D & VFX", "Phonk / Drift", "Aesthetic",
-        "Hard & Hyper", "Typography", "Smooth Flow", "Glitch", "Mood & Sad"
+        "AMV/Anime", "gaming", "Football", "Movies/Series", "Animation",
+        "Comedy", "Fun", "Dance", "Mood & Sad"
     ];
 
     const toggleInterest = (cat) => {
@@ -127,7 +127,18 @@ const Onboarding = () => {
                                 </div>
                             </motion.div>
                             <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>{steps[step - 1].title}</h1>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>{steps[step - 1].subtitle}</p>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>
+                                {steps[step - 1].subtitle}
+                                {step === 1 && (
+                                    <span style={{
+                                        marginLeft: '0.6rem',
+                                        fontWeight: '700',
+                                        color: interests.length >= 3 ? '#4caf50' : 'var(--text-secondary)'
+                                    }}>
+                                        ({interests.length}/3 selected)
+                                    </span>
+                                )}
+                            </p>
                         </div>
 
                         <div className="onboarding-content" style={{ minHeight: '300px' }}>

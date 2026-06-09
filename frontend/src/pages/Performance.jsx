@@ -500,7 +500,7 @@ const Performance = () => {
                             Schedule Next Flash upload
                             <ChevronRight size={18} />
                         </button>
-                        <button className="action-btn" onClick={() => navigate('/creator-hub')}>
+                        <button className="action-btn" onClick={() => navigate('/challenges')}>
                             Join Gold Challenge
                             <Target size={18} />
                         </button>

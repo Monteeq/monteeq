@@ -189,7 +189,7 @@ const Search = () => {
                                         key={video.id}
                                         video={video}
                                         variant="list"
-                                        onClick={() => navigate(video.video_type === 'flash' ? '/flash' : `/watch/${video.id}`)}
+                                        onClick={() => navigate(video.video_type === 'flash' ? `/flash/${video.id}` : `/watch/${video.id}`)}
                                     />
                                 ))}
                             </div>
