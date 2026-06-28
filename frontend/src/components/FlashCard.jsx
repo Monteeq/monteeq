@@ -50,44 +50,88 @@ const FlashCard = ({
     // Stream Proxy URL
     const streamUrl = useMemo(() => getStreamUrl(video.video_url, video.id), [video.video_url, video.id]);
 
+    // ─── Effect 1: HLS Initialisation ────────────────────────────────────────
+    // Runs only when the video source or render eligibility changes.
+    // Loads the manifest + starts buffering immediately, even before this card is active.
     useEffect(() => {
         if (!videoRef.current || !shouldRender) return;
-        let viewTimer = null;
 
-        // Initialize HLS
         if (Hls.isSupported() && streamUrl?.includes('.m3u8')) {
             const hls = new Hls({
-                capLevelToPlayerSize: true,
+                capLevelToPlayerSize: false,
+                startLevel: 0,
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
+                lowLatencyMode: false,
+                progressive: true,
                 autoStartLoad: true,
             });
             hls.loadSource(streamUrl);
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
 
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                if (isActive) videoRef.current.play().catch(() => { });
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            break;
+                    }
+                }
             });
         } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
             videoRef.current.src = streamUrl;
+            videoRef.current.load();
         } else {
             videoRef.current.src = streamUrl;
+            videoRef.current.load();
         }
+
+        return () => {
+            if (hlsRef.current) {
+                hlsRef.current.destroy();
+                hlsRef.current = null;
+            }
+        };
+    }, [streamUrl, shouldRender]);
+
+    // ─── Effect 2: Play / Pause Control ──────────────────────────────────────
+    // Runs when active state or mute changes. HLS is already loaded; just play or pause.
+    useEffect(() => {
+        if (!videoRef.current) return;
+        let viewTimer = null;
 
         if (isActive) {
             videoRef.current.muted = muted;
-            videoRef.current.play().catch(() => { });
+
+            const hls = hlsRef.current;
+            if (hls) {
+                if (hls.media?.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                    videoRef.current.play().catch(() => {});
+                } else {
+                    hls.once(Hls.Events.MANIFEST_PARSED, () => {
+                        videoRef.current?.play().catch(() => {});
+                    });
+                }
+            } else {
+                videoRef.current.play().catch(() => {});
+            }
 
             setPlaying(true);
             entryTime.current = Date.now();
             const vDuration = videoRef.current.duration || video.duration || 0;
             trackingManager.startSession(video.id, vDuration);
 
-            // Count view after 3 seconds of active watching
             viewTimer = setTimeout(async () => {
                 try {
                     await viewVideo(video.id);
                 } catch (err) {
-                    console.error("Failed to count view", err);
+                    console.error('Failed to count view', err);
                 }
             }, 3000);
         } else {
@@ -100,17 +144,15 @@ const FlashCard = ({
                 adaptiveDiscovery.recordWatch(video.id, watchMs, durTime * 1000, video.mood);
                 trackingManager.endSession(video.id);
 
-                // Persist history on exit
                 if (curTime > 2) {
                     trackHistory.mutate({
                         video_id: video.id,
                         progress_seconds: curTime,
                         duration_seconds: durTime,
-                        is_completed: curTime >= durTime * 0.9 && durTime > 0
+                        is_completed: curTime >= durTime * 0.9 && durTime > 0,
                     });
                 }
             }
-            if (viewTimer) clearTimeout(viewTimer);
 
             videoRef.current.pause();
             videoRef.current.currentTime = 0;
@@ -121,12 +163,8 @@ const FlashCard = ({
 
         return () => {
             if (viewTimer) clearTimeout(viewTimer);
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-                hlsRef.current = null;
-            }
         };
-    }, [isActive, video.status, video.id, muted, streamUrl, shouldRender]);
+    }, [isActive, muted, video.id, video.status]);
 
     const handleTimeUpdate = (e) => {
         const { currentTime: curTime, duration: dur } = e.target;
@@ -251,9 +289,9 @@ const FlashCard = ({
                 {shouldRender ? (
                     <video
                         ref={videoRef}
+                        preload="none"
                         loop={!isSmartMode}
                         playsInline
-                        autoPlay
                         muted={muted}
                         onTimeUpdate={handleTimeUpdate}
                         onWaiting={() => setIsBuffering(true)}
@@ -305,7 +343,7 @@ const FlashCard = ({
 
                 {video.status === 'pending' && (
                     <div className={s.statusOverlay}>
-                        <Loader2 className="animate-spin" size={40} color="var(--accent-primary)" />
+                        <Loader2 className={s.spinner} size={40} color="var(--accent-primary)" />
                     </div>
                 )}
             </div>

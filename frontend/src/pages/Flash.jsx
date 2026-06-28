@@ -8,7 +8,7 @@ import CommentsDrawer from '../components/CommentsDrawer';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { FlashSkeleton } from '../components/Skeleton';
-import { Flame, Star, ChevronUp, ChevronDown, Sparkles, Zap, Users } from 'lucide-react';
+import { Flame, Star, ChevronUp, ChevronDown, Sparkles, Loader2, Users } from 'lucide-react';
 import NativeFeedAd from '../components/ads/NativeFeedAd';
 import SEO from '../components/SEO';
 
@@ -368,7 +368,7 @@ const Flash = () => {
     // ─────────────────────────────────────────────────────────────────────────
     const visibleClips = useMemo(() => {
         const activeIndex = clips.findIndex(c => c.id.toString() === activeVideoId?.toString());
-        const buffer = scrollVelocity > 1.5 ? 3 : 1;
+        const buffer = scrollVelocity > 1.5 ? 3 : 2;
         return clips.map((clip, index) => ({
             ...clip,
             shouldRender: Math.abs(activeIndex - index) <= buffer,
@@ -497,12 +497,19 @@ const Flash = () => {
                     onTouchEnd={handleTouchEnd}
                 >
                 {clips.length === 0 && !loading && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)', zIndex: 10 }}>
-                        <Flame size={48} color="rgba(255,255,255,0.2)" style={{ marginBottom: '1rem' }} />
-                        {isOffline
-                            ? <><h3>You're offline</h3><p style={{ opacity: 0.6 }}>Check your connection and pull to refresh</p></>
-                            : <><h3>No clips found</h3><p style={{ opacity: 0.6 }}>Try a different category or upload some!</p></>
-                        }
+                    <div className={s.emptyState}>
+                        <Flame size={48} className={s.emptyStateIcon} />
+                        {isOffline ? (
+                            <>
+                                <h3 className={s.emptyStateTitle}>You're offline</h3>
+                                <p className={s.emptyStateSubline}>Cached feed unavailable — reconnect to keep watching</p>
+                            </>
+                        ) : (
+                            <>
+                                <h3 className={s.emptyStateTitle}>Nothing here yet</h3>
+                                <p className={s.emptyStateSubline}>Try a different mood or be the first to post</p>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -529,13 +536,19 @@ const Flash = () => {
                     ))}
 
                     {loadingMore && (
-                        <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem', opacity: 0.5 }}>
-                            <Zap size={24} className="animate-spin" />
+                        <div className={s.loadingMore}>
+                            <Loader2 size={24} className={s.loadingIcon} />
                         </div>
                     )}
                 </div>
 
-                <div className={s.navControls}>
+                <div
+                    className={s.navControls}
+                    title="↑↓ or W/S to navigate • Space/K to pause • M to mute • L to like • C for comments"
+                >
+                    <span className={s.keyboardHint} aria-hidden="true">
+                        ↑↓ or W/S to navigate • Space/K to pause • M to mute • L to like • C for comments
+                    </span>
                     <button className={s.navBtn} onClick={scrollPrev}><ChevronUp size={28} /></button>
                     <button className={s.navBtn} onClick={scrollNext}><ChevronDown size={28} /></button>
                 </div>
