@@ -304,9 +304,10 @@ const CommentItem = ({
                                 style={{
                                     background: 'var(--accent-primary)',
                                     border: 'none',
-                                    borderRadius: '8px',
-                                    width: '36px',
-                                    height: '36px',
+                                    borderRadius: '10px',
+                                    width: '48px',
+                                    height: '48px',
+                                    flexShrink: 0,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -314,7 +315,7 @@ const CommentItem = ({
                                     opacity: replyComment.trim() ? 1 : 0.5
                                 }}
                             >
-                                <Send size={20} color="white" />
+                                <Send size={26} color="white" />
                             </button>
                         </form>
                     )}

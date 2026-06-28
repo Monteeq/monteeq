@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, User } from 'lucide-react';
+import { X, Send, User, Loader2 } from 'lucide-react';
 import { getComments, postComment, updateComment, deleteComment } from '../api';
 import { useAuth } from '../context/AuthContext';
 import CommentItem from './CommentItem';
@@ -11,6 +11,7 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose, initialComment
     const [loading, setLoading] = useState(initialComments === null);
     const [replyingTo, setReplyingTo] = useState(null);
     const [replyComment, setReplyComment] = useState('');
+    const [posting, setPosting] = useState(false);
     const commentsBottomRef = useRef(null);
 
     const getTotalComments = (list) => {
@@ -47,8 +48,9 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose, initialComment
     const handlePost = async (e, parentId = null) => {
         if (e) e.preventDefault();
         const content = parentId ? replyComment : newComment;
-        if (!content.trim() || !user) return;
+        if (!content.trim() || !user || posting) return;
 
+        setPosting(true);
         try {
             const addedComment = await postComment({
                 videoId,
@@ -74,6 +76,8 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose, initialComment
             }
         } catch (err) {
             console.error(err);
+        } finally {
+            setPosting(false);
         }
     };
 
@@ -163,12 +167,15 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose, initialComment
                             </button>
                             <button
                                 type="submit"
-                                disabled={!newComment.trim()}
+                                disabled={!newComment.trim() || posting}
                                 className="send-btn"
                                 title="Post comment"
                             >
-                                <Send size={24} />
-                                <span>Post</span>
+                                {posting
+                                    ? <Loader2 size={24} className="comment-spinner" />
+                                    : <Send size={24} />
+                                }
+                                <span>{posting ? 'Posting...' : 'Post'}</span>
                             </button>
                         </form>
                     ) : (
