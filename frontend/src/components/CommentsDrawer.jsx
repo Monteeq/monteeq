@@ -4,11 +4,11 @@ import { getComments, postComment, updateComment, deleteComment } from '../api';
 import { useAuth } from '../context/AuthContext';
 import CommentItem from './CommentItem';
 
-const CommentsDrawer = ({ videoId = null, postId = null, onClose }) => {
+const CommentsDrawer = ({ videoId = null, postId = null, onClose, initialComments = null }) => {
     const { user, token } = useAuth();
-    const [comments, setComments] = useState([]);
+    const [comments, setComments] = useState(initialComments ?? []);
     const [newComment, setNewComment] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(initialComments === null);
     const [replyingTo, setReplyingTo] = useState(null);
     const [replyComment, setReplyComment] = useState('');
     const commentsBottomRef = useRef(null);
@@ -20,18 +20,21 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose }) => {
     const totalCount = getTotalComments(comments);
 
     useEffect(() => {
+        if (!videoId && !postId) return;
+
         const fetchComments = async () => {
-            setLoading(true);
+            if (initialComments === null) setLoading(true);
             try {
                 const data = await getComments(videoId, postId, token);
                 setComments(Array.isArray(data) ? data : []);
             } catch (err) {
-                console.error("Failed comments", err);
+                console.error('Failed comments', err);
             } finally {
                 setLoading(false);
             }
         };
-        if (videoId || postId) fetchComments();
+
+        fetchComments();
     }, [videoId, postId]);
 
     useEffect(() => {

@@ -21,7 +21,8 @@ const FlashCard = ({
     onShare,
     muted,
     toggleMute,
-    shouldRender = true
+    shouldRender = true,
+    onPrefetchComments,
 }) => {
     const navigate = useNavigate();
     const { openReportModal } = useReport();
@@ -357,7 +358,12 @@ const FlashCard = ({
                     <span className={s.label}>{video.likes_count || 0}</span>
                 </div>
 
-                <div className={s.action} onClick={(e) => { e.stopPropagation(); onComment(video.id); }}>
+                <div
+                    className={s.action}
+                    onClick={(e) => { e.stopPropagation(); onComment(video.id); }}
+                    onMouseEnter={() => onPrefetchComments?.(video.id)}
+                    onPointerDown={() => onPrefetchComments?.(video.id)}
+                >
                     <div className={s.iconCircle}><MessageCircle size={26} /></div>
                     <span className={s.label}>{video.comments_count || 0}</span>
                 </div>

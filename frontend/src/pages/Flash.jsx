@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { likeVideo, shareVideo, getCategories, getCategoryVideos, getVideoById } from '../api';
+import { likeVideo, shareVideo, getCategories, getCategoryVideos, getVideoById, getComments } from '../api';
 import FlashCard from '../components/FlashCard';
 import AmbientBackdrop from '../components/AmbientBackdrop';
 import DesktopSidebar from '../components/DesktopSidebar';
@@ -91,6 +91,25 @@ const Flash = () => {
     activeVideoIdRef.current = activeVideoId;
     const activeCommentVideoIdRef = useRef(activeCommentVideoId);
     activeCommentVideoIdRef.current = activeCommentVideoId;
+
+    const commentCacheRef = useRef({});
+    const prefetchingRef = useRef(new Set());
+
+    const prefetchComments = useCallback((videoId) => {
+        if (!videoId) return;
+        if (commentCacheRef.current[videoId]) return;
+        if (prefetchingRef.current.has(videoId)) return;
+
+        prefetchingRef.current.add(videoId);
+        getComments(videoId, null, token)
+            .then(data => {
+                commentCacheRef.current[videoId] = Array.isArray(data) ? data : [];
+                prefetchingRef.current.delete(videoId);
+            })
+            .catch(() => {
+                prefetchingRef.current.delete(videoId);
+            });
+    }, [token]);
 
     // Touch swipe tracking
     const touchStartY = useRef(null);
@@ -394,6 +413,10 @@ const Flash = () => {
         }
     }, [activeVideoId]);
 
+    useEffect(() => {
+        if (activeVideoId) prefetchComments(activeVideoId);
+    }, [activeVideoId, prefetchComments]);
+
     // ─────────────────────────────────────────────────────────────────────────
     const handleLike = useCallback(async (id) => {
         if (!token) {
@@ -525,6 +548,7 @@ const Flash = () => {
                                     muted={muted}
                                     toggleMute={handleToggleMute}
                                     shouldRender={clip.shouldRender}
+                                    onPrefetchComments={prefetchComments}
                                 />
                             </div>
                             {(index + 1) % 5 === 0 && !user?.is_premium && (
@@ -558,6 +582,7 @@ const Flash = () => {
                 <CommentsDrawer
                     videoId={activeCommentVideoId}
                     onClose={() => setActiveCommentVideoId(null)}
+                    initialComments={commentCacheRef.current[activeCommentVideoId] ?? null}
                 />
             )}
         </div>
