@@ -264,15 +264,23 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
 
                     {/* Watch Later Button Overlay */}
                     <button
+                        type="button"
                         className={`vc-watch-later-btn ${isSaved ? 'saved' : ''}`}
                         onClick={handleWatchLaterClick}
                         title={isSaved ? "Remove from Watch Later" : "Watch Later"}
+                        aria-label={isSaved ? "Remove from Watch Later" : "Watch Later"}
                         disabled={isAddingOrRemoving}
                     >
                         {isAddingOrRemoving ? (
                             <Loader2 className="vc-spin" size={14} />
                         ) : (
-                            <Bookmark size={14} fill={isSaved ? "currentColor" : "none"} />
+                            <Bookmark
+                                size={34}
+                                color="currentColor"
+                                stroke="currentColor"
+                                fill={isSaved ? "currentColor" : "none"}
+                                strokeWidth={2}
+                            />
                         )}
                     </button>
 
