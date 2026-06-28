@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import Hls from 'hls.js';
 import { Heart, MessageCircle, Share2, Trophy, Volume2, VolumeX, Loader2, Flag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -38,6 +38,7 @@ const FlashCard = ({
     const [isBuffering, setIsBuffering] = useState(false);
     const [isScrubbing, setIsScrubbing] = useState(false);
     const [hearts, setHearts] = useState([]);
+    const [videoDimensions, setVideoDimensions] = useState(null);
     const hlsRef = useRef(null);
 
     // Interaction Tracking
@@ -50,6 +51,18 @@ const FlashCard = ({
 
     // Stream Proxy URL
     const streamUrl = useMemo(() => getStreamUrl(video.video_url, video.id), [video.video_url, video.id]);
+
+    useEffect(() => {
+        setVideoDimensions(null);
+    }, [video.id]);
+
+    const handleMetadata = useCallback(() => {
+        if (!videoRef.current) return;
+        const { videoWidth, videoHeight } = videoRef.current;
+        if (videoWidth > 0 && videoHeight > 0) {
+            setVideoDimensions({ width: videoWidth, height: videoHeight });
+        }
+    }, []);
 
     // ─── Effect 1: HLS Initialisation ────────────────────────────────────────
     // Runs only when the video source or render eligibility changes.
@@ -276,8 +289,14 @@ const FlashCard = ({
         tapRef.current = now;
     };
 
+    const cardStyle = useMemo(() => {
+        if (!videoDimensions) return {};
+        const { width, height } = videoDimensions;
+        return { aspectRatio: `${width} / ${height}` };
+    }, [videoDimensions]);
+
     return (
-        <div className={s.card}>
+        <div className={s.card} style={cardStyle}>
             <div className={s.ambientGlow} style={{ backgroundImage: `url(${video.thumbnail_url})` }} />
             <div className={s.hookBar} style={{ width: `${hookProgress}%`, opacity: hookProgress === 100 ? 0 : 1 }} />
 
@@ -294,6 +313,7 @@ const FlashCard = ({
                         loop={!isSmartMode}
                         playsInline
                         muted={muted}
+                        onLoadedMetadata={handleMetadata}
                         onTimeUpdate={handleTimeUpdate}
                         onWaiting={() => setIsBuffering(true)}
                         onPlaying={() => setIsBuffering(false)}
