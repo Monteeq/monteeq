@@ -62,6 +62,21 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Check HF Token Presence
+        env:
+          TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "=========================================================================="
+            echo "❌ ERROR: HF_TOKEN is empty or missing in GitHub Secrets!"
+            echo "Please go to Repository Settings -> Secrets and variables -> Actions"
+            echo "and ensure a Repository Secret named HF_TOKEN is added with your write token."
+            echo "=========================================================================="
+            exit 1
+          else
+            echo "✅ HF_TOKEN secret is found in workflow environment."
+          fi
+
       - name: Push backend to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -113,6 +128,21 @@ jobs:
           fetch-depth: 0
           lfs: true
 
+      - name: Check HF Token Presence
+        env:
+          TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "=========================================================================="
+            echo "❌ ERROR: HF_TOKEN is empty or missing in GitHub Secrets!"
+            echo "Please go to Repository Settings -> Secrets and variables -> Actions"
+            echo "and ensure a Repository Secret named HF_TOKEN is added with your write token."
+            echo "=========================================================================="
+            exit 1
+          else
+            echo "✅ HF_TOKEN secret is found in workflow environment."
+          fi
+
       - name: Push video service to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -144,6 +174,7 @@ jobs:
           Message: ${{ github.event.head_commit.message }}"
           git push
           echo "✅ Deployed to https://huggingface.co/spaces/MonteeqOrg/readme"
+
 
 
 
