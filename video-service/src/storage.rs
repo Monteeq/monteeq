@@ -32,7 +32,11 @@ impl StorageManager {
         // Handle custom endpoint (e.g. Backblaze)
         if let Ok(endpoint) = std::env::var("S3_ENDPOINT") {
             println!("Rust: Using custom S3 endpoint: {}", endpoint);
-            s3_config_builder = s3_config_builder.endpoint_url(endpoint);
+            s3_config_builder = s3_config_builder.endpoint_url(endpoint.clone());
+            if !endpoint.contains("amazonaws.com") {
+                println!("Rust: Enabling force_path_style for custom endpoint");
+                s3_config_builder = s3_config_builder.force_path_style(true);
+            }
         }
 
         // Build S3 config with optional Transfer Acceleration
