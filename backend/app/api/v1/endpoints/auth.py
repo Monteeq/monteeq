@@ -12,6 +12,9 @@ from app.schemas import schemas
 from app.models.models import User, UserSession
 from app.services.email_service import send_verification_email
 import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

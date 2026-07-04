@@ -748,10 +748,10 @@ def send_security_email(to_email: str, template_type: str, username: str, **kwar
     heading = _v['heading'].format(username=username, **kwargs)
     body = _v['body'].format(username=username, **kwargs)
     action_text = _v.get('action_text', 'Secure Account')
-    
+    body_html = body.replace('\n', '<br>')
     content_html = f"""
   <p style="{_H}">{heading}</p>
-  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+  <p style="{_B}">{body_html}</p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
     <tr><td align="center">{_primary_button(action_text, "https://monteeq.com/settings/security")}</td></tr>
@@ -768,10 +768,10 @@ def send_subscription_email(to_email: str, template_type: str, username: str, **
     heading = _v['heading'].format(username=username, **kwargs)
     body = _v['body'].format(username=username, **kwargs)
     action_text = _v.get('action_text', 'Learn More')
-    
+    body_html = body.replace('\n', '<br>')
     content_html = f"""
   <p style="{_H}">{heading}</p>
-  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+  <p style="{_B}">{body_html}</p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
     <tr><td align="center">{_primary_button(action_text, "https://monteeq.com/pro")}</td></tr>
@@ -794,10 +794,10 @@ def send_first_comment_email(to_email: str, username: str, video_title: str, com
     heading = _v['heading'].format(**fmt)
     body = _v['body'].format(**fmt)
     action_text = _v.get('action_text', 'View Comment')
-
+    body_html = body.replace('\n', '<br>')
     content_html = f"""
   <p style="{_H}">{heading}</p>
-  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+  <p style="{_B}">{body_html}</p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
     <tr><td align="center">{_primary_button(action_text, video_url)}</td></tr>
@@ -819,10 +819,10 @@ def send_mention_email(to_email: str, username: str, mentioner_name: str, contex
     heading = _v['heading'].format(**fmt)
     body = _v['body'].format(**fmt)
     action_text = _v.get('action_text', 'View Mention')
-
+    body_html = body.replace('\n', '<br>')
     content_html = f"""
   <p style="{_H}">{heading}</p>
-  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+  <p style="{_B}">{body_html}</p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
     <tr><td align="center">{_primary_button(action_text, action_url)}</td></tr>
@@ -840,10 +840,10 @@ def send_growth_drip_email(to_email: str, username: str, week: int) -> bool:
     heading = _v['heading'].format(username=username)
     body = _v['body'].format(username=username)
     action_text = _v.get('action_text', 'Learn More')
-
+    body_html = body.replace('\n', '<br>')
     content_html = f"""
   <p style="{_H}">{heading}</p>
-  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+  <p style="{_B}">{body_html}</p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
     <tr><td align="center">{_primary_button(action_text, "https://monteeq.com/settings/profile")}</td></tr>
@@ -860,10 +860,10 @@ def send_celebration_email(to_email: str, username: str, template_type: str, **k
     heading = _v['heading'].format(username=username, **kwargs)
     body = _v['body'].format(username=username, **kwargs)
     action_text = _v.get('action_text', 'View Milestone')
-
+    body_html = body.replace('\n', '<br>')
     content_html = f"""
   <p style="{_H}">{heading}</p>
-  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+  <p style="{_B}">{body_html}</p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
     <tr><td align="center">{_primary_button(action_text, "https://monteeq.com")}</td></tr>
@@ -880,10 +880,10 @@ def send_social_batch_email(to_email: str, username: str, summary_text: str) -> 
     heading = _v['heading'].format(username=username)
     body = _v['body'].format(username=username, summary_text=summary_text)
     action_text = _v.get('action_text', 'View Notifications')
-
+    body_html = body.replace('\n', '<br>')
     content_html = f"""
   <p style="{_H}">{heading}</p>
-  <p style="{_B}">{body.replace('\n', '<br>')}</p>
+  <p style="{_B}">{body_html}</p>
 
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
     <tr><td align="center">{_primary_button(action_text, "https://monteeq.com/notifications")}</td></tr>
