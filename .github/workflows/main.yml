@@ -72,7 +72,7 @@ jobs:
           git lfs install
 
           # Clone the HF Space repo
-          git clone https://MonteeqOrg:${HF_TOKEN}@huggingface.co/spaces/MonteeqOrg/backend hf-space
+          git clone https://MonteeqOrg:${HF_TOKEN}@huggingface.co/spaces/MonteeqOrg/backend hf-space || { echo "Git clone failed"; exit 1; }
 
           # Sync backend/ contents into the Space (delete removed files too)
           rsync -av --delete \
@@ -89,7 +89,7 @@ jobs:
             backend/ hf-space/
 
           # Commit and push if anything changed
-          cd hf-space
+          cd hf-space || { echo "Directory not found"; exit 1; }
           git add -A
           git diff --staged --quiet && echo "No changes to deploy" && exit 0
           git commit -m "🚀 Deploy from GitHub @ ${{ github.sha }}
@@ -98,6 +98,7 @@ jobs:
           Message: ${{ github.event.head_commit.message }}"
           git push
           echo "✅ Deployed to https://huggingface.co/spaces/MonteeqOrg/backend"
+
 
   deploy-video-service:
     runs-on: ubuntu-latest
@@ -122,7 +123,7 @@ jobs:
           git lfs install
 
           # Clone the HF Space repo for video-service (readme)
-          git clone https://MonteeqOrg:${HF_TOKEN}@huggingface.co/spaces/MonteeqOrg/readme hf-video-space
+          git clone https://MonteeqOrg:${HF_TOKEN}@huggingface.co/spaces/MonteeqOrg/readme hf-video-space || { echo "Git clone failed"; exit 1; }
 
           # Sync video-service/ contents into the Space (delete removed files too)
           rsync -av --delete \
@@ -134,7 +135,7 @@ jobs:
             video-service/ hf-video-space/
 
           # Commit and push if anything changed
-          cd hf-video-space
+          cd hf-video-space || { echo "Directory not found"; exit 1; }
           git add -A
           git diff --staged --quiet && echo "No changes to deploy" && exit 0
           git commit -m "🚀 Deploy from GitHub @ ${{ github.sha }}
@@ -143,5 +144,6 @@ jobs:
           Message: ${{ github.event.head_commit.message }}"
           git push
           echo "✅ Deployed to https://huggingface.co/spaces/MonteeqOrg/readme"
+
 
 
