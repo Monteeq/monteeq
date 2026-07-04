@@ -72,7 +72,7 @@ jobs:
           git lfs install
 
           # Clone the HF Space repo
-          git clone https://MonteeqOrg:${HF_TOKEN}@huggingface.co/spaces/MonteeqOrg/backend hf-space || { echo "Git clone failed"; exit 1; }
+          git clone https://user:${HF_TOKEN}@huggingface.co/spaces/MonteeqOrg/backend hf-space || { echo "Git clone failed"; exit 1; }
 
           # Sync backend/ contents into the Space (delete removed files too)
           rsync -av --delete \
@@ -123,7 +123,7 @@ jobs:
           git lfs install
 
           # Clone the HF Space repo for video-service (readme)
-          git clone https://MonteeqOrg:${HF_TOKEN}@huggingface.co/spaces/MonteeqOrg/readme hf-video-space || { echo "Git clone failed"; exit 1; }
+          git clone https://user:${HF_TOKEN}@huggingface.co/spaces/MonteeqOrg/readme hf-video-space || { echo "Git clone failed"; exit 1; }
 
           # Sync video-service/ contents into the Space (delete removed files too)
           rsync -av --delete \
@@ -144,6 +144,7 @@ jobs:
           Message: ${{ github.event.head_commit.message }}"
           git push
           echo "✅ Deployed to https://huggingface.co/spaces/MonteeqOrg/readme"
+
 
 
 
