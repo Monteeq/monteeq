@@ -97,3 +97,48 @@ jobs:
           Message: ${{ github.event.head_commit.message }}"
           git push
           echo "✅ Deployed to https://huggingface.co/spaces/MonteeqOrg/backend"
+
+  deploy-video-service:
+    runs-on: ubuntu-latest
+    needs: lint
+    # Only deploy on pushes to main (not on PRs)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Push video service to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # Configure git
+          git config --global user.email "ci@monteeq.com"
+          git config --global user.name "Monteeq CI"
+          git lfs install
+
+          # Clone the HF Space repo for video-service (readme)
+          git clone https://MonteeqOrg:${HF_TOKEN}@huggingface.co/spaces/MonteeqOrg/readme hf-video-space
+
+          # Sync video-service/ contents into the Space (delete removed files too)
+          rsync -av --delete \
+            --exclude='target/' \
+            --exclude='.env' \
+            --exclude='*.jpg' \
+            --exclude='deploy_hf.sh' \
+            video-service/ hf-video-space/
+
+          # Commit and push if anything changed
+          cd hf-video-space
+          git add -A
+          git diff --staged --quiet && echo "No changes to deploy" && exit 0
+          git commit -m "🚀 Deploy from GitHub @ ${{ github.sha }}
+
+          Triggered by: ${{ github.actor }}
+          Message: ${{ github.event.head_commit.message }}"
+          git push
+          echo "✅ Deployed to https://huggingface.co/spaces/MonteeqOrg/readme"
+
