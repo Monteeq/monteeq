@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Set
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
+from app.db.utils import sync_pk_sequence
 from app.models.models import DiscoveredCategory, Video
 
 log = logging.getLogger("monteeq.categories")
@@ -141,6 +142,7 @@ def discover_categories(db: Session) -> List[DiscoveredCategory]:
                 tag_counter[tag] += 1
 
     # 3. Vet and upsert
+    existing_by_name = {c.name: c for c in db.query(DiscoveredCategory).all()}
     new_categories = []
     for tag, count in tag_counter.items():
         if count < MIN_FREQUENCY:
@@ -153,9 +155,7 @@ def discover_categories(db: Session) -> List[DiscoveredCategory]:
         canonical = get_canonical_category(tag)
         effective_name = canonical if canonical else tag
 
-        existing = db.query(DiscoveredCategory).filter(
-            DiscoveredCategory.name == effective_name
-        ).first()
+        existing = existing_by_name.get(effective_name)
 
         if existing:
             existing.count = count
@@ -172,7 +172,7 @@ def discover_categories(db: Session) -> List[DiscoveredCategory]:
             related = SEMANTIC_MAP.get(effective_name, [])
             # Auto-approve if it's in our semantic map (known good category)
             is_known = effective_name in SEMANTIC_MAP
-            
+
             cat = DiscoveredCategory(
                 name=effective_name,
                 display_name=effective_name.replace("-", " ").title(),
@@ -181,8 +181,10 @@ def discover_categories(db: Session) -> List[DiscoveredCategory]:
                 related_tags=",".join(related),
             )
             db.add(cat)
+            existing_by_name[effective_name] = cat
             new_categories.append(cat)
 
+    sync_pk_sequence(db, "discovered_categories")
     db.commit()
 
     log.info(

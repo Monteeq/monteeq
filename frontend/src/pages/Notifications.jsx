@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getAllNotifications, markNotificationRead, markAllNotificationsRead } from '../api';
+import { getAllNotifications, markNotificationRead, markAllNotificationsRead, isAbortOrNetworkError } from '../api';
 import { useNotification } from '../context/NotificationContext';
 import { Bell, CheckCircle, Info, AlertCircle, Calendar, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +19,9 @@ const Notifications = () => {
                 const data = await getAllNotifications(token);
                 setNotifications(data);
             } catch (error) {
-                console.error("Failed to fetch notifications:", error);
+                if (!isAbortOrNetworkError(error)) {
+                    console.error("Failed to fetch notifications:", error);
+                }
             } finally {
                 setLoading(false);
             }

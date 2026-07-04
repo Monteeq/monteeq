@@ -1,10 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-
-const AuthContext = createContext();
-
 import { API_BASE_URL } from '../api';
 import { registerPushSubscription } from '../utils/pushSubscription';
+
+const AuthContext = createContext(null);
 
 
 export const AuthProvider = ({ children }) => {
@@ -129,7 +128,7 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (!context) {
+    if (context == null) {
         throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;

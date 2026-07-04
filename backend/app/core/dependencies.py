@@ -1,19 +1,28 @@
+from datetime import datetime, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from sqlalchemy.orm import Session
+
 from app.core.config import SECRET_KEY, ALGORITHM
-from app.models import models
+from app.db.session import get_db
+from app.models.models import User
 from app.schemas import schemas
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
-from sqlalchemy.orm import Session
-from app.db.session import get_db
-from app.models.models import User
+
+def _expire_premium_if_needed(user: User, db: Session) -> None:
+    """Downgrade premium when subscription has expired."""
+    if user.is_premium and user.premium_expires_at:
+        if user.premium_expires_at < datetime.now(timezone.utc):
+            user.is_premium = False
+            db.commit()
+
 
 async def get_current_user(
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
     credentials_exception = HTTPException(
@@ -39,13 +48,8 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated"
         )
-    
-    from datetime import datetime, timezone
-    if user.is_premium and user.premium_expires_at:
-        if user.premium_expires_at < datetime.now(timezone.utc):
-            user.is_premium = False
-            db.commit()
-            
+
+    _expire_premium_if_needed(user, db)
     return user
 
 async def get_current_user_optional(
@@ -64,14 +68,10 @@ async def get_current_user_optional(
     
     # Fetch user from DB
     user = db.query(User).filter(User.username == username).first()
-    
+
     if user:
-        from datetime import datetime, timezone
-        if user.is_premium and user.premium_expires_at:
-            if user.premium_expires_at < datetime.now(timezone.utc):
-                user.is_premium = False
-                db.commit()
-                
+        _expire_premium_if_needed(user, db)
+
     return user
 
 

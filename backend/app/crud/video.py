@@ -4,11 +4,20 @@ from app.models.models import Video, Like, Comment, View, User, Post, SponsoredA
 from app.schemas import schemas
 from datetime import datetime, timedelta
 from typing import Optional, Union
+import logging
+
+logger = logging.getLogger(__name__)
+
+VIEW_COUNT_WINDOW_HOURS = 10
+MAX_VIEWS_PER_WINDOW = 5
+INTEREST_BOOST_PER_TAG = 0.2
+TRENDING_WINDOW_DAYS = 7
+FAILED_VIDEO_VISIBILITY_HOURS = 24
 
 def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str = "approved", current_user_id: Optional[int] = None, skip: int = 0, limit: int = 100, mood: Optional[str] = None, feed_mode: Optional[str] = None):
     from app.models.models import Follow
     query = db.query(Video).options(joinedload(Video.owner))
-    twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
+    twenty_four_hours_ago = datetime.now() - timedelta(hours=FAILED_VIDEO_VISIBILITY_HOURS)
     
     # Filtering Logic based on status
     if filter_status == "approved":
@@ -58,7 +67,7 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
 
     # Ordering: trending sorts by recent engagement, default is discovery score
     if feed_mode == 'trending':
-        week_ago = datetime.now() - timedelta(days=7)
+        week_ago = datetime.now() - timedelta(days=TRENDING_WINDOW_DAYS)
         query = query.filter(Video.created_at >= week_ago)
         query = query.order_by(desc(Video.likes_count + Video.views))
     else:
@@ -74,7 +83,7 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
             # Count matches
             match_count = sum(1 for t in user_interests if t in video_tags)
             # Combine discovery score with interest boost (20% boost per matching tag)
-            video.personalized_score = video.discovery_score * (1 + (0.2 * match_count))
+            video.personalized_score = video.discovery_score * (1 + (INTEREST_BOOST_PER_TAG * match_count))
             video.interest_match_score = match_count
             
         videos.sort(key=lambda x: x.personalized_score, reverse=True)
@@ -94,7 +103,7 @@ def get_videos(db: Session, video_type: Optional[str] = None, filter_status: str
 def search_videos(db: Session, query_str: str, status: str = "approved", current_user_id: int = None):
     query = db.query(Video).options(joinedload(Video.owner))
     if status == "approved" and current_user_id:
-        twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
+        twenty_four_hours_ago = datetime.now() - timedelta(hours=FAILED_VIDEO_VISIBILITY_HOURS)
         query = query.filter(
             or_(
                 Video.status == "approved",
@@ -327,36 +336,42 @@ def increment_view(db: Session, user_id: Optional[int] = None, video_id: Optiona
 
     # 2. 10-Hour Window Check (Max 5 views per 10 hours for authenticated users)
     if user_id and video_id:
-        ten_hours_ago = datetime.now() - timedelta(hours=10)
+        ten_hours_ago = datetime.now() - timedelta(hours=VIEW_COUNT_WINDOW_HOURS)
         view_count = db.query(func.count(View.id)).filter(
             View.video_id == video_id,
             View.user_id == user_id,
             View.created_at >= ten_hours_ago
         ).scalar() or 0
-        
-        if view_count >= 5:
+
+        if view_count >= MAX_VIEWS_PER_WINDOW:
             return video
 
-    # Record the view
+    # Record the view and update the public counter in one transaction
     new_view = View(video_id=video_id, post_id=post_id, user_id=user_id)
     db.add(new_view)
     
     if user_id and video_id:
-        update_user_interests_from_video(db, user_id, video_id)
-        
-    db.commit()
+        update_user_interests_from_video(db, user_id, video_id, commit=False)
 
-    # Increment the public counter
     if video:
         video.views = (video.views or 0) + 1
+    
+    if post:
+        post.views_count = (post.views_count or 0) + 1
+
+    try:
         db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Failed to record view for video_id=%s post_id=%s", video_id, post_id)
+        raise
+
+    if video:
         db.refresh(video)
         update_discovery_score(db, video_id=video_id)
         return video
     
     if post:
-        post.views_count = (post.views_count or 0) + 1
-        db.commit()
         db.refresh(post)
         update_discovery_score(db, post_id=post_id)
         return post
@@ -479,7 +494,7 @@ def delete_video(db: Session, video_id: int):
         return True
     return False
 
-def update_user_interests_from_video(db: Session, user_id: int, video_id: int):
+def update_user_interests_from_video(db: Session, user_id: int, video_id: int, commit: bool = True):
     user = db.query(User).filter(User.id == user_id).first()
     video = db.query(Video).filter(Video.id == video_id).first()
     if not user or not video or not video.tags:
@@ -497,7 +512,8 @@ def update_user_interests_from_video(db: Session, user_id: int, video_id: int):
     
     # Keep interests list at a reasonable size (e.g., top 20 latest)
     user.interests = ",".join(updated_interests[-20:])
-    db.commit()
+    if commit:
+        db.commit()
 
 def update_comment(db: Session, comment_id: int, user_id: int, content: str):
     comment = db.query(Comment).filter(Comment.id == comment_id).first()

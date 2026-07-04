@@ -26,12 +26,19 @@ class Storage:
     def _init_s3_client(self):
         try:
             from botocore.config import Config
-            
-            s3_opts = {'region_name': config.AWS_S3_REGION_NAME}
-            if config.AWS_S3_USE_ACCELERATE:
-                s3_opts['use_accelerate_endpoint'] = True
-                logger.info("Enabling S3 Transfer Acceleration")
-            
+
+            is_hf_bucket = config.S3_ENDPOINT and "s3.hf.co" in config.S3_ENDPOINT
+
+            if is_hf_bucket:
+                # HF Storage Buckets require path-style addressing and us-east-1 region
+                s3_opts = {'region_name': 'us-east-1', 'addressing_style': 'path'}
+                logger.info("Using Hugging Face Storage Bucket endpoint")
+            else:
+                s3_opts = {'region_name': config.AWS_S3_REGION_NAME}
+                if config.AWS_S3_USE_ACCELERATE:
+                    s3_opts['use_accelerate_endpoint'] = True
+                    logger.info("Enabling S3 Transfer Acceleration")
+
             s3_config = Config(s3=s3_opts)
             self.s3_client = boto3.client(
                 's3',
@@ -40,9 +47,9 @@ class Storage:
                 endpoint_url=config.S3_ENDPOINT,
                 config=s3_config
             )
-            logger.info("Successfully initialized AWS S3 client")
+            logger.info("Successfully initialized S3-compatible client")
         except Exception as e:
-            logger.error(f"Failed to initialize AWS S3 client: {e}", exc_info=True)
+            logger.error(f"Failed to initialize S3 client: {e}", exc_info=True)
 
     @property
     def mode(self) -> str:
@@ -161,25 +168,29 @@ class Storage:
     def get_url(self, s3_key: str, mode: Optional[str] = None) -> str:
         """
         Returns the public URL for a given key.
-        Uses CloudFront if configured, otherwise S3.
+        Uses CloudFront if configured, otherwise falls back to the endpoint or S3.
         """
         current_mode = mode or self.mode
         url_key = s3_key.replace(os.sep, "/")
-        
+
         if current_mode == "local":
             return f"{config.BASE_URL}/static/{url_key}"
-        else:
-            # If CloudFront is configured, use it for super-fast global delivery
-            if config.AWS_CLOUDFRONT_DOMAIN:
-                return f"https://{config.AWS_CLOUDFRONT_DOMAIN}/{url_key}"
-            
-            # Use custom endpoint if available (e.g. Backblaze)
-            if config.S3_ENDPOINT:
-                endpoint_host = config.S3_ENDPOINT.replace("https://", "").replace("http://", "")
-                return f"https://{config.AWS_STORAGE_BUCKET_NAME}.{endpoint_host}/{url_key}"
-            
-            # Fallback to direct S3
-            return f"https://{config.AWS_STORAGE_BUCKET_NAME}.s3.{config.AWS_S3_REGION_NAME}.amazonaws.com/{url_key}"
+
+        # CloudFront takes highest priority (fastest CDN delivery)
+        if config.AWS_CLOUDFRONT_DOMAIN:
+            return f"https://{config.AWS_CLOUDFRONT_DOMAIN}/{url_key}"
+
+        # Hugging Face Storage Bucket — path-style URL
+        if config.S3_ENDPOINT and "s3.hf.co" in config.S3_ENDPOINT:
+            return f"{config.S3_ENDPOINT.rstrip('/')}/{config.AWS_STORAGE_BUCKET_NAME}/{url_key}"
+
+        # Generic S3-compatible endpoint (e.g. Backblaze, MinIO)
+        if config.S3_ENDPOINT:
+            endpoint_host = config.S3_ENDPOINT.replace("https://", "").replace("http://", "")
+            return f"https://{config.AWS_STORAGE_BUCKET_NAME}.{endpoint_host}/{url_key}"
+
+        # Fallback to direct AWS S3
+        return f"https://{config.AWS_STORAGE_BUCKET_NAME}.s3.{config.AWS_S3_REGION_NAME}.amazonaws.com/{url_key}"
 
     def delete_file(self, s3_key: str) -> None:
         """

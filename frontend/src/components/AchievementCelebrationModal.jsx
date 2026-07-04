@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Trophy, X, Zap } from 'lucide-react';
-import { BADGES } from '../pages/Achievements';
+import { BADGES } from '../constants/badges';
 
 const AchievementCelebrationModal = ({ achievement, onClose }) => {
     

@@ -3,11 +3,11 @@ FROM python:3.13-slim
 # Prevent Python from writing pyc files and buffering stdout/stderr
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8000
+    PORT=7860
 
 WORKDIR /app
 
-# Install system dependencies (build-essential, libpq-dev for Postgres database connector, and curl)
+# Install system dependencies (build-essential, libpq-dev for Postgres, curl)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -22,8 +22,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy the rest of the application code
 COPY . .
 
-# Expose the port the FastAPI server listens on
-EXPOSE 8000
+# Make startup script executable
+RUN chmod +x start.sh
 
-# Default command to run FastAPI web app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Hugging Face Spaces requires port 7860
+EXPOSE 7860
+
+# Start Celery worker in background, then launch uvicorn on port 7860
+CMD ["./start.sh"]

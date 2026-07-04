@@ -1,23 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link, useNavigate } from 'react-router-dom';
-import { Zap, Crown } from 'lucide-react';
-import { GoogleOAuthProvider } from '@react-oauth/google';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { NotificationProvider } from './context/NotificationContext';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import { PageSkeleton } from './components/Skeleton';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
-
 
 const Home = React.lazy(() => import('./pages/Home'));
 const Landing = React.lazy(() => import('./pages/Landing'));
@@ -65,13 +49,9 @@ import ModernHeader from './components/ModernHeader';
 import Footer from './components/Footer';
 import MeshBackground from './components/MeshBackground';
 import ErrorBoundary from './components/ErrorBoundary';
-import { ErrorProvider } from './context/ErrorContext';
-import { ReportProvider } from './context/ReportContext';
+import VideoCardMenuRouteListener from './components/VideoCardMenuRouteListener';
 import DynamicTitle from './components/DynamicTitle';
 import './index.css';
-
-
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -148,7 +128,9 @@ function AppContent() {
   }, [token, user, location.pathname, navigate]);
 
   return (
-    <div className="app-container">
+    <>
+      <VideoCardMenuRouteListener />
+      <div className="app-container">
       <DynamicTitle />
       <MeshBackground />
       {!hideHeader && (
@@ -180,8 +162,9 @@ function AppContent() {
 
           <div className={hideSidebar ? "content-wrapper-fullscreen" : "content-wrapper"}>
             <div style={hideSidebar ? { width: '100%', minHeight: '100%' } : { flex: 1, minWidth: '300px' }}>
-              <React.Suspense fallback={<PageSkeleton />}>
-                <Routes>
+              <ErrorBoundary>
+                <React.Suspense fallback={<PageSkeleton />}>
+                  <Routes>
                   {/* Public Routes */}
                   <Route path="/" element={token ? <Home /> : <Landing />} />
                   <Route path="/home" element={<Home />} />
@@ -234,34 +217,22 @@ function AppContent() {
                 </Routes>
                 {!isImmersive && location.pathname !== '/chat' && <Footer />}
               </React.Suspense>
+              </ErrorBoundary>
             </div>
           </div>
         </main>
       </div>
     </div>
+    </>
   );
 }
 
 function App() {
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <QueryClientProvider client={queryClient}>
-        <Router>
-          <AuthProvider>
-            <NotificationProvider>
-              <ErrorProvider>
-                <ReportProvider>
-                  <ErrorBoundary>
-                    <NotificationManager />
-                    <AppContent />
-                  </ErrorBoundary>
-                </ReportProvider>
-              </ErrorProvider>
-            </NotificationProvider>
-          </AuthProvider>
-        </Router>
-      </QueryClientProvider>
-    </GoogleOAuthProvider>
+    <>
+      <NotificationManager />
+      <AppContent />
+    </>
   );
 }
 

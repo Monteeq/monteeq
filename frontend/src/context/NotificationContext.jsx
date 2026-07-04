@@ -2,10 +2,10 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { CheckCircle, AlertCircle, Info, Loader2, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { getUnreadNotifications } from '../api';
+import { getUnreadNotifications, isAbortOrNetworkError } from '../api';
 import AchievementCelebrationModal from '../components/AchievementCelebrationModal';
 
-const NotificationContext = createContext();
+const NotificationContext = createContext(null);
 
 export const useNotification = () => {
     const context = useContext(NotificationContext);
@@ -54,6 +54,9 @@ export const NotificationProvider = ({ children }) => {
             return data;
         } catch (e) {
             if (!token) return; // suppress 401s that fire after logout
+            if (isAbortOrNetworkError(e)) {
+                return [];
+            }
             console.error('Failed to fetch unread notifications', e);
             return [];
         }

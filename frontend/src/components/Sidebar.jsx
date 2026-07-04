@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { getFollowing } from '../api';
+import { getFollowing, isAbortOrNetworkError } from '../api';
 
 import {
   Home as HomeIcon, Zap, UploadCloud,
@@ -65,7 +65,9 @@ const Sidebar = ({ isOpen, onClose }) => {
         const data = await getFollowing(user.username);
         setFollowing(data);
       } catch (err) {
-        console.error("Failed to fetch following:", err);
+        if (!isAbortOrNetworkError(err)) {
+          console.error("Failed to fetch following:", err);
+        }
       } finally {
         setLoading(false);
       }

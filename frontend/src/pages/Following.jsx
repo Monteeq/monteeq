@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Video, Zap, MessageSquare, Loader2, UserPlus, Flame, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFollowingFeed } from '../hooks/useFeed';
-import { getRecommendedCreators, toggleFollow } from '../api';
+import { getRecommendedCreators, toggleFollow, isAbortOrNetworkError } from '../api';
 import VideoPreviewCard from '../components/VideoPreviewCard';
 import { PostSkeleton, VideoSkeleton } from '../components/Skeleton';
 import SEO from '../components/SEO';
@@ -40,7 +40,9 @@ const Following = () => {
             const recs = await getRecommendedCreators(token);
             setRecommendations(recs);
         } catch (err) {
-            console.error("Failed to fetch recommendations", err);
+            if (!isAbortOrNetworkError(err)) {
+                console.error("Failed to fetch recommendations", err);
+            }
         } finally {
             setRecLoading(false);
         }

@@ -25,6 +25,18 @@ export class ApiError extends Error {
     }
 }
 
+export const isAbortOrNetworkError = (error) => {
+    return Boolean(
+        error &&
+        (
+            error.code === 'ABORTED' ||
+            error.code === 'NETWORK_ERROR' ||
+            error.status === 0 ||
+            error.name === 'AbortError'
+        )
+    );
+};
+
 // ── Central Fetch Wrapper ────────────────────────────────────────────────────
 /**
  * apiFetch — drop-in wrapper around fetch() with:
@@ -48,10 +60,27 @@ export async function apiFetch(path, options = {}) {
         headers['Content-Type'] = 'application/json';
     }
 
-    const response = await fetch(url, {
-        ...options,
-        headers
-    });
+    // Support optional per-request timeout (ms)
+    const timeoutMs = options.timeoutMs || 15000;
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort('timeout'), timeoutMs);
+    let response;
+    try {
+        response = await fetch(url, {
+            ...options,
+            headers,
+            signal: controller.signal,
+        });
+    } catch (err) {
+        // Normalize AbortError and network errors into ApiError for callers
+        clearTimeout(id);
+        if (err && err.name === 'AbortError') {
+            throw new ApiError({ status: 0, code: 'ABORTED', message: 'Request aborted' });
+        }
+        throw new ApiError({ status: 0, code: 'NETWORK_ERROR', message: err?.message || 'Network error' });
+    } finally {
+        clearTimeout(id);
+    }
 
     if (response.ok) {
         // 204 No Content — return null
@@ -91,6 +120,18 @@ export async function apiFetch(path, options = {}) {
     throw error;
 }
 
+// Lightweight fetch helper with timeout
+async function fetchWithTimeout(url, options = {}, timeoutMs = 2000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort('timeout'), timeoutMs);
+    try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        return res;
+    } finally {
+        clearTimeout(id);
+    }
+}
+
 
 export const login = async (username, password) => {
     const formData = new FormData();
@@ -124,12 +165,15 @@ export const getRecommendedFeed = async (videoType = 'flash', token = null, limi
     const headers = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const moodQuery = mood ? `&mood=${mood}` : '';
-    const response = await fetch(
-        `${API_BASE_URL}/recommend/feed?video_type=${videoType}&limit=${limit}${moodQuery}`,
-        { headers }
-    );
-    if (!response.ok) return null;  // caller falls back to getVideos on failure
-    return response.json();
+    try {
+        // Use a short timeout for recommendation engine to avoid blocking the UI
+        const res = await fetchWithTimeout(`${API_BASE_URL}/recommend/feed?video_type=${videoType}&limit=${limit}${moodQuery}`, { headers }, 2000);
+        if (!res || !res.ok) return null;
+        return res.json();
+    } catch (err) {
+        // Timeout or network error — gracefully return null so caller falls back
+        return null;
+    }
 };
 
 /**

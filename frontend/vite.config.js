@@ -8,12 +8,17 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'recharts-vendor': ['recharts'],
-            'framer-vendor': ['framer-motion']
-          }
-        }
+          manualChunks(id) {
+            if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/') || id.includes('node_modules/react-router-dom')) {
+              return 'react-vendor';
+            }
+            if (id.includes('node_modules/recharts')) return 'recharts-vendor';
+            if (id.includes('node_modules/framer-motion')) return 'framer-vendor';
+            if (id.includes('/src/context/') || id.includes('\\src\\context\\')) {
+              return 'app-context';
+            }
+          },
+        },
       },
       chunkSizeWarningLimit: 800
     },

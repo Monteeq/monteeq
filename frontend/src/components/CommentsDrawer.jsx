@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, User, Loader2 } from 'lucide-react';
+import { X, Send, Loader2 } from 'lucide-react';
 import { getComments, postComment, updateComment, deleteComment } from '../api';
 import { useAuth } from '../context/AuthContext';
 import CommentItem from './CommentItem';
+
+const countComments = (list) =>
+    list.reduce((acc, c) => acc + 1 + (c.replies ? countComments(c.replies) : 0), 0);
 
 const CommentsDrawer = ({ videoId = null, postId = null, onClose, initialComments = null }) => {
     const { user, token } = useAuth();
@@ -14,11 +17,7 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose, initialComment
     const [posting, setPosting] = useState(false);
     const commentsBottomRef = useRef(null);
 
-    const getTotalComments = (list) => {
-        return list.reduce((acc, c) => acc + 1 + (c.replies ? getTotalComments(c.replies) : 0), 0);
-    };
-
-    const totalCount = getTotalComments(comments);
+    const totalCount = countComments(comments);
 
     useEffect(() => {
         if (!videoId && !postId) return;
@@ -155,16 +154,6 @@ const CommentsDrawer = ({ videoId = null, postId = null, onClose, initialComment
                                 onChange={e => setNewComment(e.target.value)}
                                 placeholder="Add a comment..."
                             />
-                            <button
-                                type="button"
-                                className="cancel-btn"
-                                onClick={() => setNewComment('')}
-                                disabled={!newComment.trim()}
-                                title="Clear"
-                                style={{ opacity: newComment.trim() ? 1 : 0.3 }}
-                            >
-                                <X size={24} />
-                            </button>
                             <button
                                 type="submit"
                                 disabled={!newComment.trim() || posting}
