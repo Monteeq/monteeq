@@ -76,6 +76,7 @@ jobs:
 
           # Sync backend/ contents into the Space (delete removed files too)
           rsync -av --delete \
+            --exclude='.git/' \
             --exclude='.venv/' \
             --exclude='__pycache__/' \
             --exclude='*.pyc' \
@@ -125,6 +126,7 @@ jobs:
 
           # Sync video-service/ contents into the Space (delete removed files too)
           rsync -av --delete \
+            --exclude='.git/' \
             --exclude='target/' \
             --exclude='.env' \
             --exclude='*.jpg' \
@@ -141,4 +143,5 @@ jobs:
           Message: ${{ github.event.head_commit.message }}"
           git push
           echo "✅ Deployed to https://huggingface.co/spaces/MonteeqOrg/readme"
+
 
