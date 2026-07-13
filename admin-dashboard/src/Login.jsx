@@ -19,23 +19,34 @@ const Login = ({ setToken }) => {
         setLoading(true);
         try {
             const data = await login(username, password);
-            const user = await getMe(data.access_token);
+            const token = data.access_token;
 
-            if (user.role !== 'admin') {
-                setError('Access Denied: Admins only.');
-                showNotification('error', 'Access Denied: Admins only.');
-                setLoading(false);
-                return;
+            if (!token) {
+                throw new Error('The server did not return an access token.');
             }
 
-            setToken(data.access_token);
-            localStorage.setItem('adminToken', data.access_token);
+            try {
+                const user = await getMe(token);
+                if (user?.role !== 'admin') {
+                    setError('Access Denied: Admins only.');
+                    showNotification('error', 'Access Denied: Admins only.');
+                    setLoading(false);
+                    return;
+                }
+            } catch (profileErr) {
+                console.warn('Profile lookup failed, continuing with token from login response:', profileErr);
+            }
+
+            setToken(token);
+            localStorage.setItem('adminToken', token);
             showNotification('success', 'Logged in successfully');
             navigate('/dashboard');
         } catch (err) {
             console.error(err);
-            setError('Invalid credentials or server error');
-            showNotification('error', 'Invalid credentials or server error');
+            const message = err?.message || 'Invalid credentials or server error';
+            const detail = err?.response?.data?.detail || err?.response?.data?.message || message;
+            setError(detail);
+            showNotification('error', detail);
             setLoading(false);
         }
     };

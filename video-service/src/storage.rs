@@ -29,13 +29,16 @@ impl StorageManager {
         
         let mut s3_config_builder = aws_sdk_s3::config::Builder::from(&config);
         
-        // Handle custom endpoint (e.g. Backblaze)
+        // Custom endpoint only when non-empty (empty S3_ENDPOINT → native AWS)
         if let Ok(endpoint) = std::env::var("S3_ENDPOINT") {
-            println!("Rust: Using custom S3 endpoint: {}", endpoint);
-            s3_config_builder = s3_config_builder.endpoint_url(endpoint.clone());
-            if !endpoint.contains("amazonaws.com") {
-                println!("Rust: Enabling force_path_style for custom endpoint");
-                s3_config_builder = s3_config_builder.force_path_style(true);
+            let endpoint = endpoint.trim().to_string();
+            if !endpoint.is_empty() {
+                println!("Rust: Using custom S3 endpoint: {}", endpoint);
+                s3_config_builder = s3_config_builder.endpoint_url(endpoint.clone());
+                if !endpoint.contains("amazonaws.com") {
+                    println!("Rust: Enabling force_path_style for custom endpoint");
+                    s3_config_builder = s3_config_builder.force_path_style(true);
+                }
             }
         }
 
@@ -52,9 +55,9 @@ impl StorageManager {
         let s3_config = s3_config_builder.build();
         let client = Client::from_conf(s3_config);
         
-        let bucket = std::env::var("S3_BUCKET_NAME")
-            .or_else(|_| std::env::var("AWS_STORAGE_BUCKET_NAME"))
-            .map_err(|_| anyhow!("Storage bucket name not set (S3_BUCKET_NAME or AWS_STORAGE_BUCKET_NAME)"))?;
+        let bucket = std::env::var("AWS_STORAGE_BUCKET_NAME")
+            .or_else(|_| std::env::var("S3_BUCKET_NAME"))
+            .map_err(|_| anyhow!("Storage bucket name not set (AWS_STORAGE_BUCKET_NAME or S3_BUCKET_NAME)"))?;
         
         Ok(Self { client, bucket })
     }

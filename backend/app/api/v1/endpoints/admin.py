@@ -16,19 +16,30 @@ from app.services.email_service import send_pro_upgrade_email
 
 router = APIRouter()
 
+@router.options("/login")
+async def admin_login_options():
+    """Explicit CORS preflight handler — prevents form-body parser from running on OPTIONS."""
+    return {}
+
+
 @router.post("/login", response_model=schemas.Token)
+
 async def login_for_admin_access_token(
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends()
 ):
+    # Support login by username OR email
     user = crud_user.get_user_by_username(db, username=form_data.username)
+    if not user:
+        user = crud_user.get_user_by_email(db, email=form_data.username)
+
     if not user or not security.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     if user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -39,7 +50,7 @@ async def login_for_admin_access_token(
     access_token = security.create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "username": user.username}
 
 
 @router.get("/users", response_model=List[schemas.User])
@@ -119,7 +130,10 @@ def get_storage_mode(
     current_user: dict = Depends(admin_only)
 ):
     mode = crud_setting.get_setting(db, "storage_mode")
-    return {"mode": mode or config.STORAGE_MODE}
+    mode = mode or config.STORAGE_MODE
+    if mode == "gcs":
+        mode = "s3"
+    return {"mode": mode}
 
 @router.put("/settings/storage-mode")
 def update_storage_mode(
@@ -127,7 +141,10 @@ def update_storage_mode(
     db: Session = Depends(get_db),
     current_user: dict = Depends(admin_only)
 ):
-    if mode not in ["gcs", "local"]:
+    # Normalize legacy "gcs" label to "s3" (AWS from .env)
+    if mode == "gcs":
+        mode = "s3"
+    if mode not in ["s3", "local"]:
         raise HTTPException(status_code=400, detail="Invalid storage mode")
     
     crud_setting.update_setting(db, "storage_mode", mode)

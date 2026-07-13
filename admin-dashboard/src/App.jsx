@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './Login';
+import AdminLogin from './pages/AdminLogin';
 import Dashboard from './Dashboard';
 
 import StatsDetail from './StatsDetail';
@@ -37,12 +37,12 @@ function AppContent() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={!token ? <Login setToken={setToken} /> : <Navigate to="/dashboard" />} />
+        <Route path="/" element={!token ? <AdminLogin setToken={setToken} /> : <Navigate to="/dashboard" />} />
         <Route path="/dashboard" element={token ? <Dashboard token={token} setToken={setToken} theme={theme} toggleTheme={toggleTheme} /> : <Navigate to="/" />} />
 
-        <Route path="/challenges" element={token ? <AdminChallenges token={token} setToken={setToken} theme={theme} toggleTheme={toggleTheme} /> : <Navigate to="/" />} />
-        <Route path="/partners" element={token ? <PartnerLeads token={token} /> : <Navigate to="/" />} />
-        <Route path="/stats/:metric" element={token ? <StatsDetail token={token} /> : <Navigate to="/" />} />
+        <Route path="/challenges" element={token ? <Dashboard token={token} setToken={setToken} theme={theme} toggleTheme={toggleTheme} initialTab="Challenges" /> : <Navigate to="/" />} />
+        <Route path="/partners" element={token ? <Dashboard token={token} setToken={setToken} theme={theme} toggleTheme={toggleTheme} initialTab="Featured Creators" /> : <Navigate to="/" />} />
+        <Route path="/stats/:metric" element={token ? <Dashboard token={token} setToken={setToken} theme={theme} toggleTheme={toggleTheme} initialTab="Analytics" /> : <Navigate to="/" />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

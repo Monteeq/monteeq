@@ -68,6 +68,9 @@ class Storage:
                 self._mode = setting.value
             else:
                 self._mode = config.STORAGE_MODE
+            # Legacy "gcs" label → AWS S3 (credentials from .env)
+            if self._mode == "gcs":
+                self._mode = "s3"
             self._mode_cache_time = current_time
         except Exception as e:
             logger.error(f"Error fetching storage_mode from DB: {e}", exc_info=True)

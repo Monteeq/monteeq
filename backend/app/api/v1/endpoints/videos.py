@@ -460,7 +460,7 @@ def delete_video_files(video: Video):
         s3_key = None
         if current_mode == "local" and url.startswith(f"{config.BASE_URL}/static/"):
             s3_key = url.replace(f"{config.BASE_URL}/static/", "")
-        elif current_mode == "s3" and ("amazonaws.com" in url or "cdn.monteeq.com" in url):
+        elif current_mode in ("s3", "gcs") and ("amazonaws.com" in url or "cdn.monteeq.com" in url):
             # Extract key after .com/
             if ".com/" in url:
                 s3_key = url.split(".com/")[1]

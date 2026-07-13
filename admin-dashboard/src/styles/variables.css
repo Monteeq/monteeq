@@ -1,0 +1,104 @@
+/* ============================================================
+   Monteeq Admin — Design Tokens (Red Brand Edition)
+   ============================================================ */
+
+:root {
+  color-scheme: dark;
+
+  /* ── Backgrounds ─────────────────────────────────────────── */
+  --bg-app:          #0B1120;
+  --bg-deep:         #080E1A;
+  --bg-surface:      rgba(17, 24, 39, 0.80);
+  --bg-card:         rgba(255, 255, 255, 0.04);
+  --bg-card-hover:   rgba(255, 255, 255, 0.07);
+  --bg-input:        rgba(255, 255, 255, 0.05);
+  --bg-input-hover:  rgba(255, 255, 255, 0.08);
+  --bg-glass:        rgba(255, 255, 255, 0.06);
+  --bg-overlay:      rgba(11, 17, 32, 0.72);
+
+  /* ── Borders ─────────────────────────────────────────────── */
+  --border-subtle:   rgba(255, 255, 255, 0.08);
+  --border-soft:     rgba(255, 255, 255, 0.12);
+  --border-medium:   rgba(255, 255, 255, 0.18);
+  --border-focus:    rgba(255, 59, 48, 0.65);
+
+  /* ── Text ────────────────────────────────────────────────── */
+  --text-primary:    #FFFFFF;
+  --text-secondary:  #94A3B8;
+  --text-muted:      #64748B;
+  --text-accent:     #FCA5A5;
+  --text-brand:      #FF3B30;
+
+  /* ── Monteeq Brand Colors ────────────────────────────────── */
+  --red:             #FF3B30;
+  --red-dark:        #E02B20;
+  --red-deeper:      #C0211A;
+  --red-light:       #FF6B6B;
+  --red-soft:        #FCA5A5;
+  --red-glow:        rgba(255, 59, 48, 0.40);
+  --red-glow-strong: rgba(255, 59, 48, 0.55);
+
+  /* Supporting palette */
+  --success:         #22C55E;
+  --danger:          #FF3B30;
+  --warning:         #F59E0B;
+  --cyan:            #FF3B30;   /* alias to red — used in grad-brand below */
+
+  /* ── Gradients ───────────────────────────────────────────── */
+  --grad-brand:      linear-gradient(135deg, #FF3B30 0%, #FF6B6B 60%, #FFa0a0 100%);
+  --grad-brand-alt:  linear-gradient(135deg, #E02B20 0%, #FF3B30 100%);
+  --grad-card:       linear-gradient(145deg, rgba(255,59,48,0.08) 0%, rgba(255,107,107,0.04) 100%);
+  --grad-brand-btn:  linear-gradient(135deg, #E02B20 0%, #FF3B30 50%, #FF6B6B 100%);
+  --grad-left-panel: linear-gradient(145deg, #0D1526 0%, #111827 50%, #0F172A 100%);
+  --grad-radial-1:   radial-gradient(circle at 20% 20%, rgba(255,59,48,0.18) 0%, transparent 55%);
+  --grad-radial-2:   radial-gradient(circle at 80% 80%, rgba(224,43,32,0.12) 0%, transparent 50%);
+  --grad-radial-3:   radial-gradient(circle at 80% 10%, rgba(255,107,107,0.10) 0%, transparent 40%);
+
+  /* ── Shadows ─────────────────────────────────────────────── */
+  --shadow-sm:       0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md:       0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg:       0 20px 60px rgba(0, 0, 0, 0.45);
+  --shadow-xl:       0 32px 80px rgba(0, 0, 0, 0.55);
+  --shadow-brand:    0 8px 32px rgba(255, 59, 48, 0.28);
+  --shadow-brand-lg: 0 16px 48px rgba(255, 59, 48, 0.38);
+  --shadow-focus:    0 0 0 3px rgba(255, 59, 48, 0.22);
+  --shadow-glow:     0 0 32px rgba(255, 59, 48, 0.18);
+
+  /* ── Border Radius ───────────────────────────────────────── */
+  --radius-xs:  6px;
+  --radius-sm:  10px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
+  --radius-xl:  24px;
+  --radius-2xl: 32px;
+  --radius-full:9999px;
+
+  /* ── Spacing ─────────────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ── Typography ──────────────────────────────────────────── */
+  --font-base:    'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --text-xs:      0.75rem;
+  --text-sm:      0.875rem;
+  --text-base:    1rem;
+  --text-lg:      1.125rem;
+  --text-xl:      1.25rem;
+  --text-2xl:     1.5rem;
+  --text-3xl:     1.875rem;
+  --text-4xl:     2.25rem;
+
+  /* ── Transitions ─────────────────────────────────────────── */
+  --ease-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --trans-fast:   150ms cubic-bezier(0.22, 1, 0.36, 1);
+  --trans-base:   220ms cubic-bezier(0.22, 1, 0.36, 1);
+  --trans-slow:   350ms cubic-bezier(0.22, 1, 0.36, 1);
+}

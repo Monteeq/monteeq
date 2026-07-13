@@ -47,38 +47,57 @@ app.add_middleware(RequestIDMiddleware)
 # ── Anti-Bot Middleware ───────────────────────────────────────────────────────
 class AntiBotMiddleware(BaseHTTPMiddleware):
     """Identify and block malicious bots globally with CORS support."""
+
+    ALLOWED_ORIGINS = {
+        "https://www.monteeq.com",
+        "https://monteeq.com",
+        "https://admin.monteeq.com",
+        "https://www.admin.monteeq.com",
+        "https://monteeqorg-backend.hf.space",
+        "http://localhost:5173",
+        "http://localhost:5174",
+    }
+
     async def dispatch(self, request: Request, call_next):
         from app.core import security
-        
-        # 1. Skip check for OPTIONS (CORS preflight), static files, health, and SEO/Sitemaps
-        if (request.method == "OPTIONS" or
-            request.url.path.startswith("/static") or 
-            request.url.path == "/health" or
-            "/seo/" in request.url.path or
-            "sitemap" in request.url.path):
+
+        # Short-circuit CORS preflight — return 200 with CORS headers immediately.
+        # This prevents BaseHTTPMiddleware body-buffering from interfering with
+        # CORSMiddleware and stops the form-body parser from running on OPTIONS.
+        if request.method == "OPTIONS":
+            origin = request.headers.get("Origin", "")
+            response = JSONResponse(status_code=200, content={})
+            if origin in self.ALLOWED_ORIGINS:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
+                response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "*"
+                response.headers["Access-Control-Max-Age"] = "600"
+            return response
+
+        # Skip bot check for static files, health, and SEO endpoints
+        if (request.url.path.startswith("/static") or
+                request.url.path == "/health" or
+                "/seo/" in request.url.path or
+                "sitemap" in request.url.path):
             return await call_next(request)
-            
-        # 2. Heuristic check
+
+        # Heuristic bot check
         if security.is_bot(request):
             ua = request.headers.get("User-Agent", "Unknown")
             logger.warning(f"Bot detected and blocked: {ua} from {request.client.host if request.client else 'unknown'}")
-            
+            origin = request.headers.get("Origin", "")
             response = JSONResponse(
                 status_code=403,
                 content={"detail": "Access denied. Automated traffic detected.", "ua": ua}
             )
-            
-            # Manually add CORS headers to ensure the browser doesn't throw a generic 'Failed to fetch'
-            origin = request.headers.get("Origin")
-            if origin:
-                # Basic validation: only allow our known domains
-                if any(domain in origin for domain in ["monteeq.com", "localhost"]):
-                    response.headers["Access-Control-Allow-Origin"] = origin
-                    response.headers["Access-Control-Allow-Credentials"] = "true"
-            
+            if origin in self.ALLOWED_ORIGINS:
+                response.headers["Access-Control-Allow-Origin"] = origin
+                response.headers["Access-Control-Allow-Credentials"] = "true"
             return response
-            
+
         return await call_next(request)
+
 
 app.add_middleware(AntiBotMiddleware)
 
@@ -93,9 +112,13 @@ app.add_middleware(
         "https://monteeqorg-backend.hf.space",
         "http://localhost:5173",
         "http://localhost:5174",
+        "http://127.0.0.1:5174",
     ],
+    # Regex covers any localhost / 127.0.0.1 port for local dev.
+    # Production origins are covered by the explicit list above.
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
 

@@ -76,12 +76,17 @@ api.interceptors.response.use(
 
 
 export const login = async (username, password) => {
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('password', password);
-    const response = await api.post('/admin/login', formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    const params = new URLSearchParams();
+    params.append('username', username);
+    params.append('password', password);
+
+    const response = await api.post('/admin/login', params.toString(), {
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
     });
+
     return response.data;
 };
 
@@ -186,3 +191,45 @@ export const deleteChallenge = async (challengeId, token) => {
     });
     return response.data;
 };
+
+// Videos API for admin list
+export const getVideos = async (token, category = '', status = 'All') => {
+    // If status is "All", map to undefined/empty string to fetch all non-expired videos
+    const filterStatus = status === 'All' ? '' : status.toLowerCase();
+    const response = await api.get('/videos/', {
+        params: {
+            status: filterStatus,
+            limit: 50
+        },
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
+// Content Reports API
+export const getReports = async (token, status = '') => {
+    const response = await api.get('/admin/reports', {
+        params: status ? { status } : {},
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
+export const takeReportAction = async (reportId, action, notes, token) => {
+    const response = await api.post(`/admin/reports/${reportId}/action`, {
+        action,
+        notes: notes || ''
+    }, {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
+// Moderation Audit Logs
+export const getAuditLogs = async (token) => {
+    const response = await api.get('/admin/moderation/audit-logs', {
+        headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+};
+
