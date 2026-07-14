@@ -1,0 +1,388 @@
+/* PerformanceV2.css - Creator Growth Intelligence Dashboard */
+
+:root {
+  --chart-primary: #FF3B30;
+  --chart-secondary: #00E5FF;
+  --chart-tertiary: #FFD60A;
+  --chart-success: #34C759;
+  --card-bg: rgba(10, 10, 10, 0.6);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --glass-accent: linear-gradient(135deg, rgba(255, 59, 48, 0.1) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.performance-container {
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 2rem;
+  padding-top: calc(var(--header-h) + 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header & KPI Summary */
+.perf-header {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.kpi-card {
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle at top right, rgba(255, 59, 48, 0.05), transparent);
+  pointer-events: none;
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+}
+
+.kpi-value {
+  font-size: 2.2rem;
+  font-weight: 800;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -1px;
+}
+
+.kpi-growth {
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.growth-up { color: var(--chart-success); }
+.growth-down { color: var(--chart-primary); }
+
+.kpi-sparkline {
+  height: 40px;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+/* Main Dashboard Grid */
+.perf-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 2rem;
+}
+
+@media (max-width: 1100px) {
+  .perf-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.perf-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Timeline Section */
+.timeline-section {
+  padding: 2.5rem;
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(0, 0, 0, 0) 100%);
+  border: 1px solid var(--card-border);
+  min-height: 500px;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.timeline-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.timeline-controls::-webkit-scrollbar {
+  display: none;
+}
+
+.metric-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.metric-toggle.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+  box-shadow: 0 0 15px rgba(255, 59, 48, 0.3);
+}
+
+/* Content Breakdown */
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+}
+
+.breakdown-card {
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+/* Intelligence Sidebar */
+.intelligence-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Growth Score Widget */
+.growth-score-card {
+  padding: 2rem;
+  border-radius: 32px;
+  background: var(--glass-accent);
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.growth-score-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+  opacity: 0.03;
+  pointer-events: none;
+}
+
+.score-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.score-number {
+  font-size: 4.5rem;
+  font-weight: 950;
+  font-family: 'Outfit', sans-serif;
+  background: linear-gradient(180deg, #fff 30%, #FF3B30 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1;
+}
+
+.score-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+/* AI Insights Panel */
+.ai-insights {
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.insight-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  transition: var(--transition-fast);
+}
+
+.insight-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateX(5px);
+}
+
+.insight-icon {
+  color: var(--chart-secondary);
+  flex-shrink: 0;
+}
+
+.insight-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.insight-highlight {
+  color: white;
+  font-weight: 700;
+}
+
+/* Action Panel */
+.action-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--card-border);
+  color: white;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.action-btn.primary {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  box-shadow: 0 8px 24px rgba(255, 59, 48, 0.25);
+}
+
+.action-btn.primary:hover {
+  background: var(--accent-active);
+}
+
+/* Donut centre overlay */
+.donut-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Page Hero Header */
+.perf-page-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.perf-page-title {
+  font-size: 2.2rem;
+  font-weight: 900;
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -1px;
+}
+
+.perf-page-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.range-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+}
+
+.range-tab {
+  padding: 0.4rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.range-tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* Score Ring */
+.score-ring-container {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+@media (max-width: 768px) {
+  .timeline-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

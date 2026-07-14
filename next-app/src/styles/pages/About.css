@@ -1,0 +1,353 @@
+/* ====================================================================
+   MONTEEQ ABOUT PAGE - ULTRA OPTIMIZED MOBILE-FIRST
+   ==================================================================== */
+
+:root {
+  --ab-bg: #030303;
+  --ab-bg-alt: #0a0a0a;
+  --ab-text: #ffffff;
+  --ab-text-muted: #8e8e93;
+  --ab-red: #ff3b30;
+  --ab-red-dark: #cc2d25;
+  --ab-border: rgba(255, 255, 255, 0.08);
+}
+
+.ab-page {
+  position: relative;
+  min-height: 100vh;
+  background: var(--ab-bg);
+  color: var(--ab-text);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  line-height: 1.5;
+  padding-bottom: 4rem;
+}
+
+.ab-bg {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 100% 0%, rgba(255, 59, 48, 0.05), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ab-page > *:not(.ab-bg) {
+  position: relative;
+  z-index: 1;
+}
+
+.text-red {
+  color: var(--ab-red);
+}
+
+/* ── Reveal Animations ─────────────────────────────────────────────── */
+.ab-r {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  will-change: opacity, transform;
+}
+.ab-r.ab-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ab-r {
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ── HERO ──────────────────────────────────────────────────────────── */
+.ab-hero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 85vh;
+  padding: 6rem 1.5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.ab-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ab-red);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(255, 59, 48, 0.1);
+  padding: 0.4rem 1rem;
+  border-radius: 99px;
+  margin-bottom: 1.5rem;
+}
+
+.ab-hero-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  margin: 0 0 1.25rem 0;
+}
+
+.ab-hero-sub {
+  font-size: 1.1rem;
+  color: var(--ab-text-muted);
+  max-width: 500px;
+  margin: 0 0 2.5rem 0;
+}
+
+.ab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--ab-red);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 99px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.ab-btn:active {
+  transform: scale(0.96);
+  background: var(--ab-red-dark);
+}
+
+/* ── SECTIONS ──────────────────────────────────────────────────────── */
+.ab-section {
+  padding: 5rem 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.ab-bg-alt {
+  background: var(--ab-bg-alt);
+  border-top: 1px solid var(--ab-border);
+  border-bottom: 1px solid var(--ab-border);
+  max-width: 100%;
+}
+
+.ab-header {
+  margin-bottom: 3rem;
+}
+.ab-header h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+.ab-header p {
+  color: var(--ab-text-muted);
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* ── MISSION ───────────────────────────────────────────────────────── */
+.ab-mission-content {
+  font-size: 1.1rem;
+  color: var(--ab-text-muted);
+  line-height: 1.8;
+  max-width: 800px;
+}
+.ab-mission-content strong {
+  color: white;
+  font-weight: 600;
+}
+.ab-mission-content p {
+  margin: 0 0 1.5rem 0;
+}
+
+/* ── GRID CARDS ────────────────────────────────────────────────────── */
+.ab-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.ab-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--ab-border);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.ab-icon {
+  color: var(--ab-red);
+  margin-bottom: 1.25rem;
+}
+
+.ab-card h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.ab-card p {
+  color: var(--ab-text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* ── TIMELINE ──────────────────────────────────────────────────────── */
+.ab-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 800px;
+}
+
+.ab-tl-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 1.5rem;
+  border-left: 2px solid var(--ab-border);
+  position: relative;
+}
+
+.ab-tl-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -7px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ab-red);
+}
+
+.ab-tl-date {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ab-red);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ab-tl-content h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+}
+
+.ab-tl-content p {
+  color: var(--ab-text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* ── CTA ───────────────────────────────────────────────────────────── */
+.ab-cta {
+  text-align: center;
+  padding: 6rem 1.5rem;
+}
+
+.ab-cta h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0 0 1rem 0;
+  letter-spacing: -0.02em;
+}
+
+.ab-cta h2 em {
+  font-style: normal;
+  color: var(--ab-red);
+}
+
+.ab-cta p {
+  color: var(--ab-text-muted);
+  font-size: 1.1rem;
+  margin: 0 auto 2.5rem auto;
+  max-width: 500px;
+}
+
+/* ── DESKTOP SCALE-UP (min-width logic) ────────────────────────────── */
+@media (min-width: 768px) {
+  .ab-hero {
+    align-items: center;
+    text-align: center;
+    padding: 8rem 2rem 4rem;
+  }
+  
+  .ab-hero-title {
+    font-size: 5rem;
+  }
+  
+  .ab-hero-sub {
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin: 0 auto 3rem auto;
+  }
+  
+  .ab-header {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+  
+  .ab-mission-content {
+    text-align: center;
+    margin: 0 auto;
+  }
+
+  .ab-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+  
+  .ab-timeline {
+    margin: 0 auto;
+  }
+
+  .ab-tl-item {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 3rem;
+    border-left: none;
+    padding-left: 0;
+  }
+
+  .ab-tl-item::before {
+    display: none;
+  }
+
+  .ab-tl-date {
+    flex-shrink: 0;
+    width: 120px;
+    text-align: right;
+    padding-top: 0.2rem;
+  }
+
+  .ab-cta h2 {
+    font-size: 3.5rem;
+  }
+
+  .ab-btn:hover {
+    transform: translateY(-2px);
+    background: var(--ab-red-dark);
+  }
+}
+
+@media (min-width: 1024px) {
+  .ab-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.ab-visual-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}

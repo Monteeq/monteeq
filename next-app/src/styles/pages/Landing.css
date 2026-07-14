@@ -1,0 +1,749 @@
+/* --- MOBILE FIRST BASE STYLES --- */
+.ld-v4-page {
+  background-color: #000;
+  color: #fff;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* --- Integrated Nav --- */
+.ld-v4-nav {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.ld-v4-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 900;
+  font-size: 1.2rem;
+  letter-spacing: -1px;
+}
+
+.ld-v4-logo-img {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+}
+
+.ld-v4-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.ld-v4-nav-links a {
+  text-decoration: none;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: opacity 0.3s;
+}
+
+.ld-v4-nav-links a:not(.ld-v4-nav-btn) {
+  display: none; /* Hide non-essential links on mobile */
+}
+
+.ld-v4-nav-btn {
+  background: #fff;
+  color: #000 !important;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+/* --- Hero Section --- */
+.ld-v4-hero {
+  padding: 80px 1.5rem 60px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.ld-v4-hero-text {
+  width: 100%;
+  z-index: 2;
+}
+
+.ld-v4-title {
+  font-size: clamp(2.5rem, 12vw, 4rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -2px;
+  margin-bottom: 1.5rem;
+}
+
+.ld-v4-outline {
+  color: transparent !important;
+  -webkit-text-stroke: 1px #fff;
+  opacity: 0.8;
+}
+
+.ld-v4-subtitle {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.5);
+  max-width: 400px;
+  margin: 0 auto 2.5rem;
+}
+
+.ld-v4-main-btn {
+  background: #eb0000;
+  color: #fff;
+  padding: 18px 32px;
+  border-radius: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+  justify-content: center;
+}
+
+.ld-v4-main-btn.large {
+  font-size: 1.2rem;
+  padding: 24px 40px;
+}
+
+.ld-v4-hero-visual {
+  display: none; /* Hidden on mobile by default to keep clean */
+}
+
+/* --- Performance Section --- */
+.ld-v4-performance {
+  padding: 80px 1.5rem;
+  background: #050505;
+}
+
+.ld-v4-perf-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.ld-v4-tag {
+  color: #eb0000;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+/* --- Tags --- */
+.ld-v4-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #eb0000;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 1.5rem;
+}
+
+/* --- Performance Section --- */
+.ld-v4-performance {
+  padding: 80px 1.5rem;
+  background: #050505;
+}
+
+.ld-v4-perf-header {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto 4rem;
+}
+
+.ld-v4-perf-header h2 {
+  font-size: 2.2rem;
+  font-weight: 900;
+  margin-bottom: 1.5rem;
+}
+
+.ld-v4-perf-header p {
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+}
+
+.ld-v4-perf-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.ld-v4-perf-card {
+  padding: 2.5rem 2rem;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  transition: 0.3s ease;
+}
+
+.ld-v4-perf-card:hover {
+  border-color: rgba(235, 0, 0, 0.3);
+  transform: translateY(-5px);
+}
+
+.ld-v4-perf-icon {
+  color: #eb0000;
+  margin-bottom: 1.5rem;
+}
+
+.ld-v4-perf-icon svg { width: 36px; height: 36px; }
+
+.ld-v4-perf-card h3 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+
+.ld-v4-perf-card p {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* --- Analytics & Challenges --- */
+.ld-v4-analytics, .ld-v4-challenges {
+  padding: 80px 0;
+}
+
+.ld-v4-split {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.ld-v4-split.reversed { flex-direction: column; } /* Keep same on mobile */
+
+.ld-v4-split-img {
+  height: 45vh;
+  margin: 0 1.5rem;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.ld-v4-split-img img { width: 100%; height: 100%; object-fit: cover; }
+
+.ld-v4-split-text { padding: 0 1.5rem; text-align: center; }
+
+.ld-v4-split-text h2 { font-size: 2.2rem; font-weight: 900; margin-bottom: 1.5rem; }
+
+.ld-v4-split-text p { color: rgba(255,255,255,0.5); margin-bottom: 2rem; line-height: 1.6; }
+
+.ld-v4-list { list-style: none; padding: 0; margin-bottom: 2.5rem; }
+
+.ld-v4-list li {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: rgba(255,255,255,0.8);
+}
+
+.ld-v4-list li svg { color: #eb0000; }
+
+.ld-v4-stat-row {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  margin: 30px 0;
+}
+
+.ld-v4-stat { display: flex; flex-direction: column; }
+
+.ld-v4-stat-num {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.ld-v4-stat-label { font-size: 0.75rem; color: #555; text-transform: uppercase; letter-spacing: 2px; }
+
+.ld-v4-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.ld-v4-link {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+}
+
+/* --- Final CTA --- */
+.ld-v4-final {
+  padding: 100px 1.5rem;
+  text-align: center;
+}
+
+.ld-v4-final-content h2 {
+  font-size: 2.5rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 3rem;
+}
+
+.ld-v4-final-content span {
+  color: #eb0000;
+}
+
+
+/* --- DESKTOP ENHANCEMENTS (TABLET+) --- */
+@media (min-width: 768px) {
+  .ld-v4-nav {
+    padding: 0 4rem;
+    height: 100px;
+  }
+
+  .ld-v4-logo { font-size: 1.5rem; }
+  .ld-v4-nav-links { gap: 2.5rem; }
+  .ld-v4-nav-links a:not(.ld-v4-nav-btn) { display: block; }
+  .ld-v4-nav-btn { padding: 12px 24px; font-size: 0.9rem; }
+
+  .ld-v4-hero {
+    padding: 100px 4rem 100px;
+    text-align: left;
+    align-items: flex-start;
+    flex-direction: row;
+    min-height: 100vh;
+  }
+
+  .ld-v4-hero-text { text-align: left; }
+  .ld-v4-title { font-size: clamp(3rem, 10vw, 8rem); letter-spacing: -5px; margin-bottom: 2.5rem; }
+  .ld-v4-outline { -webkit-text-stroke: 1.5px #fff; }
+  .ld-v4-subtitle { font-size: 1.25rem; margin: 0 0 3rem; max-width: 500px; }
+  .ld-v4-main-btn { width: auto; }
+
+  .ld-v4-hero-visual {
+    display: flex;
+    position: relative;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+  }
+
+  .ld-v4-visual-blob {
+    position: absolute;
+    width: 120%;
+    height: 80%;
+    background: radial-gradient(circle, rgba(235, 0, 0, 0.15) 0%, transparent 70%);
+    filter: blur(80px);
+    z-index: 0;
+  }
+
+  .ld-v4-mockup-frame {
+    width: 100%;
+    height: 70vh;
+    border-radius: 40px 0 0 40px;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+    box-shadow: -40px 40px 100px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .ld-v4-performance { padding: 100px 4rem; }
+  .ld-v4-perf-header h2 { font-size: 4rem; }
+  .ld-v4-perf-grid { grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+  .ld-v4-perf-card { padding: 3rem 2.5rem; border-radius: 32px; }
+
+  .ld-v4-analytics, .ld-v4-challenges, .ld-v4-showcase { padding: 100px 0; }
+  
+  .ld-v4-split { 
+    flex-direction: row; 
+    align-items: center; 
+    gap: 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 4rem;
+  }
+  
+  .ld-v4-split.reversed { flex-direction: row-reverse; }
+
+  .ld-v4-split-img { height: 70vh; flex: 1.2; margin: 0; border-radius: 40px; }
+  .ld-v4-split-text { flex: 1; padding: 0; text-align: left; }
+  .ld-v4-split-text h2 { font-size: 4.5rem; }
+  .ld-v4-list li { justify-content: flex-start; font-size: 1.1rem; }
+  .ld-v4-link { justify-content: flex-start; font-size: 1.1rem; }
+
+  .ld-v4-challenges-wrap {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 100px;
+    align-items: center;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 4rem;
+  }
+  
+  .ld-v4-challenges-text { text-align: left; }
+  .ld-v4-stat-row { justify-content: flex-start; gap: 60px; }
+  .ld-v4-stat-num { font-size: 3.5rem; }
+
+  .ld-v4-final { padding: 200px 4rem; }
+  .ld-v4-final-content h2 { font-size: clamp(2.5rem, 6vw, 5rem); }
+}
+
+/* --- Meaningful 3D Visuals --- */
+.meaningful-3d-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1000px;
+}
+
+.ld-v4-perf-grid-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+}
+
+@media (min-width: 768px) {
+  .ld-v4-perf-grid-wrap {
+    flex-direction: row;
+    align-items: center;
+  }
+  .ld-v4-perf-visual-side {
+    flex: 1;
+    min-height: 500px;
+  }
+  .ld-v4-perf-grid {
+    flex: 1.5;
+  }
+}
+
+.ld-v4-split-visual, .ld-v4-challenges-visual {
+  flex: 1;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Performance: Weight Core --- */
+.perf-core {
+  width: 120px;
+  height: 120px;
+  background: #eb0000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  z-index: 2;
+  position: relative;
+}
+
+.growth-bars {
+  position: absolute;
+  bottom: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  height: 100px;
+}
+
+.growth-bar {
+  width: 12px;
+  background: rgba(235, 0, 0, 0.4);
+  border-radius: 4px 4px 0 0;
+}
+
+/* --- Analytics: Data Sphere --- */
+.analytics-sphere {
+  width: 180px;
+  height: 180px;
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.sphere-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(235, 0, 0, 0.3);
+  border-radius: 50%;
+}
+
+.scanning-beam {
+  position: absolute;
+  width: 120%;
+  left: -10%;
+  height: 2px;
+  background: #eb0000;
+  box-shadow: 0 0 15px #eb0000;
+  z-index: 5;
+}
+
+.metric-tag {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+  backdrop-filter: blur(5px);
+}
+
+.metric-tag.ret { top: 10%; right: -20%; }
+.metric-tag.reach { bottom: 10%; left: -20%; }
+
+/* --- Challenges: Trophy --- */
+.trophy-base {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-style: preserve-3d;
+}
+
+.crown-float {
+  position: absolute;
+  top: -20px;
+}
+
+.entry-card-mini {
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%) !important;
+}
+
+/* --- Infrastructure: Vault --- */
+.vault-core {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+}
+
+.badge-4k {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  background: #eb0000;
+  color: #fff;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.data-stream {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+/* --- Detailed Meaningful 3D Styles --- */
+
+/* Performance Logic */
+.algo-input-node {
+  transform-style: preserve-3d;
+  z-index: 5;
+}
+
+.algo-processor {
+  transform-style: preserve-3d;
+}
+
+.proc-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(235, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(20px);
+}
+
+.proc-inner {
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #eb0000;
+  text-align: center;
+}
+
+/* Analytics Curve */
+.analytics-grid-overlay {
+  transform-style: preserve-3d;
+}
+
+/* Challenges Timeline */
+.challenge-node {
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(10px);
+  width: 180px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.challenge-node.highlight {
+  border-color: #eb0000;
+  background: rgba(235, 0, 0, 0.05);
+}
+
+.challenge-node.gold {
+  border-color: #ffd700;
+}
+
+.node-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.node-text strong {
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+}
+
+.node-text span {
+  font-size: 0.55rem;
+  opacity: 0.5;
+  font-weight: 800;
+}
+
+/* Infrastructure Technicals */
+.infra-core-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(20px);
+}
+
+.infra-packet {
+  transform-style: preserve-3d;
+}
+
+/* --- Animated Icons & Scenes --- */
+.hero-animated-wrap, .visual-animated-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 400px;
+}
+
+.hero-icon-center {
+  position: relative;
+  width: 300px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-orbiting-icon {
+  position: absolute;
+}
+
+.perf-icon-scene, .analytics-icon-scene, .challenges-icon-scene, .infra-icon-scene {
+  position: relative;
+  width: 250px;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(235,0,0,0.05) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.perf-bars-overlay {
+  position: absolute;
+  bottom: 20px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  height: 100px;
+}
+
+.analytics-scanner {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: #eb0000;
+  box-shadow: 0 0 15px #eb0000;
+  opacity: 0.5;
+}
+
+.challenge-badge, .infra-lock {
+  position: absolute;
+  bottom: 0;
+  background: #eb0000;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+.infra-security-field {
+  position: absolute;
+  inset: -20px;
+  border: 1px dashed rgba(235, 0, 0, 0.2);
+  border-radius: 50%;
+}

@@ -1,0 +1,132 @@
+.menuRoot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+}
+
+.menuTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.menuTrigger:hover,
+.menuTrigger[aria-expanded='true'] {
+  background: rgba(0, 0, 0, 0.65);
+  transform: scale(1.05);
+}
+
+.menuTrigger:active {
+  transform: scale(0.96);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-glass);
+  background: rgba(18, 18, 18, 0.96);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  transform-origin: top right;
+  animation: menuIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.dropdownAbove {
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform-origin: bottom right;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.menuItem:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.menuItemDanger:hover,
+.menuItemDanger:focus-visible {
+  color: #ff6b6b;
+}
+
+.menuItemIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.spinner {
+  animation: menuSpin 0.8s linear infinite;
+}
+
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes menuSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown {
+    animation: none;
+  }
+
+  .spinner {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .menuRoot {
+    top: 8px;
+    right: 8px;
+  }
+
+  .dropdown {
+    min-width: 210px;
+    max-width: calc(100vw - 24px);
+  }
+}
