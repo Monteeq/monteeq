@@ -1,24 +1,22 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { usePathname } from 'next/navigation';
 import { videoCardMenuStore } from '@/stores/videoCardMenuStore';
 
 /** Closes any open video card menu on navigation or scroll. */
-const VideoCardMenuRouteListener = () => {
-    const { pathname } = useLocation();
+export default function VideoCardMenuRouteListener() {
+  const pathname = usePathname();
 
-    useEffect(() => {
-        videoCardMenuStore.closeMenu();
-    }, [pathname]);
+  useEffect(() => {
+    videoCardMenuStore.closeMenu();
+  }, [pathname]);
 
-    useEffect(() => {
-        const handleScroll = () => videoCardMenuStore.closeMenu();
-        window.addEventListener('scroll', handleScroll, true);
-        return () => window.removeEventListener('scroll', handleScroll, true);
-    }, []);
+  useEffect(() => {
+    const handleScroll = () => videoCardMenuStore.closeMenu();
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, []);
 
-    return null;
-};
-
-export default VideoCardMenuRouteListener;
+  return null;
+}

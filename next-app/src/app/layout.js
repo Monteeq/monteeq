@@ -1,4 +1,5 @@
 import { Outfit, Inter } from 'next/font/google';
+import { Suspense } from 'react';
 import Providers from '@/components/Providers';
 import './globals.css';
 
@@ -28,7 +29,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${outfit.variable} ${inter.variable}`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Suspense fallback={null}>{children}</Suspense>
+        </Providers>
       </body>
     </html>
   );

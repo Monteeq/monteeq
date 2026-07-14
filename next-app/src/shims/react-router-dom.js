@@ -4,9 +4,13 @@
  * Compatibility shim for Vite pages that import react-router-dom.
  * Maps to Next.js App Router navigation APIs so Batch 3 pages can relocate
  * with minimal source changes.
+ *
+ * Note: useLocation intentionally avoids useSearchParams() so root layout
+ * consumers (e.g. VideoCardMenuRouteListener) do not force a Suspense
+ * boundary on every page during static generation.
  */
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import NextLink from 'next/link';
 import {
   useRouter,
@@ -47,17 +51,23 @@ export function useNavigate() {
 
 export function useLocation() {
   const pathname = usePathname() || '/';
-  const searchParams = useNextSearchParams();
-  const search = searchParams?.toString() ? `?${searchParams.toString()}` : '';
+  const [search, setSearch] = useState('');
+  const [hash, setHash] = useState('');
+
+  useEffect(() => {
+    setSearch(window.location.search || '');
+    setHash(window.location.hash || '');
+  }, [pathname]);
+
   return useMemo(
     () => ({
       pathname,
       search,
-      hash: typeof window !== 'undefined' ? window.location.hash : '',
+      hash,
       state: null,
       key: 'default',
     }),
-    [pathname, search]
+    [pathname, search, hash]
   );
 }
 

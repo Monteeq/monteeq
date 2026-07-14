@@ -113,7 +113,7 @@ const SEO = ({
             const orgScript = document.getElementById("json-ld-seo-org");
             if (orgScript) orgScript.remove();
         };
-    }, [fullTitle, description, video, ogImage, ogType, url]);
+    }, [fullTitle, title, description, video, ogImage, ogType, url]);
 
     return null; // This component doesn't render anything UI-wise
 };
