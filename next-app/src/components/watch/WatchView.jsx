@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Heart,
   Share2,
@@ -288,6 +289,7 @@ export default function WatchView({
   initialIsFollowing = false,
 }) {
   const { token, user } = useAuth();
+  const router = useRouter();
   const [video, setVideo] = useState(initialVideo);
   const [comments, setComments] = useState(initialComments || []);
   const [newComment, setNewComment] = useState('');
@@ -307,10 +309,10 @@ export default function WatchView({
   const hasNext = currentIndex >= 0 && currentIndex < relatedVideos.length - 1;
 
   const goToPrevious = () => {
-    if (hasPrevious) window.location.href = `/watch/${relatedVideos[currentIndex - 1].id}`;
+    if (hasPrevious) router.push(`/watch/${relatedVideos[currentIndex - 1].id}`);
   };
   const goToNext = () => {
-    if (hasNext) window.location.href = `/watch/${relatedVideos[currentIndex + 1].id}`;
+    if (hasNext) router.push(`/watch/${relatedVideos[currentIndex + 1].id}`);
   };
 
   const handleLike = async () => {
