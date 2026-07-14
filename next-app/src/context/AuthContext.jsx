@@ -34,7 +34,7 @@ const AuthContext = createContext({
 
 /**
  * Auth — same localStorage key (`token`) as the Vite app.
- * Push subscription deferred until notifications migrate.
+ * Registers web push after login when push utils are available.
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);

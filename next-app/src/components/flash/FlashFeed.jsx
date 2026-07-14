@@ -6,6 +6,7 @@ import FlashCard from '@/components/flash/FlashCard';
 import AmbientBackdrop from '@/components/flash/AmbientBackdrop';
 import DesktopSidebar from '@/components/flash/DesktopSidebar';
 import CommentsDrawer from '@/components/flash/CommentsDrawer';
+import NativeFeedAd from '@/components/ads/NativeFeedAd';
 import { useAuth } from '@/context/AuthContext';
 import {
   likeVideo,
@@ -472,20 +473,27 @@ export default function FlashFeed({
             </div>
           )}
 
-          {visibleClips.map((clip) => (
-            <div key={clip.id} className={s.cardContainer} data-id={clip.id}>
-              <FlashCard
-                video={clip}
-                isActive={activeVideoId?.toString() === clip.id.toString()}
-                onLike={handleLike}
-                onComment={(id) => setActiveCommentVideoId(id)}
-                onShare={handleShare}
-                muted={muted}
-                toggleMute={() => setMuted((m) => !m)}
-                shouldRender={clip.shouldRender}
-                onPrefetchComments={prefetchComments}
-              />
-            </div>
+          {visibleClips.map((clip, index) => (
+            <React.Fragment key={clip.id}>
+              <div className={s.cardContainer} data-id={clip.id}>
+                <FlashCard
+                  video={clip}
+                  isActive={activeVideoId?.toString() === clip.id.toString()}
+                  onLike={handleLike}
+                  onComment={(id) => setActiveCommentVideoId(id)}
+                  onShare={handleShare}
+                  muted={muted}
+                  toggleMute={() => setMuted((m) => !m)}
+                  shouldRender={clip.shouldRender}
+                  onPrefetchComments={prefetchComments}
+                />
+              </div>
+              {(index + 1) % 5 === 0 && !user?.is_premium && (
+                <div className={s.cardContainer} data-id={`ad-${index}`}>
+                  <NativeFeedAd variant="flash" />
+                </div>
+              )}
+            </React.Fragment>
           ))}
 
           {loadingMore && (
@@ -513,8 +521,6 @@ export default function FlashFeed({
         />
       )}
 
-      {/* keep user referenced so lint knows premium ads deferred */}
-      {user?.is_premium ? null : null}
     </div>
   );
 }

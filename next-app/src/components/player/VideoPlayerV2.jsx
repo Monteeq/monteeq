@@ -9,6 +9,7 @@ import { getStreamUrl, getClientApiBaseUrl } from '@/lib/streamUrl';
 import { useAuth } from '@/context/AuthContext';
 import PreRollPlayer from '@/components/ads/PreRollPlayer';
 import PauseOverlayAd from '@/components/ads/PauseOverlayAd';
+import { useTrackHistory } from '@/hooks/useLibrary';
 
 // Resolution definitions: label, quality key for /stream-res, isPro gating
 // 'src' key means use the master HLS stream (default)
@@ -47,7 +48,7 @@ const VideoPlayerV2 = ({
   const containerRef = useRef(null);
   const hlsRef = useRef(null);
   const progressBarRef = useRef(null);
-  const trackHistory = { mutate: () => {} };
+  const trackHistory = useTrackHistory();
 
   // Analytics & Sessions
   const viewTicketRef = useRef(null);
