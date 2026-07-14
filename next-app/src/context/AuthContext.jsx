@@ -9,6 +9,15 @@ import {
   verifyLogin2FA as verifyLogin2FARequest,
 } from '@/lib/clientApi';
 
+async function registerPushSafe(accessToken) {
+  try {
+    const { registerPushSubscription } = await import('@/utils/pushSubscription');
+    registerPushSubscription(accessToken);
+  } catch (err) {
+    console.warn('Push subscription skipped:', err?.message || err);
+  }
+}
+
 const AuthContext = createContext({
   user: null,
   token: null,
@@ -82,6 +91,7 @@ export function AuthProvider({ children }) {
       const { access_token } = data;
       localStorage.setItem('token', access_token);
       setToken(access_token);
+      registerPushSafe(access_token);
       return fetchUser(access_token);
     },
     [fetchUser]
@@ -99,6 +109,7 @@ export function AuthProvider({ children }) {
       if (access_token) {
         localStorage.setItem('token', access_token);
         setToken(access_token);
+        registerPushSafe(access_token);
         return fetchUser(access_token);
       }
       return data;
@@ -112,6 +123,7 @@ export function AuthProvider({ children }) {
       const { access_token } = data;
       localStorage.setItem('token', access_token);
       setToken(access_token);
+      registerPushSafe(access_token);
       return fetchUser(access_token);
     },
     [fetchUser]

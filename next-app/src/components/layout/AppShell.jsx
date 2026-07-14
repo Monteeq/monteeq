@@ -1,21 +1,40 @@
 'use client';
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import ModernHeader from '@/components/layout/ModernHeader';
 import Sidebar from '@/components/layout/Sidebar';
 import Footer from '@/components/layout/Footer';
 import MeshBackground from '@/components/layout/MeshBackground';
 
+const ONBOARDING_EXCLUDED = ['/onboarding', '/verify', '/payment', '/login', '/signup'];
+
 /**
  * Faithful port of frontend/src/App.jsx AppContent shell.
  * Same hideHeader / hideSidebar / immersive rules — only routing APIs changed.
  */
 export default function AppShell({ children }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const pathname = usePathname() || '/';
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
+  // Vite App.jsx: force /verify then /onboarding when profile incomplete
+  React.useEffect(() => {
+    if (!token || !user) return;
+    if (!user.is_verified && pathname !== '/verify') {
+      router.replace('/verify');
+      return;
+    }
+    if (
+      user.is_verified &&
+      !user.is_onboarded &&
+      !ONBOARDING_EXCLUDED.includes(pathname)
+    ) {
+      router.replace('/onboarding');
+    }
+  }, [token, user, pathname, router]);
 
   const isFlashPage = pathname.startsWith('/flash');
   const isHomePage = pathname === '/home' || (pathname === '/' && !!token);

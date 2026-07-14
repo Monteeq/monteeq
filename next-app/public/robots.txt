@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://monteeq.com/sitemap.xml
+Sitemap: https://api.monteeq.com/api/v1/seo/sitemap.xml
