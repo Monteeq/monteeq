@@ -73,6 +73,41 @@ def get_posts(
     db.commit()
     return posts
 
+@router.get("/{post_id}", response_model=schemas.Post)
+def get_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_optional)
+):
+    """Single post for SEO / deep links (used by Next.js /post/[id])."""
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    target = post
+    if post.original_post_id and post.original_post:
+        target = post.original_post
+
+    target.likes_count = db.query(func.count(Like.id)).filter(Like.post_id == target.id).scalar() or 0
+    target.comments_count = db.query(func.count(Comment.id)).filter(Comment.post_id == target.id).scalar() or 0
+    if current_user:
+        target.liked_by_user = (
+            db.query(Like)
+            .filter(Like.post_id == target.id, Like.user_id == current_user.id)
+            .first()
+            is not None
+        )
+    else:
+        target.liked_by_user = False
+
+    # Attribute counts onto the returned row when it is a repost wrapper
+    if post.original_post_id and post.original_post:
+        post.likes_count = target.likes_count
+        post.comments_count = target.comments_count
+        post.liked_by_user = target.liked_by_user
+
+    return post
+
 @router.post("/create", response_model=schemas.Post)
 async def create_post(
     content: str = Form(...),
