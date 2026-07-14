@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import Page from '@/components/pages/PaymentCallbackPage';
 
@@ -12,7 +13,9 @@ export async function generateMetadata() {
 export default function RoutePage() {
   return (
     <ProtectedRoute>
-      <Page />
+      <Suspense fallback={null}>
+        <Page />
+      </Suspense>
     </ProtectedRoute>
   );
 }

@@ -148,9 +148,10 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                 hlsRef.current = null;
                 if (manifestParsed) HlsPool.release();  // only release if we incremented
             }
-            if (videoRef.current) {
-                videoRef.current.pause();
-                videoRef.current.src = '';
+            const el = videoRef.current;
+            if (el) {
+                el.pause();
+                el.src = '';
             }
         };
     }, [showPreview, video.video_url, video.id]);

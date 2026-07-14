@@ -45,7 +45,7 @@ const NotificationManager = () => {
         // Initial check on mount
         pollNotifications();
 
-    }, [user, token, showNotification, activeAchievement]);
+    }, [user, token, showNotification, activeAchievement, fetchUnreadCount, showAchievementCelebration]);
 
     return null;
 };
