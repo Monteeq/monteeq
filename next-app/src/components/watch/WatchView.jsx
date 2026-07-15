@@ -16,10 +16,14 @@ import {
   UserCheck,
   Users,
   Bookmark,
+  Flag,
 } from 'lucide-react';
 import VideoPlayerV2 from '@/components/player/VideoPlayerV2';
 import CommentItem from '@/components/comments/CommentItem';
+import AdSenseAd from '@/components/ads/AdSenseAd';
 import { useAuth } from '@/context/AuthContext';
+import { useReport } from '@/context/ReportContext';
+import { useWatchLaterToggle } from '@/hooks/useWatchLaterToggle';
 import {
   likeVideo,
   shareVideo,
@@ -289,6 +293,7 @@ export default function WatchView({
   initialIsFollowing = false,
 }) {
   const { token, user } = useAuth();
+  const { openReportModal } = useReport();
   const router = useRouter();
   const [video, setVideo] = useState(initialVideo);
   const [comments, setComments] = useState(initialComments || []);
@@ -302,6 +307,12 @@ export default function WatchView({
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+
+  const {
+    isSaved: isSavedToWatchLater,
+    isPending: watchLaterPending,
+    toggle: handleWatchLaterToggle,
+  } = useWatchLaterToggle(video?.id);
 
   const related = relatedVideos.filter((v) => String(v.id) !== String(video.id));
   const currentIndex = relatedVideos.findIndex((v) => String(v.id) === String(video.id));
@@ -492,14 +503,23 @@ export default function WatchView({
           <button type="button" className={`actionBtn ${video.liked_by_user ? 'active' : ''}`} onClick={handleLike}>
             <Heart size={20} fill={video.liked_by_user ? 'white' : 'none'} /> {video.likes_count}
           </button>
-          <button type="button" className="actionBtn" disabled title="Watch Later migrates with library routes">
-            <Bookmark size={20} /> Watch Later
+          <button
+            type="button"
+            className={`actionBtn ${isSavedToWatchLater ? 'active' : ''}`}
+            onClick={handleWatchLaterToggle}
+            disabled={watchLaterPending}
+          >
+            <Bookmark size={20} fill={isSavedToWatchLater ? 'white' : 'none'} />{' '}
+            {isSavedToWatchLater ? 'Saved' : 'Watch Later'}
           </button>
           <button type="button" className="actionBtn" onClick={handleShare}>
             <Share2 size={20} /> Share
           </button>
           <button type="button" className="actionBtn" onClick={() => setShowDownloadModal(true)}>
             <Download size={20} /> Download
+          </button>
+          <button type="button" className="actionBtn" onClick={() => openReportModal('video', video.id)}>
+            <Flag size={20} /> Report
           </button>
         </div>
 
@@ -518,6 +538,16 @@ export default function WatchView({
                 </span>
               ))}
           </div>
+
+          {!user?.is_premium && (
+            <div style={{ marginTop: '2rem' }}>
+              <AdSenseAd
+                client={process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}
+                slot={process.env.NEXT_PUBLIC_ADSENSE_MULTIPLEX_SLOT_ID}
+                format="autorelaxed"
+              />
+            </div>
+          )}
 
           <div style={{ marginTop: '4rem' }}>
             <h3 className="commentsHeading" style={{ marginBottom: '2rem' }}>

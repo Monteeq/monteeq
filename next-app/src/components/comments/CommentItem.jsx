@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Send, Edit2, Trash2, X } from 'lucide-react';
+import { Send, Edit2, Trash2, X, Flag } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useReport } from '@/context/ReportContext';
 import { likeComment } from '@/lib/clientApi';
 
 /**
- * Port of frontend CommentItem with report/notification deps softened for Watch isolation.
+ * Port of frontend CommentItem.
  */
 export default function CommentItem({
   comment,
@@ -20,6 +21,7 @@ export default function CommentItem({
   level = 0,
 }) {
   const { user, token } = useAuth();
+  const { openReportModal } = useReport();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [showAllReplies, setShowAllReplies] = useState(false);
@@ -196,6 +198,25 @@ export default function CommentItem({
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 600 }}
               >
                 Reply
+              </button>
+            )}
+            {user && !isOwner && (
+              <button
+                type="button"
+                title="Report Comment"
+                onClick={() => openReportModal('comment', comment.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <Flag size={14} /> Report
               </button>
             )}
             {isOwner && (

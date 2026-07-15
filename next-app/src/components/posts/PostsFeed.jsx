@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import CommentsDrawer from '@/components/flash/CommentsDrawer';
 import { useAuth } from '@/context/AuthContext';
+import { useReport } from '@/context/ReportContext';
 import {
   fetchPostsPage,
   likePost,
@@ -137,7 +138,7 @@ function PostCard({
                 <button
                   type="button"
                   onClick={() => {
-                    console.log('Report post', displayData.id);
+                    openReportModal('post', displayData.id);
                     setActivePostMenuId(null);
                   }}
                   style={{
@@ -241,6 +242,7 @@ function PostCard({
 
 export default function PostsFeed({ initialPosts = [] }) {
   const { token, user } = useAuth();
+  const { openReportModal } = useReport();
   const [posts, setPosts] = useState(initialPosts);
   const [nextSkip, setNextSkip] = useState(initialPosts.length);
   const [hasMore, setHasMore] = useState(initialPosts.length >= POSTS_PAGE_SIZE);
