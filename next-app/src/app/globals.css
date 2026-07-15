@@ -65,7 +65,7 @@ html,
 body {
   background-color: var(--bg-deep);
   color: var(--text-primary);
-  font-family: var(--font-outfit), 'Outfit', var(--font-inter), 'Inter', -apple-system, sans-serif;
+  font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
   overflow-x: hidden;
   height: 100%;
   width: 100%;
