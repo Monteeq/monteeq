@@ -141,7 +141,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
         <header className={s.header}>
             <div className={`${s.navSection} ${s.sectionLeft}`}>
                 <button className={s.menuBtn} onClick={onMenuToggle}>
-                    <Menu size={22} />
+                    <Menu size={24} />
                 </button>
                 <div className={s.logo} onClick={() => router.push('/home')} onMouseEnter={prefetchHome}>
 
@@ -233,12 +233,12 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
 
             <div className={`${s.navSection} ${s.sectionRight}`}>
                 <button className={s.mobileOnlySearch} onClick={() => setIsSearchExpanded(true)}>
-                    <Search size={20} />
+                    <Search size={24} />
                 </button>
 
                 {token && (
                     <button className={s.uploadBtn} onClick={() => router.push('/upload')}>
-                        <Plus size={18} />
+                        <Plus size={22} />
                         <span>Upload</span>
                     </button>
                 )}
@@ -246,7 +246,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                 <div className={s.actionGroup}>
                     <button className={s.actionBtn} onClick={() => router.push('/notifications')} onMouseEnter={prefetchNotifications}>
 
-                        <Bell size={20} />
+                        <Bell size={24} />
                         {unreadCount > 0 && <span className={s.dashBadge} title={`${unreadCount} unread`} />}
                     </button>
 
@@ -261,7 +261,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                             </button>
                         ) : (
                             <Link href="/login" className={s.signInBtn}>
-                                <User size={18} />
+                                <User size={20} />
                                 <span>Sign In</span>
                             </Link>
                         )}
