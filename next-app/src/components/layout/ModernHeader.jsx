@@ -246,7 +246,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                 <div className={s.actionGroup}>
                     <button className={s.actionBtn} onClick={() => router.push('/notifications')} onMouseEnter={prefetchNotifications}>
 
-                        <Bell size={26} />
+                        <Bell size={28} />
                         {unreadCount > 0 && <span className={s.dashBadge} title={`${unreadCount} unread`} />}
                     </button>
 
