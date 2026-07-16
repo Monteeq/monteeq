@@ -709,6 +709,7 @@ h3 {
 .vc-info-flex {
   display: flex;
   gap: 0.8rem;
+  align-items: flex-start;
 }
 
 @media (max-width: 511px) {

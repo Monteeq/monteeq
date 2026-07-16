@@ -13,7 +13,10 @@ export default function VideoCardMenuRouteListener() {
   }, [pathname]);
 
   useEffect(() => {
-    const handleScroll = () => videoCardMenuStore.closeMenu();
+    const handleScroll = () => {
+      if (videoCardMenuStore.shouldIgnoreScrollClose()) return;
+      videoCardMenuStore.closeMenu();
+    };
     window.addEventListener('scroll', handleScroll, true);
     return () => window.removeEventListener('scroll', handleScroll, true);
   }, []);

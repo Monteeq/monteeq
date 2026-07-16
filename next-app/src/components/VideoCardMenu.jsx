@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { MoreVertical, Bookmark, BookmarkMinus, Flag, Loader2 } from 'lucide-react';
 import { videoCardMenuStore } from '@/stores/videoCardMenuStore';
 import { useWatchLaterToggle } from '@/hooks/useWatchLaterToggle';
@@ -10,13 +11,15 @@ import s from './VideoCardMenu.module.css';
 /**
  * @param {Object} props
  * @param {string|number} props.videoId
+ * @param {'meta'|'overlay'} [props.placement='meta'] — meta = YouTube-style beside title
  */
-const VideoCardMenu = ({ videoId }) => {
+const VideoCardMenu = ({ videoId, placement = 'meta' }) => {
     const menuRootRef = useRef(null);
     const triggerRef = useRef(null);
     const dropdownRef = useRef(null);
-    const [openAbove, setOpenAbove] = useState(false);
+    const [coords, setCoords] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     const { isSaved, isPending, toggle } = useWatchLaterToggle(videoId);
 
@@ -26,22 +29,29 @@ const VideoCardMenu = ({ videoId }) => {
         () => false
     );
 
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const closeMenu = useCallback(() => {
         videoCardMenuStore.closeMenu();
     }, []);
 
     const handleToggleMenu = useCallback((event) => {
+        event.preventDefault();
         event.stopPropagation();
         videoCardMenuStore.toggleMenu(videoId);
     }, [videoId]);
 
     const handleWatchLater = useCallback(async (event) => {
+        event.preventDefault();
         event.stopPropagation();
         await toggle();
         closeMenu();
     }, [toggle, closeMenu]);
 
     const handleReportClick = useCallback((event) => {
+        event.preventDefault();
         event.stopPropagation();
         closeMenu();
         setReportOpen(true);
@@ -52,21 +62,49 @@ const VideoCardMenu = ({ videoId }) => {
         triggerRef.current?.focus();
     }, []);
 
-    useLayoutEffect(() => {
-        if (!isOpen || !dropdownRef.current || !menuRootRef.current) return;
+    const updateCoords = useCallback(() => {
+        const trigger = triggerRef.current;
+        if (!trigger) return;
 
-        const dropdownRect = dropdownRef.current.getBoundingClientRect();
-        const rootRect = menuRootRef.current.getBoundingClientRect();
-        const overflowBottom = rootRect.bottom + dropdownRect.height + 8 > window.innerHeight;
-        const overflowTop = rootRect.top - dropdownRect.height - 8 < 0;
-        setOpenAbove(overflowBottom && !overflowTop);
-    }, [isOpen]);
+        const rect = trigger.getBoundingClientRect();
+        const dropdownWidth = 220;
+        const dropdownHeight = dropdownRef.current?.offsetHeight || 120;
+        const gap = 6;
+        const pad = 8;
+
+        let top = rect.bottom + gap;
+        let left = rect.right - dropdownWidth;
+
+        const overflowBottom = top + dropdownHeight + pad > window.innerHeight;
+        if (overflowBottom) {
+            top = Math.max(pad, rect.top - dropdownHeight - gap);
+        }
+
+        left = Math.min(Math.max(pad, left), window.innerWidth - dropdownWidth - pad);
+        setCoords({ top, left, width: dropdownWidth });
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!isOpen) {
+            setCoords(null);
+            return;
+        }
+        updateCoords();
+        // Re-measure after portal mount so height is accurate
+        const raf = window.requestAnimationFrame(updateCoords);
+        return () => window.cancelAnimationFrame(raf);
+    }, [isOpen, updateCoords]);
 
     useEffect(() => {
         if (!isOpen) return;
 
+        // Ignore scroll for a beat — focusing the first menuitem can scroll the page
+        // and VideoCardMenuRouteListener would close the menu immediately.
+        videoCardMenuStore.suppressScrollClose(200);
+
         const handlePointerDown = (event) => {
             if (menuRootRef.current?.contains(event.target)) return;
+            if (dropdownRef.current?.contains(event.target)) return;
             closeMenu();
         };
 
@@ -79,18 +117,18 @@ const VideoCardMenu = ({ videoId }) => {
             }
 
             if (!dropdownRef.current) return;
-            const items = Array.from(dropdownRef.current.querySelectorAll('[role="menuitem"]:not([disabled])'));
+            const items = Array.from(
+                dropdownRef.current.querySelectorAll('[role="menuitem"]:not([disabled])')
+            );
             if (items.length === 0) return;
 
             const currentIndex = items.indexOf(document.activeElement);
             if (event.key === 'ArrowDown') {
                 event.preventDefault();
-                const next = items[(currentIndex + 1 + items.length) % items.length];
-                next?.focus();
+                items[(currentIndex + 1 + items.length) % items.length]?.focus();
             } else if (event.key === 'ArrowUp') {
                 event.preventDefault();
-                const prev = items[(currentIndex - 1 + items.length) % items.length];
-                prev?.focus();
+                items[(currentIndex - 1 + items.length) % items.length]?.focus();
             } else if (event.key === 'Home') {
                 event.preventDefault();
                 items[0]?.focus();
@@ -100,8 +138,11 @@ const VideoCardMenu = ({ videoId }) => {
             }
         };
 
+        const handleReposition = () => updateCoords();
+
         document.addEventListener('mousedown', handlePointerDown);
         document.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('resize', handleReposition);
 
         const focusTimer = window.setTimeout(() => {
             dropdownRef.current?.querySelector('[role="menuitem"]')?.focus();
@@ -110,65 +151,82 @@ const VideoCardMenu = ({ videoId }) => {
         return () => {
             document.removeEventListener('mousedown', handlePointerDown);
             document.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('resize', handleReposition);
             window.clearTimeout(focusTimer);
         };
-    }, [isOpen, closeMenu]);
+    }, [isOpen, closeMenu, updateCoords]);
+
+    const dropdown =
+        mounted &&
+        isOpen &&
+        coords &&
+        createPortal(
+            <div
+                ref={dropdownRef}
+                className={s.dropdownPortal}
+                role="menu"
+                aria-label="Video options"
+                style={{ top: coords.top, left: coords.left, minWidth: coords.width }}
+                onClick={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
+            >
+                <button
+                    type="button"
+                    role="menuitem"
+                    className={s.menuItem}
+                    disabled={isPending}
+                    onClick={handleWatchLater}
+                >
+                    <span className={s.menuItemIcon} aria-hidden="true">
+                        {isPending ? (
+                            <Loader2 size={18} className={s.spinner} />
+                        ) : isSaved ? (
+                            <BookmarkMinus size={18} />
+                        ) : (
+                            <Bookmark size={18} />
+                        )}
+                    </span>
+                    <span>{isSaved ? 'Remove from Watch Later' : 'Watch Later'}</span>
+                </button>
+
+                <button
+                    type="button"
+                    role="menuitem"
+                    className={`${s.menuItem} ${s.menuItemDanger}`}
+                    onClick={handleReportClick}
+                >
+                    <span className={s.menuItemIcon} aria-hidden="true">
+                        <Flag size={18} />
+                    </span>
+                    <span>Report</span>
+                </button>
+            </div>,
+            document.body
+        );
 
     return (
         <>
-            <div className={s.menuRoot} ref={menuRootRef} onClick={(event) => event.stopPropagation()}>
+            <div
+                className={`${s.menuRoot} ${placement === 'meta' ? s.menuRootMeta : s.menuRootOverlay}`}
+                ref={menuRootRef}
+                onClick={(event) => event.stopPropagation()}
+                onMouseDown={(event) => event.stopPropagation()}
+            >
                 <button
                     ref={triggerRef}
                     type="button"
-                    className={s.menuTrigger}
+                    className={`${s.menuTrigger} ${placement === 'meta' ? s.menuTriggerMeta : ''}`}
                     aria-haspopup="menu"
                     aria-expanded={isOpen}
                     aria-label="More options"
                     onClick={handleToggleMenu}
+                    onMouseDown={(event) => event.stopPropagation()}
                 >
-                    <MoreVertical size={20} aria-hidden="true" />
+                    <MoreVertical size={24} aria-hidden="true" />
                 </button>
-
-                {isOpen && (
-                    <div
-                        ref={dropdownRef}
-                        className={`${s.dropdown} ${openAbove ? s.dropdownAbove : ''}`}
-                        role="menu"
-                        aria-label="Video options"
-                    >
-                        <button
-                            type="button"
-                            role="menuitem"
-                            className={s.menuItem}
-                            disabled={isPending}
-                            onClick={handleWatchLater}
-                        >
-                            <span className={s.menuItemIcon} aria-hidden="true">
-                                {isPending ? (
-                                    <Loader2 size={18} className={s.spinner} />
-                                ) : isSaved ? (
-                                    <BookmarkMinus size={18} />
-                                ) : (
-                                    <Bookmark size={18} />
-                                )}
-                            </span>
-                            <span>{isSaved ? 'Remove from Watch Later' : 'Watch Later'}</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            role="menuitem"
-                            className={`${s.menuItem} ${s.menuItemDanger}`}
-                            onClick={handleReportClick}
-                        >
-                            <span className={s.menuItemIcon} aria-hidden="true">
-                                <Flag size={18} />
-                            </span>
-                            <span>Report</span>
-                        </button>
-                    </div>
-                )}
             </div>
+
+            {dropdown}
 
             {reportOpen && (
                 <ReportVideoModal

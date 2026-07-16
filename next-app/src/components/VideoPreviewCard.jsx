@@ -238,8 +238,6 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                         </div>
                     )}
 
-                    <VideoCardMenu videoId={video.id} />
-
                     {/* Duration Badge */}
                     {video.duration > 0 && (
                         <div className="vc-duration">
@@ -283,7 +281,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                 </div>
             </div>
 
-            {/* Metadata Section */}
+            {/* Metadata Section — YouTube-style ⋮ beside title */}
             <div className="vc-info-area">
                 <div className="vc-info-flex">
                     {variant === 'grid' && (
@@ -307,6 +305,8 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                             </div>
                         </div>
                     </div>
+
+                    <VideoCardMenu videoId={video.id} placement="meta" />
                 </div>
             </div>
         </div>
