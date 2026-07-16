@@ -21,6 +21,7 @@ import {
 import VideoPlayerV2 from '@/components/player/VideoPlayerV2';
 import CommentItem from '@/components/comments/CommentItem';
 import AdSenseAd from '@/components/ads/AdSenseAd';
+import VideoPreviewCard from '@/components/VideoPreviewCard';
 import { useAuth } from '@/context/AuthContext';
 import { useReport } from '@/context/ReportContext';
 import { useWatchLaterToggle } from '@/hooks/useWatchLaterToggle';
@@ -665,23 +666,12 @@ export default function WatchView({
             <h4 className="suggestedTitle">Up Next</h4>
             <div className="suggestedList">
               {related.map((v) => (
-                <Link key={v.id} href={`/watch/${v.id}`} className="suggestedItem" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <div style={{ width: 168, height: 94, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-raised)', flexShrink: 0 }}>
-                    {v.thumbnail_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={v.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : null}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', lineHeight: 1.3 }}>{v.title}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                      @{v.owner?.username}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 2 }}>
-                      {v.views?.toLocaleString()} views
-                    </div>
-                  </div>
-                </Link>
+                <VideoPreviewCard
+                  key={v.id}
+                  video={v}
+                  variant="list"
+                  onClick={() => router.push(`/watch/${v.id}`)}
+                />
               ))}
             </div>
           </div>

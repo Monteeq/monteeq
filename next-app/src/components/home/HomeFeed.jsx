@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Play, Zap, Loader2 } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +11,9 @@ import {
   fetchCategories,
   HOME_PAGE_SIZE,
 } from '@/lib/clientApi';
+import VirtualizedFeed from '@/components/VirtualizedFeed';
+import { VideoSkeleton } from '@/components/Skeleton';
+import useWindowWidth from '@/hooks/useWindowWidth';
 
 function formatViews(num) {
   if (!num) return '0';
@@ -19,52 +22,18 @@ function formatViews(num) {
   return String(num);
 }
 
-function VideoCard({ video }) {
-  return (
-    <Link
-      href={`/watch/${video.id}`}
-      style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-      className="hover-scale"
-    >
-      <div
-        style={{
-          aspectRatio: '16/9',
-          borderRadius: 16,
-          overflow: 'hidden',
-          background: 'var(--bg-raised)',
-          border: '1px solid var(--border-glass)',
-        }}
-      >
-        {video.thumbnail_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={video.thumbnail_url}
-            alt={video.title || ''}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            loading="lazy"
-          />
-        ) : null}
-      </div>
-      <div style={{ marginTop: '0.75rem' }}>
-        <div style={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.3 }}>{video.title}</div>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
-          @{video.owner?.username} · {formatViews(video.views)} views
-        </div>
-      </div>
-    </Link>
-  );
-}
-
 /**
- * Home feed — first page comes from the server; further pages load via
- * IntersectionObserver (client-only infinite scroll).
+ * Home feed — first page from the server; further pages via infinite scroll.
+ * Cards match Vite: VirtualizedFeed → VideoPreviewCard (video-card-v2).
  */
 export default function HomeFeed({
   initialVideos = [],
   initialFlash = [],
   initialCategories = ['All'],
 }) {
+  const router = useRouter();
   const { token } = useAuth();
+  const width = useWindowWidth();
   const [activeCategory, setActiveCategory] = useState('All');
   const [categories, setCategories] = useState(
     initialCategories?.length ? initialCategories : ['All']
@@ -79,7 +48,6 @@ export default function HomeFeed({
 
   const { ref, inView } = useInView({ threshold: 0, rootMargin: '200px' });
 
-  // Refresh categories/flash on mount if server sent empty (optional enrichment)
   useEffect(() => {
     if (categories.length <= 1) {
       fetchCategories()
@@ -139,39 +107,29 @@ export default function HomeFeed({
   }, [activeCategory, hasNextPage, isFetchingNextPage, skip, token]);
 
   useEffect(() => {
-    if (inView && hasNextPage && !isFetchingNextPage && activeCategory === 'All') {
-      // For "All", continue from SSR skip. For other categories, loadCategory already reset.
-      fetchNextPage();
-    } else if (inView && hasNextPage && !isFetchingNextPage && activeCategory !== 'All') {
+    if (inView && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, activeCategory]);
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const firstRowVideos = videos.slice(0, 3);
-  const remainingVideos = videos.slice(3);
+  const handleVideoClick = (id) => {
+    router.push(`/watch/${id}`);
+  };
+
+  const columnCount = width >= 1200 ? 3 : width >= 768 ? 2 : 1;
+  const firstRowVideos = videos.slice(0, columnCount);
+  const remainingVideos = videos.slice(columnCount);
+  const flashLimit = width < 768 ? 6 : 18;
 
   return (
-    <div className="home-container page-container" style={{ padding: '1.5rem', maxWidth: 1400, margin: '0 auto' }}>
-      <div
-        className="category-chips-container"
-        style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}
-      >
+    <div className="home-container page-container">
+      <div className="category-chips-container">
         {categories.map((cat) => (
           <button
             key={cat}
             type="button"
             className={`category-chip ${activeCategory === cat ? 'active' : ''}`}
             onClick={() => loadCategory(cat)}
-            style={{
-              padding: '0.5rem 1rem',
-              borderRadius: 999,
-              border: '1px solid var(--border-glass)',
-              background: activeCategory === cat ? 'var(--accent-primary)' : 'var(--bg-raised)',
-              color: '#fff',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-            }}
           >
             {cat}
           </button>
@@ -179,36 +137,36 @@ export default function HomeFeed({
       </div>
 
       {isCategoryLoading ? (
-        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-          <Loader2 className="animate-spin" style={{ margin: '0 auto' }} />
+        <div className="video-grid" style={{ marginTop: '1rem' }}>
+          {[...Array(columnCount)].map((_, i) => (
+            <VideoSkeleton key={`cat-skel-${i}`} />
+          ))}
         </div>
       ) : (
         <>
-          <div
-            className="feed-section"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '1.5rem',
-            }}
-          >
+          <div className="feed-section">
             {firstRowVideos.length > 0 ? (
-              firstRowVideos.map((v) => <VideoCard key={v.id} video={v} />)
+              <VirtualizedFeed videos={firstRowVideos} onVideoClick={handleVideoClick} />
             ) : (
               <div
                 style={{
-                  gridColumn: '1 / -1',
                   textAlign: 'center',
                   padding: '6rem 2rem',
                   color: 'var(--text-muted)',
                   background: 'var(--bg-raised)',
                   borderRadius: 32,
+                  margin: '2rem 0',
                   border: '1px solid var(--border-glass)',
                 }}
               >
                 <Play size={48} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
-                <h2 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No videos found</h2>
-                <p>We couldn&apos;t find any videos in the &quot;{activeCategory}&quot; category.</p>
+                <h2 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                  No videos found
+                </h2>
+                <p>
+                  We couldn&apos;t find any videos in the &quot;{activeCategory}&quot; category. Try
+                  another one!
+                </p>
               </div>
             )}
           </div>
@@ -217,60 +175,57 @@ export default function HomeFeed({
             <div
               className="flash-shelf-container"
               style={{
-                margin: '1.5rem 0',
+                margin: '1rem 0',
                 padding: '1.5rem 0',
                 borderTop: '1px solid var(--border-glass)',
                 borderBottom: '1px solid var(--border-glass)',
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '1rem',
-                }}
-              >
+              <div className="section-title" style={{ justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                  <div style={{ color: 'var(--accent-primary)', display: 'flex' }}>
+                  <div
+                    style={{
+                      color: 'var(--accent-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
                     <Zap size={24} fill="currentColor" />
                   </div>
                   <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Flash</h2>
                 </div>
-                <Link
-                  href="/flash"
+                <button
+                  type="button"
+                  onClick={() => router.push('/flash')}
                   style={{
+                    background: 'none',
+                    border: 'none',
                     color: 'var(--accent-primary)',
                     fontWeight: 700,
+                    cursor: 'pointer',
                     fontSize: '0.9rem',
-                    textDecoration: 'none',
                   }}
                 >
                   VIEW ALL
-                </Link>
+                </button>
               </div>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-                  gap: '0.75rem',
-                }}
-              >
-                {flash.slice(0, 12).map((item) => (
-                  <Link
+
+              <div className="flash-shelf-grid">
+                {flash.slice(0, flashLimit).map((item) => (
+                  <div
                     key={item.id}
-                    href={`/flash/${item.id}`}
-                    style={{ textDecoration: 'none', color: 'inherit' }}
+                    className="flash-shelf-item hover-scale"
+                    onClick={() => router.push(`/flash/${item.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/flash/${item.id}`);
+                      }
+                    }}
+                    role="link"
+                    tabIndex={0}
                   >
-                    <div
-                      style={{
-                        aspectRatio: '2/3',
-                        borderRadius: 12,
-                        overflow: 'hidden',
-                        position: 'relative',
-                        background: 'var(--bg-raised)',
-                      }}
-                    >
+                    <div className="flash-thumbnail-container">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={item.thumbnail_url}
@@ -278,47 +233,37 @@ export default function HomeFeed({
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         loading="lazy"
                       />
-                      <div
-                        style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          padding: '0.5rem',
-                          background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                        }}
-                      >
-                        {formatViews(item.views)} views
+                      <div className="flash-overlay-info">
+                        <div className="flash-item-title">{item.title}</div>
+                        <div className="flash-item-views">
+                          {formatViews(item.views)} views
+                        </div>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
           {remainingVideos.length > 0 && (
-            <div
-              className="feed-section"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '1.5rem',
-                marginTop: '1rem',
-              }}
-            >
-              {remainingVideos.map((v) => (
-                <VideoCard key={v.id} video={v} />
-              ))}
+            <div className="feed-section" style={{ marginTop: '1rem' }}>
+              <VirtualizedFeed videos={remainingVideos} onVideoClick={handleVideoClick} />
             </div>
           )}
         </>
       )}
 
+      {isFetchingNextPage && (
+        <div className="video-grid" style={{ marginTop: '2rem' }}>
+          {[...Array(4)].map((_, i) => (
+            <VideoSkeleton key={`more-skel-${i}`} />
+          ))}
+        </div>
+      )}
+
       {error && (
-        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--accent-primary)' }}>
+        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--accent-primary)' }}>
           <p>{error}</p>
           <button
             type="button"
@@ -334,7 +279,7 @@ export default function HomeFeed({
       {hasNextPage && (
         <div
           ref={ref}
-          style={{ height: 40, margin: '2rem 0', display: 'flex', justifyContent: 'center' }}
+          style={{ height: 20, margin: '2rem 0', display: 'flex', justifyContent: 'center' }}
         >
           {isFetchingNextPage ? (
             <Loader2 className="animate-spin" style={{ color: 'var(--accent-primary)' }} />
