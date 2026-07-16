@@ -141,7 +141,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
         <header className={s.header}>
             <div className={`${s.navSection} ${s.sectionLeft}`}>
                 <button className={s.menuBtn} onClick={onMenuToggle}>
-                    <Menu size={26} />
+                    <Menu size={28} />
                 </button>
                 <div className={s.logo} onClick={() => router.push('/home')} onMouseEnter={prefetchHome}>
 
@@ -233,12 +233,12 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
 
             <div className={`${s.navSection} ${s.sectionRight}`}>
                 <button className={s.mobileOnlySearch} onClick={() => setIsSearchExpanded(true)}>
-                    <Search size={26} />
+                    <Search size={28} />
                 </button>
 
                 {token && (
                     <button className={s.uploadBtn} onClick={() => router.push('/upload')}>
-                        <Plus size={26} />
+                        <Plus size={28} />
                         <span>Upload</span>
                     </button>
                 )}

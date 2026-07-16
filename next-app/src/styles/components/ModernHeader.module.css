@@ -39,8 +39,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     padding: 0;
     border-radius: 50%;
     transition: all 0.2s;
@@ -48,8 +48,8 @@
 }
 
 .menuBtn svg {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
 }
 
 @media (min-width: 1024px) {
@@ -411,8 +411,8 @@
     background: transparent;
     border: none;
     color: #fff;
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -423,8 +423,8 @@
 }
 
 .mobileOnlySearch svg {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
 }
 
 .signInBtn {
@@ -733,27 +733,16 @@
         height: 28px;
     }
 
-    /* Mobile: compact 40×40 buttons, 26px glyphs */
-    .menuBtn,
-    .actionBtn,
-    .mobileOnlySearch {
-        width: 40px;
-        height: 40px;
-    }
-
-    .menuBtn svg,
-    .actionBtn svg,
-    .mobileOnlySearch svg,
-    .uploadBtn svg {
-        width: 26px;
-        height: 26px;
-    }
-
     .uploadBtn {
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
         padding: 0;
         border-radius: 50%;
+    }
+
+    .uploadBtn svg {
+        width: 28px;
+        height: 28px;
     }
 
     .avatarLink {
@@ -771,10 +760,10 @@
     }
 
     .dashBadge {
-        top: 8px;
-        right: 8px;
-        width: 8px;
-        height: 8px;
+        top: 12px;
+        right: 12px;
+        width: 10px;
+        height: 10px;
     }
 
     .signInBtn {
