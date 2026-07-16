@@ -4,7 +4,7 @@ import Page from '@/components/pages/FollowingPage';
 export async function generateMetadata() {
   return {
     title: 'Following',
-    description: 'Following',
+    description: 'Videos from creators you follow on Monteeq.',
     robots: { index: false, follow: false },
   };
 }

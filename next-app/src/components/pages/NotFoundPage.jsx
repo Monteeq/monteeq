@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 /**
  * 404 Not Found page — matches Monteeq's cinematic dark aesthetic.
@@ -29,7 +29,7 @@ export default function NotFound() {
         </p>
 
         <div className="nf-actions">
-          <Link to="/" id="nf-go-home" className="nf-btn-primary">
+          <Link href="/" id="nf-go-home" className="nf-btn-primary">
             ← Back to Monteeq
           </Link>
           <button

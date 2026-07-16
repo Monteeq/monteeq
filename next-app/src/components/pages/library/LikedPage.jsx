@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Heart, Play, Filter } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useLikedVideos, useToggleLike } from '@/hooks/useLibrary';
 import { formatDuration } from '@/lib/format';
 import s from '@/styles/pages/library/Library.module.css';
 
 const Liked = () => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const [category, setCategory] = useState('all');
     const { data, isLoading } = useLikedVideos(category);
     const toggleLike = useToggleLike();
@@ -43,13 +43,13 @@ const Liked = () => {
                     <Heart size={64} color="var(--accent-primary)" fill="var(--accent-primary)" style={{ opacity: 0.2 }} />
                     <h2>No liked videos yet</h2>
                     <p>Tap the heart on any video to save it to your collection.</p>
-                    <button className="btn-primary" onClick={() => navigate('/home')}>Find Content</button>
+                    <button className="btn-primary" onClick={() => router.push('/home')}>Find Content</button>
                 </div>
             ) : (
                 <div className={s.gridContainer}>
                     {data.items.map(item => (
                         <div key={item.id} className="video-card-v2 vc-grid">
-                            <div className="vc-thumbnail-area" onClick={() => navigate(`/watch/${item.video.id}`)}>
+                            <div className="vc-thumbnail-area" onClick={() => router.push(`/watch/${item.video.id}`)}>
                                 <img src={item.video.thumbnail_url} alt={item.video.title} />
                                 <div className={s.duration}>{formatDuration(item.video.duration)}</div>
                                 <div className="like-button-overlay liked">
@@ -59,7 +59,7 @@ const Liked = () => {
                             </div>
                             <div className={s.infoArea}>
                                 <div className={s.mainInfo}>
-                                    <h3 className={s.videoTitle} onClick={() => navigate(`/watch/${item.video.id}`)}>
+                                    <h3 className={s.videoTitle} onClick={() => router.push(`/watch/${item.video.id}`)}>
                                         {item.video.title}
                                     </h3>
                                     <p className={s.videoMeta}>{item.video.creator_name}</p>

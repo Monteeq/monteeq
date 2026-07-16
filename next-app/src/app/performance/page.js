@@ -3,8 +3,8 @@ import Page from '@/components/pages/PerformancePage';
 
 export async function generateMetadata() {
   return {
-    title: 'Performance',
-    description: 'Performance',
+    title: { absolute: 'Performance | Analytics' },
+    description: 'Performance analytics for your Monteeq content.',
     robots: { index: false, follow: false },
   };
 }

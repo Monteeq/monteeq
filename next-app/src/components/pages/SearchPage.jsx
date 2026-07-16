@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
+
 import { Search as SearchIcon, Users, Play, Zap, Sparkles, AlertCircle, MessageSquare } from 'lucide-react';
 import { searchUnified } from '@/lib/browserApi';
 import { SearchUserSkeleton, SearchVideoSkeleton } from '@/components/Skeleton';
@@ -12,9 +13,9 @@ import { useAuth } from '@/context/AuthContext';
 
 const Search = () => {
     const { user } = useAuth();
-    const location = useLocation();
-    const navigate = useNavigate();
-    const query = new URLSearchParams(location.search).get('q') || '';
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const query = searchParams.get('q') || '';
 
     const [results, setResults] = useState({ videos: [], users: [] });
     const [loading, setLoading] = useState(true);
@@ -111,7 +112,7 @@ const Search = () => {
                                     <div
                                         key={u.id}
                                         className="user-card glass hover-scale"
-                                        onClick={() => navigate(`/profile/${u.username}`)}
+                                        onClick={() => router.push(`/profile/${u.username}`)}
                                         style={{
                                             minWidth: '200px',
                                             padding: '1.5rem',
@@ -143,7 +144,7 @@ const Search = () => {
                                     <div
                                         key={post.id}
                                         className="search-result-item glass hover-scale"
-                                        onClick={() => navigate('/posts')}
+                                        onClick={() => router.push('/posts')}
                                         style={{
                                             padding: '1.5rem',
                                             borderRadius: '20px',
@@ -191,7 +192,7 @@ const Search = () => {
                                         key={video.id}
                                         video={video}
                                         variant="list"
-                                        onClick={() => navigate(video.video_type === 'flash' ? `/flash/${video.id}` : `/watch/${video.id}`)}
+                                        onClick={() => router.push(video.video_type === 'flash' ? `/flash/${video.id}` : `/watch/${video.id}`)}
                                     />
                                 ))}
                             </div>

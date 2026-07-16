@@ -10,7 +10,7 @@ import {
     BookmarkPlus,
     CheckCircle2
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { useInView } from 'react-intersection-observer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -49,7 +49,7 @@ const HistorySkeleton = () => (
 );
 
 const History = () => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     
@@ -163,7 +163,7 @@ const History = () => {
                     <Clock size={64} color="var(--text-dim)" />
                     <h2>Queue is empty</h2>
                     <p>Videos you watch will appear here automatically.</p>
-                    <button className="btn-primary" onClick={() => navigate('/home')}>Explore Monteeq</button>
+                    <button className="btn-primary" onClick={() => router.push('/home')}>Explore Monteeq</button>
                 </div>
             ) : (
                 <div className={s.historyGroups}>
@@ -181,7 +181,7 @@ const History = () => {
                                             transition={{ duration: 0.2 }}
                                             className="video-card-v2 vc-list"
                                         >
-                                            <div className="vc-thumbnail-area" onClick={() => navigate(`/watch/${item.video.id}`)}>
+                                            <div className="vc-thumbnail-area" onClick={() => router.push(`/watch/${item.video.id}`)}>
                                                 <img src={item.video.thumbnail_url} alt={item.video.title} />
                                                 <div className={s.duration}>{formatDuration(item.video.duration)}</div>
                                                 
@@ -197,7 +197,7 @@ const History = () => {
                                             
                                             <div className={s.infoArea}>
                                                 <div className={s.mainInfo}>
-                                                    <h3 className={s.videoTitle} onClick={() => navigate(`/watch/${item.video.id}`)}>
+                                                    <h3 className={s.videoTitle} onClick={() => router.push(`/watch/${item.video.id}`)}>
                                                         {item.video.title}
                                                     </h3>
                                                     <p className={s.videoMeta}>

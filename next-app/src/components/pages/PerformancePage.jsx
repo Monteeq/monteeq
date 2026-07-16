@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     TrendingUp, Heart, Users, DollarSign,
@@ -172,7 +172,7 @@ const IntelligencePanel = ({ insights }) => (
 
 const Performance = () => {
     const { token } = useAuth();
-    const navigate = useNavigate();
+    const router = useRouter();
     const [activeMetric, setActiveMetric] = useState('views');
     const [activeRange, setActiveRange] = useState(30);
 
@@ -498,11 +498,11 @@ const Performance = () => {
 
                     <div className="action-panel">
                         <h4 className="card-title" style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Next Actions</h4>
-                        <button className="action-btn primary" onClick={() => navigate('/upload')}>
+                        <button className="action-btn primary" onClick={() => router.push('/upload')}>
                             Schedule Next Flash upload
                             <ChevronRight size={18} />
                         </button>
-                        <button className="action-btn" onClick={() => navigate('/challenges')}>
+                        <button className="action-btn" onClick={() => router.push('/challenges')}>
                             Join Gold Challenge
                             <Target size={18} />
                         </button>

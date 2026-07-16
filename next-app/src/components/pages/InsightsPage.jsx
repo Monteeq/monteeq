@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import {
     TrendingUp, Users, Heart, DollarSign, Share2, Video,
     Zap, ArrowLeft, BarChart3, Trophy, CheckCircle2,
@@ -16,7 +16,7 @@ const Insights = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showMilestonePopup, setShowMilestonePopup] = useState(false);
-    const navigate = useNavigate();
+    const router = useRouter();
 
     useEffect(() => {
         const fetchInsights = async () => {
@@ -54,7 +54,7 @@ const Insights = () => {
         <div className="insights-page page-container" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
             <div className="insights-header" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '3rem' }}>
                 <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => router.back()}
                     className="glass"
                     style={{
                         width: '45px', height: '45px', borderRadius: '50%', color: 'white',
@@ -69,7 +69,7 @@ const Insights = () => {
                 </div>
 
                 <button
-                    onClick={() => navigate('/manage')}
+                    onClick={() => router.push('/manage')}
                     className="glass hover-scale"
                     style={{
                         padding: '1rem 2rem',
@@ -99,7 +99,7 @@ const Insights = () => {
                     <div
                         key={idx}
                         className="glass hover-scale"
-                        onClick={() => navigate(`/performance?metric=${stat.id}`)}
+                        onClick={() => router.push(`/performance?metric=${stat.id}`)}
                         style={{
                             padding: '2rem', borderRadius: '24px', position: 'relative', overflow: 'hidden',
                             display: 'flex', flexDirection: 'column', gap: '1rem', cursor: 'pointer'
@@ -241,7 +241,7 @@ const Insights = () => {
 
                     <button
                         className="hero-btn"
-                        onClick={() => navigate('/upload')}
+                        onClick={() => router.push('/upload')}
                         style={{ marginTop: 'auto', width: '100%' }}
                     >
                         Boost Growth (Upload)

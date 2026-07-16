@@ -5,8 +5,8 @@ import HomeFeed from '@/components/home/HomeFeed';
 
 /**
  * Inline auth branch for `/` — both Landing and Home are valid renders of the same path.
- * No middleware redirect. Until httpOnly cookies exist, auth is detected client-side
- * from localStorage (same token key as the Vite app). Crawlers see the Landing SSR HTML.
+ * No middleware redirect. Auth is detected client-side from localStorage (same token
+ * key as the Vite app; intentional for cross-site API). Crawlers see the Landing SSR HTML.
  */
 export default function RootAuthGate({
   children,

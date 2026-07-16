@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -307,6 +307,7 @@ export default function WatchView({
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [navQueue, setNavQueue] = useState(() => relatedVideos || []);
 
   const {
     isSaved: isSavedToWatchLater,
@@ -314,16 +315,60 @@ export default function WatchView({
     toggle: handleWatchLaterToggle,
   } = useWatchLaterToggle(video?.id);
 
-  const related = relatedVideos.filter((v) => String(v.id) !== String(video.id));
-  const currentIndex = relatedVideos.findIndex((v) => String(v.id) === String(video.id));
+  useEffect(() => {
+    if (video?.title) {
+      window.dispatchEvent(new CustomEvent('monteeq:update-title', { detail: video.title }));
+    }
+  }, [video?.title]);
+
+  // Watch Later "Play all" (and similar) — Next has no location.state, so queue is handed off via sessionStorage
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('monteeq_watch_queue');
+      if (!raw) return;
+      sessionStorage.removeItem('monteeq_watch_queue');
+      const parsed = JSON.parse(raw);
+      const incoming = Array.isArray(parsed?.queue) ? parsed.queue : [];
+      if (incoming.length === 0) return;
+
+      setNavQueue((prev) => {
+        const currentEntry = video
+          ? {
+              id: video.id,
+              title: video.title,
+              thumbnail_url: video.thumbnail_url,
+              duration: video.duration,
+              creator_name: video.owner?.username || video.creator_name,
+            }
+          : null;
+        const incomingIds = new Set(incoming.map((v) => String(v.id)));
+        const head =
+          currentEntry && !incomingIds.has(String(currentEntry.id)) ? [currentEntry] : [];
+        const merged = [...head, ...incoming];
+        const extras = (prev || []).filter(
+          (v) => !merged.some((m) => String(m.id) === String(v.id))
+        );
+        return [...merged, ...extras];
+      });
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- read queue once on mount
+  }, []);
+
+  const related = (navQueue.length ? navQueue : relatedVideos).filter(
+    (v) => String(v.id) !== String(video.id)
+  );
+  const navList = navQueue.length ? navQueue : relatedVideos;
+  const currentIndex = navList.findIndex((v) => String(v.id) === String(video.id));
   const hasPrevious = currentIndex > 0;
-  const hasNext = currentIndex >= 0 && currentIndex < relatedVideos.length - 1;
+  const hasNext = currentIndex >= 0 && currentIndex < navList.length - 1;
 
   const goToPrevious = () => {
-    if (hasPrevious) router.push(`/watch/${relatedVideos[currentIndex - 1].id}`);
+    if (hasPrevious) router.push(`/watch/${navList[currentIndex - 1].id}`);
   };
   const goToNext = () => {
-    if (hasNext) router.push(`/watch/${relatedVideos[currentIndex + 1].id}`);
+    if (hasNext) router.push(`/watch/${navList[currentIndex + 1].id}`);
   };
 
   const handleLike = async () => {

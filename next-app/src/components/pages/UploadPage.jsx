@@ -24,7 +24,7 @@ import {
     Image as PhotoIcon
 } from 'lucide-react';
 
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/browserApi';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
@@ -32,7 +32,7 @@ import s from '@/styles/pages/UploadV2.module.css';
 
 const Upload = () => {
     const { user, token, refreshUser } = useAuth();
-    const navigate = useNavigate();
+    const router = useRouter();
     const { showNotification } = useNotification();
 
     // Wake up the video engine on Render to mitigate cold starts
@@ -367,7 +367,7 @@ const Upload = () => {
             });
             if (!res.ok) throw new Error("Failed to create post");
             showNotification('success', "Post published to community!");
-            navigate('/posts');
+            router.push('/posts');
         } catch (err) {
             showNotification('error', err.message);
         } finally {
@@ -461,7 +461,7 @@ const Upload = () => {
                         <p>Creation Hub</p>
                     </div>
                 </div>
-                <button className="btn-secondary desktop-only" onClick={() => navigate('/manage')}>
+                <button className="btn-secondary desktop-only" onClick={() => router.push('/manage')}>
                     <Layout size={18} /> Manage Content
                 </button>
             </header>
@@ -743,7 +743,7 @@ const Upload = () => {
                         </div>
 
                         {processingStatus === 'completed' && (
-                            <button className="btn-primary" style={{ marginTop: '1rem', background: '#4ade80', color: 'black', width: '100%' }} onClick={() => navigate('/manage')}>
+                            <button className="btn-primary" style={{ marginTop: '1rem', background: '#4ade80', color: 'black', width: '100%' }} onClick={() => router.push('/manage')}>
                                 GO TO DASHBOARD
                             </button>
                         )}

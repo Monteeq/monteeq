@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { Trash2, Film, Zap, AlertTriangle, ArrowLeft, Layout, Clock, UploadCloud, Eye, Plus, Grid, List, Calendar, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
@@ -19,7 +19,7 @@ const ManageContent = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [activeTab, setActiveTab] = useState('videos');
     const [viewMode, setViewMode] = useState('grid'); // grid | list
-    const navigate = useNavigate();
+    const router = useRouter();
     
     const fileInputRef = useRef(null);
     const [reuploadTargetId, setReuploadTargetId] = useState(null);
@@ -228,7 +228,7 @@ const ManageContent = () => {
                             fontSize: '0.9rem',
                             fontWeight: 700
                         }}
-                        onClick={() => activeTab === 'videos' ? navigate('/upload') : navigate('/posts')}
+                        onClick={() => activeTab === 'videos' ? router.push('/upload') : router.push('/posts')}
                     >
                         <Plus size={18} />
                         {activeTab === 'videos' ? 'Upload Video' : 'Create Post'}
@@ -442,7 +442,7 @@ const ManageContent = () => {
                             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', maxWidth: '400px', marginInline: 'auto' }}>
                                 Get started by uploading your first long-form video or short flash clip to share with the community.
                             </p>
-                            <button className="hero-btn" style={{ marginInline: 'auto', padding: '0.8rem 2rem', borderRadius: '12px' }} onClick={() => navigate('/upload')}>
+                            <button className="hero-btn" style={{ marginInline: 'auto', padding: '0.8rem 2rem', borderRadius: '12px' }} onClick={() => router.push('/upload')}>
                                 Upload Your First Video
                             </button>
                         </div>
@@ -562,7 +562,7 @@ const ManageContent = () => {
                                                 )}
                                                 {video.status !== 'failed' && (
                                                     <button
-                                                        onClick={() => navigate(`/watch/${video.id}`)}
+                                                        onClick={() => router.push(`/watch/${video.id}`)}
                                                         style={{
                                                             background: 'rgba(255,255,255,0.04)',
                                                             color: '#fff',
@@ -714,7 +714,7 @@ const ManageContent = () => {
                                         
                                         {video.status !== 'failed' && (
                                             <button
-                                                onClick={() => navigate(`/watch/${video.id}`)}
+                                                onClick={() => router.push(`/watch/${video.id}`)}
                                                 style={{
                                                     background: 'rgba(255,255,255,0.04)', color: '#fff', border: '1px solid var(--border-glass)',
                                                     padding: '0.4rem 0.8rem', borderRadius: '8px', cursor: 'pointer',
@@ -767,7 +767,7 @@ const ManageContent = () => {
                             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', maxWidth: '400px', marginInline: 'auto' }}>
                                 Publish updates, photos, or quick text announcements to keep your followers engaged.
                             </p>
-                            <button className="hero-btn" style={{ marginInline: 'auto', padding: '0.8rem 2rem', borderRadius: '12px' }} onClick={() => navigate('/posts')}>
+                            <button className="hero-btn" style={{ marginInline: 'auto', padding: '0.8rem 2rem', borderRadius: '12px' }} onClick={() => router.push('/posts')}>
                                 View Feed & Create Post
                             </button>
                         </div>

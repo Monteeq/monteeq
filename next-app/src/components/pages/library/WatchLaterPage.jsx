@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Clock, Play, Trash2, LayoutGrid, List } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useWatchLater, useRemoveFromWatchLater, useClearWatchLater } from '@/hooks/useLibrary';
 import { formatDuration, formatRelativeTime } from '@/lib/format';
 import s from '@/styles/pages/library/Library.module.css';
 
 const WatchLater = () => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const { data, isLoading } = useWatchLater();
     const removeFromWatchLater = useRemoveFromWatchLater();
     const clearAll = useClearWatchLater();
@@ -20,11 +20,12 @@ const WatchLater = () => {
     const handlePlayAll = () => {
         if (!data?.items || data.items.length === 0) return;
 
-        const [first, ...rest] = data.items;
+        const [first] = data.items;
 
-        navigate(`/watch/${first.video.id}`, {
-            state: {
-                queue: rest.map(item => ({
+        // Next.js has no location.state — hand off full playlist via sessionStorage
+        try {
+            sessionStorage.setItem('monteeq_watch_queue', JSON.stringify({
+                queue: data.items.map(item => ({
                     id: item.video.id,
                     title: item.video.title,
                     thumbnail_url: item.video.thumbnail_url,
@@ -32,8 +33,9 @@ const WatchLater = () => {
                     creator_name: item.video.creator_name,
                 })),
                 queueSource: 'watchlater',
-            }
-        });
+            }));
+        } catch (_) { /* ignore quota / private mode */ }
+        router.push(`/watch/${first.video.id}`);
     };
 
     return (
@@ -78,20 +80,20 @@ const WatchLater = () => {
                     <Clock size={64} color="var(--text-dim)" />
                     <h2>Queue is empty</h2>
                     <p>No videos saved yet. Browse Monteeq and hit the clock icon to save videos.</p>
-                    <button className="btn-primary" onClick={() => navigate('/home')}>Explore Videos</button>
+                    <button className="btn-primary" onClick={() => router.push('/home')}>Explore Videos</button>
                 </div>
             ) : (
                 <div className={s.gridContainer}>
                     {data.items.map(item => (
                         <div key={item.id} className="video-card-v2 vc-grid">
-                            <div className="vc-thumbnail-area" onClick={() => navigate(`/watch/${item.video.id}`)}>
+                            <div className="vc-thumbnail-area" onClick={() => router.push(`/watch/${item.video.id}`)}>
                                 <img src={item.video.thumbnail_url} alt={item.video.title} />
                                 <div className={s.duration}>{formatDuration(item.video.duration)}</div>
                                 <div className={s.playOverlay}><Play size={48} fill="white" /></div>
                             </div>
                             <div className={s.infoArea}>
                                 <div className={s.mainInfo}>
-                                    <h3 className={s.videoTitle} onClick={() => navigate(`/watch/${item.video.id}`)}>
+                                    <h3 className={s.videoTitle} onClick={() => router.push(`/watch/${item.video.id}`)}>
                                         {item.video.title}
                                     </h3>
                                     <p className={s.videoMeta}>{item.video.creator_name}</p>

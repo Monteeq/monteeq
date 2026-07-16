@@ -8,6 +8,9 @@ import { ErrorProvider } from '@/context/ErrorContext';
 import { ReportProvider } from '@/context/ReportContext';
 import AppShell from '@/components/layout/AppShell';
 import VideoCardMenuRouteListener from '@/components/VideoCardMenuRouteListener';
+import NotificationManager from '@/components/NotificationManager';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import DynamicTitle from '@/components/DynamicTitle';
 import { useEffect, useState } from 'react';
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -63,7 +66,11 @@ function AppProviders({ children }) {
           <ErrorProvider>
             <ReportProvider>
               <VideoCardMenuRouteListener />
-              <AppShell>{children}</AppShell>
+              <NotificationManager />
+              <DynamicTitle />
+              <AppShell>
+                <ErrorBoundary>{children}</ErrorBoundary>
+              </AppShell>
             </ReportProvider>
           </ErrorProvider>
         </NotificationProvider>

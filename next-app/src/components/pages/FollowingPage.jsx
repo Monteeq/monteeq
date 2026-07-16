@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Users, Video, Zap, MessageSquare, Loader2, UserPlus, Flame, Heart } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFollowingFeed } from '@/hooks/useFeed';
@@ -8,13 +9,13 @@ import { getRecommendedCreators, toggleFollow, isAbortOrNetworkError } from '@/l
 import VideoPreviewCard from '@/components/VideoPreviewCard';
 import { PostSkeleton, VideoSkeleton } from '@/components/Skeleton';
 import SEO from '@/components/SEO';
-import { useNavigate } from 'react-router-dom';
+
 import { useNotification } from '@/context/NotificationContext';
 import styles from '@/styles/pages/Following.module.css';
 
 const Following = () => {
     const { token, user } = useAuth();
-    const navigate = useNavigate();
+    const router = useRouter();
     const { showNotification } = useNotification();
     const [contentType, setContentType] = useState('all');
     const [recommendations, setRecommendations] = useState([]);
@@ -52,7 +53,7 @@ const Following = () => {
 
     const handleFollow = async (creatorId) => {
         if (!token) {
-            navigate('/login');
+            router.push('/login');
             return;
         }
         try {
@@ -72,7 +73,7 @@ const Following = () => {
                 <Users size={64} style={{ marginBottom: '2rem', opacity: 0.5 }} />
                 <h1 className={styles.title}>Following</h1>
                 <p className={styles.emptyText}>Sign in to see updates from your favorite creators.</p>
-                <button className="btn-active" onClick={() => navigate('/login')}>SIGN IN</button>
+                <button className="btn-active" onClick={() => router.push('/login')}>SIGN IN</button>
             </div>
         );
     }
@@ -140,7 +141,7 @@ const Following = () => {
                                 <p>No creator recommendations right now — check back soon.</p>
                                 <button
                                     className="btn-secondary"
-                                    onClick={() => navigate('/search')}
+                                    onClick={() => router.push('/search')}
                                     style={{ marginTop: '0.5rem' }}
                                 >
                                     Search for creators
@@ -154,7 +155,7 @@ const Following = () => {
                                             src={creator.profile_pic || null}
                                             alt={creator.username}
                                             className={styles.creatorAvatar}
-                                            onClick={() => navigate(`/profile/${creator.username}`)}
+                                            onClick={() => router.push(`/profile/${creator.username}`)}
                                             onError={(e) => {
                                                 e.target.style.display = 'none';
                                                 e.target.nextSibling.style.display = 'flex';
@@ -172,13 +173,13 @@ const Following = () => {
                                                 fontSize: '1.2rem',
                                                 cursor: 'pointer'
                                             }}
-                                            onClick={() => navigate(`/profile/${creator.username}`)}
+                                            onClick={() => router.push(`/profile/${creator.username}`)}
                                         >
                                             {creator.username?.charAt(0)?.toUpperCase()}
                                         </div>
                                         <div
                                             className={styles.creatorName}
-                                            onClick={() => navigate(`/profile/${creator.username}`)}
+                                            onClick={() => router.push(`/profile/${creator.username}`)}
                                         >
                                             {creator.username}
                                         </div>
@@ -205,12 +206,12 @@ const Following = () => {
                                 <VideoPreviewCard 
                                     key={`${item.type}-${item.data.id}-${idx}`}
                                     video={item.data}
-                                    onClick={() => navigate(`/watch/${item.data.id}`)}
+                                    onClick={() => router.push(`/watch/${item.data.id}`)}
                                 />
                             );
                         } else if (item.type === 'post') {
                             return (
-                                <div key={`post-${item.data.id}-${idx}`} className={styles.postItem} onClick={() => navigate('/posts')}>
+                                <div key={`post-${item.data.id}-${idx}`} className={styles.postItem} onClick={() => router.push('/posts')}>
                                     {/* Minimal post preview */}
                                     <div className="glass" style={{ padding: '1.5rem', borderRadius: '20px', height: '100%', border: '1px solid var(--border-glass)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>

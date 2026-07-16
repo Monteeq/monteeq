@@ -3,8 +3,8 @@ import Page from '@/components/pages/InsightsPage';
 
 export async function generateMetadata() {
   return {
-    title: 'Insights',
-    description: 'Insights',
+    title: { absolute: 'Insights | Creator Studio' },
+    description: 'Creator insights and studio analytics on Monteeq.',
     robots: { index: false, follow: false },
   };
 }

@@ -13,14 +13,14 @@ import {
     CheckCircle2,
     Loader2
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/browserApi';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 
 const CreatePost = () => {
     const { user, token } = useAuth();
-    const navigate = useNavigate();
+    const router = useRouter();
     const { showNotification } = useNotification();
 
     const [content, setContent] = useState('');
@@ -90,7 +90,7 @@ const CreatePost = () => {
 
             if (response.ok) {
                 showNotification('success', 'Post published successfully!');
-                navigate('/home'); // Redirect to feed
+                router.push('/home'); // Redirect to feed
             } else {
                 const error = await response.json();
                 showNotification('error', error.detail || "Failed to publish post.");
@@ -128,7 +128,7 @@ const CreatePost = () => {
                     <h1 style={{ fontSize: 'clamp(1.2rem, 4vw, 1.5rem)', fontWeight: 900 }}>Create Post</h1>
                 </div>
                 <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => router.back()}
                     style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem' }}
                 >
                     Cancel

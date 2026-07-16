@@ -5,12 +5,12 @@ import { useAuth } from '@/context/AuthContext';
 import { getAllNotifications, markNotificationRead, markAllNotificationsRead, isAbortOrNetworkError } from '@/lib/browserApi';
 import { useNotification } from '@/context/NotificationContext';
 import { Bell, CheckCircle, Info, AlertCircle, Calendar, Check } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { NotificationSkeleton } from '@/components/Skeleton';
 
 const Notifications = () => {
     const { token, user } = useAuth();
-    const navigate = useNavigate();
+    const router = useRouter();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const { showAchievementCelebration } = useNotification();
@@ -68,7 +68,7 @@ const handleNotificationClick = (note) => {
     }
 
     if (note.link) {
-        navigate(note.link);
+        router.push(note.link);
     }
 };
 

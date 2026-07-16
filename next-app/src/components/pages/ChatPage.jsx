@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useCrypto } from '@/hooks/useCrypto';
 import { useGoogleDrive } from '@/hooks/useGoogleDrive';
@@ -32,10 +32,10 @@ const logo = '/images/logo.png';
 
 const Chat = () => {
     const { user, token, setUser } = useAuth();
-    const navigate = useNavigate();
+    const router = useRouter();
     const { showNotification } = useNotification();
     const { saveMessage, getMessagesForConversation, saveConversation, getLocalConversations } = useChatDB();
-    const location = useLocation();
+    const searchParams = useSearchParams();
     const deviceId = useMemo(() => {
         let devId = localStorage.getItem('monteeq_device_id');
         if (!devId) {
@@ -299,10 +299,10 @@ const Chat = () => {
         return () => clearTimeout(timeoutId);
     }, [searchTerm, isDiscoveryMode, fetchDiscoveryUsers]);
 
-    // Handle deep-linking from profile
+    // Handle deep-linking from profile (?start=username)
     useEffect(() => {
-        if (location.state?.startChatWith && isConvsLoaded) {
-            const targetUsername = location.state.startChatWith;
+        const targetUsername = searchParams.get('start');
+        if (targetUsername && isConvsLoaded) {
             const existing = conversations.find(c =>
                 (c.user1.username === targetUsername) || (c.user2.username === targetUsername)
             );
@@ -330,10 +330,10 @@ const Chat = () => {
                 };
                 setupVirtual();
             }
-            // Clear state so we don't re-trigger on every render
-            window.history.replaceState({}, document.title);
+            // Clear query so we don't re-trigger on every render
+            router.replace('/chat');
         }
-    }, [location.state, conversations, user]);
+    }, [searchParams, conversations, user, isConvsLoaded, router]);
 
     const decryptAll = useCallback(async (msgs) => {
         if (!Array.isArray(msgs) || !user?.id || !isSetup) return;
@@ -876,7 +876,7 @@ const Chat = () => {
                             ↺ Retry
                         </button>
                         <button
-                            onClick={() => navigate('/home')}
+                            onClick={() => router.push('/home')}
                             style={{
                                 padding: '0.75rem 1.5rem',
                                 borderRadius: '100px',
