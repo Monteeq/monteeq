@@ -48,8 +48,8 @@
 }
 
 .menuBtn svg {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
 }
 
 @media (min-width: 1024px) {
@@ -222,8 +222,8 @@
 }
 
 .uploadBtn svg {
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
     flex-shrink: 0;
 }
 
@@ -267,8 +267,8 @@
 }
 
 .actionBtn svg {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
 }
 
 .actionBtn:hover {
@@ -423,8 +423,8 @@
 }
 
 .mobileOnlySearch svg {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
 }
 
 .signInBtn {
@@ -743,9 +743,10 @@
 
     .menuBtn svg,
     .actionBtn svg,
-    .mobileOnlySearch svg {
-        width: 24px;
-        height: 24px;
+    .mobileOnlySearch svg,
+    .uploadBtn svg {
+        width: 26px;
+        height: 26px;
     }
 
     .uploadBtn {
@@ -753,11 +754,6 @@
         height: 40px;
         padding: 0;
         border-radius: 50%;
-    }
-
-    .uploadBtn svg {
-        width: 22px;
-        height: 22px;
     }
 
     .avatarLink {
