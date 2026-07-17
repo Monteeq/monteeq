@@ -3,10 +3,16 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.core.config import SECRET_KEY, ALGORITHM
+import hashlib
+import logging
+import time
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+logger = logging.getLogger(__name__)
 
-import hashlib
+# Process-local fallback when Redis is unavailable
+_memory_buckets: dict[str, list[float]] = {}
+
 
 def verify_password(plain_password, hashed_password):
     try:
@@ -15,7 +21,7 @@ def verify_password(plain_password, hashed_password):
     except ValueError:
         # Password too long for bcrypt, try pre-hashed version
         pass
-    
+
     # Try verifying with pre-hashed password (for new users or long passwords)
     # We use SHA256 hexdigest as the input to bcrypt, which is always 64 chars
     pre_hashed = hashlib.sha256(plain_password.encode()).hexdigest()
@@ -42,7 +48,7 @@ def is_bot(request) -> bool:
     Checks User-Agent, missing standard headers, and known headless browser patterns.
     """
     user_agent = request.headers.get("User-Agent", "").lower()
-    
+
     # 1. Extensive User-Agent Blacklist
     bot_keywords = [
         "bot", "crawler", "spider", "slurp", "headless",
@@ -50,29 +56,46 @@ def is_bot(request) -> bool:
         "postman", "insomnia", "scrapy", "ahrefs", "semrush", "majestic",
         "dotbot", "rogerbot", "exabot", "gigabot", "yandex", "baiduspider", "petalbot"
     ]
-    
+
     # Legit crawlers to allowlist
     legit_crawlers = ["googlebot", "bingbot", "google-site-verification", "adsbot-google", "bingpreview"]
-    
+
     if any(keyword in user_agent for keyword in bot_keywords):
         # Double check if it's a legit one
         if any(legit in user_agent for legit in legit_crawlers):
             return False
         return True
-    
+
     # 2. Heuristic check: removed overly aggressive header check for real users.
     # We rely on User-Agent blacklist and other layers for now.
     return False
-        
-    # 3. Automation-specific headers
-    if request.headers.get("X-Selenium-Driver") or request.headers.get("X-Puppeteer-Session"):
-        return True
-        
-    return False
+
+def _memory_rate_limit(key: str, limit: int, period: int) -> bool:
+    now = time.time()
+    window_start = now - period
+    hits = [t for t in _memory_buckets.get(key, []) if t > window_start]
+    if len(hits) >= limit:
+        _memory_buckets[key] = hits
+        return False
+    hits.append(now)
+    _memory_buckets[key] = hits
+    return True
 
 def check_rate_limit(key: str, limit: int, period: int) -> bool:
     """
-    Rate limiting has been disabled per user request.
-    Always returns True.
+    Returns True if the request is allowed, False if the limit is exceeded.
+    Uses Redis when available; falls back to in-process memory.
     """
-    return True
+    try:
+        from app.core.redis import redis_client
+
+        if redis_client is None:
+            return _memory_rate_limit(key, limit, period)
+
+        count = redis_client.incr(key)
+        if count == 1:
+            redis_client.expire(key, period)
+        return int(count) <= limit
+    except Exception as e:
+        logger.warning("Rate limit Redis error (%s); using memory fallback", e)
+        return _memory_rate_limit(key, limit, period)
