@@ -77,6 +77,14 @@ export async function sendHeartbeat(videoId, sessionId, ticket) {
   );
 }
 
+export async function getVideoById(id, token = null) {
+  return clientFetch(`/videos/${id}`, { token });
+}
+
+export async function getUserProfile(username, token = null) {
+  return clientFetch(`/users/profile/${encodeURIComponent(username)}`, { token });
+}
+
 export async function likeVideo(videoId, token = null) {
   return clientFetch(`/videos/${videoId}/like`, { method: 'POST', token });
 }

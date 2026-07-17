@@ -36,9 +36,16 @@ const AuthContext = createContext({
  * Auth — same localStorage key (`token`) as the Vite app.
  * Registers web push after login when push utils are available.
  */
+function readStoredToken() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  // Prefer localStorage on the client so like/follow aren't blocked while /users/me loads.
+  // Server render stays null (window undefined) to avoid leaking auth into SSR HTML.
+  const [token, setToken] = useState(readStoredToken);
   const [loading, setLoading] = useState(true);
 
   const fetchUser = useCallback(async (authToken) => {
