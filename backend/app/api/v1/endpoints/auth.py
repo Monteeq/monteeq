@@ -113,22 +113,56 @@ def verify_email(data: schemas.EmailVerification, db: Session = Depends(get_db))
     raise HTTPException(status_code=400, detail="Invalid or expired verification code")
 
 @router.post("/resend-verification", response_model=schemas.VerificationResponse)
-def resend_verification(data: schemas.ResendVerification, db: Session = Depends(get_db)):
-    """Resend the email verification code. Rate-limited by code expiry."""
+def resend_verification(request: Request, data: schemas.ResendVerification, db: Session = Depends(get_db)):
+    """Resend the email verification code. Cooldown + hourly caps per email/IP."""
+    email_key = (data.email or "").strip().lower()
+    client_ip = request.client.host if request.client else "unknown"
+
     user = crud_user.get_user_by_email(db, email=data.email)
     if not user:
         raise HTTPException(status_code=404, detail="Email not registered")
-    
+
     if user.is_verified:
         raise HTTPException(status_code=400, detail="Email is already verified.")
-    
+
+    # DB-backed cooldown (works even if Redis is down)
+    age = crud_user.seconds_since_verification_code(db, data.email)
+    if age is not None and age < 60:
+        wait = max(1, 60 - int(age))
+        raise HTTPException(
+            status_code=429,
+            detail=f"Please wait {wait} seconds before requesting another verification code.",
+        )
+
+    # 60s cooldown per email (Redis / memory)
+    if not security.check_rate_limit(f"ratelimit:resend-verify:cool:{email_key}", 1, 60):
+        raise HTTPException(
+            status_code=429,
+            detail="Please wait 60 seconds before requesting another verification code.",
+        )
+    # 5 resends per hour per email
+    if not security.check_rate_limit(f"ratelimit:resend-verify:hour:{email_key}", 5, 3600):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many verification emails. Try again in an hour.",
+        )
+    # 10 resends per hour per IP
+    if not security.check_rate_limit(f"ratelimit:resend-verify:ip:{client_ip}", 10, 3600):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many verification requests from this network. Try again later.",
+        )
+
     code = crud_user.create_verification_code(db, email=data.email)
-    send_verification_email(data.email, code)
-    
+    try:
+        send_verification_email(data.email, code)
+    except Exception as e:
+        logger.error(f"[auth] Resend verification email failed for {data.email}: {e}")
+
     return {
         "message": "A new verification code has been sent to your email.",
         "email": data.email,
-        "username": user.username
+        "username": user.username,
     }
 
 @router.post("/google", response_model=schemas.Token)
@@ -269,33 +303,77 @@ def verify_login_2fa(
     return {"access_token": access_token, "token_type": "bearer", "username": user.username}
 
 @router.post("/forgot-password")
-def forgot_password(data: schemas.ResendVerification, db: Session = Depends(get_db)):
-    """Send a secure reset link."""
+def forgot_password(request: Request, data: schemas.ResendVerification, db: Session = Depends(get_db)):
+    """Send a secure reset link (rate-limited)."""
+    email_key = (data.email or "").strip().lower()
+    client_ip = request.client.host if request.client else "unknown"
+
+    if not security.check_rate_limit(f"ratelimit:forgot-password:cool:{email_key}", 1, 60):
+        raise HTTPException(
+            status_code=429,
+            detail="Please wait 60 seconds before requesting another reset email.",
+        )
+    if not security.check_rate_limit(f"ratelimit:forgot-password:hour:{email_key}", 5, 3600):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many password reset emails. Try again in an hour.",
+        )
+    if not security.check_rate_limit(f"ratelimit:forgot-password:ip:{client_ip}", 10, 3600):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many password reset requests from this network. Try again later.",
+        )
+
     user = crud_user.get_user_by_email(db, email=data.email)
     if not user:
-        raise HTTPException(status_code=404, detail="Email not found")
-    
+        # Avoid email enumeration — same message as success
+        return {"message": "If that email is registered, a reset link has been sent."}
+
     import secrets
     from datetime import datetime, timedelta
+    from sqlalchemy.exc import IntegrityError
     from app.models.models import VerificationCode
-    
+
     token = secrets.token_urlsafe(32)
-    # Delete existing tokens for this email
-    db.query(VerificationCode).filter(VerificationCode.email == user.email).delete()
-    
-    # Store token in VerificationCode table (it's a String column)
-    # Reset links usually last longer than OTPs (e.g., 1 hour)
-    expires_at = datetime.now() + timedelta(hours=1)
-    db_code = VerificationCode(email=user.email, code=token, expires_at=expires_at)
-    db.add(db_code)
-    db.commit()
+    expires_at = datetime.utcnow() + timedelta(hours=1)
+    now = datetime.utcnow()
+
+    existing = crud_user.get_latest_verification_code(db, user.email)
+    if existing:
+        existing.code = token
+        existing.expires_at = expires_at
+        existing.created_at = now
+        db.commit()
+    else:
+        db_code = VerificationCode(
+            email=user.email, code=token, expires_at=expires_at, created_at=now
+        )
+        db.add(db_code)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            crud_user._sync_verification_codes_sequence(db)
+            existing = crud_user.get_latest_verification_code(db, user.email)
+            if existing:
+                existing.code = token
+                existing.expires_at = expires_at
+                existing.created_at = now
+                db.commit()
+            else:
+                db.add(
+                    VerificationCode(
+                        email=user.email, code=token, expires_at=expires_at, created_at=now
+                    )
+                )
+                db.commit()
 
     try:
         from app.services.email_service import send_password_reset_email
         send_password_reset_email(user.email, token)
     except Exception as e:
         logger.error(f"[auth] Password reset email failed for {user.email}: {e}")
-    
+
     return {"message": "A secure reset link has been sent to your email."}
 
 @router.post("/reset-password")

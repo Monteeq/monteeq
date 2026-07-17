@@ -45,9 +45,44 @@ logger = logging.getLogger(__name__)
 RESEND_API_URL = "https://api.resend.com/emails"
 
 
+def _env(name: str, default: str = "") -> str:
+    """Read env at call time so HF Space secrets are not missed after import."""
+    return (os.getenv(name) or default or "").strip()
+
+
+def _resend_api_key() -> str:
+    # Live env first (HF secrets), then import-time config snapshot.
+    return (
+        _env("RESEND_API_KEY")
+        or _env("RESEND_KEY")
+        or (getattr(config, "RESEND_API_KEY", None) or "")
+    ).strip()
+
+
+def _resend_from() -> str:
+    return (
+        _env("RESEND_FROM")
+        or _env("SMTP_FROM")
+        or (getattr(config, "RESEND_FROM", None) or "")
+        or (getattr(config, "SMTP_FROM", None) or "")
+    ).strip()
+
+
+def _smtp_disabled() -> bool:
+    """When Resend is configured (or EMAIL_DISABLE_SMTP=1), never dial Zoho SMTP."""
+    flag = (_env("EMAIL_DISABLE_SMTP") or _env("DISABLE_SMTP")).lower()
+    if flag in ("1", "true", "yes"):
+        return True
+    if _env("EMAIL_PROVIDER").lower() == "resend":
+        return True
+    if _resend_api_key():
+        return True
+    return False
+
+
 def _from_header() -> str:
-    from_addr = (config.RESEND_FROM or config.SMTP_FROM or "").strip()
-    name = (config.SMTP_FROM_NAME or "Monteeq").strip()
+    from_addr = _resend_from()
+    name = (_env("SMTP_FROM_NAME") or config.SMTP_FROM_NAME or "Monteeq").strip()
     if not from_addr:
         return name
     return f"{name} <{from_addr}>"
@@ -61,11 +96,11 @@ def _send_via_resend(
     bcc_list: list = None,
 ) -> bool:
     """Send via Resend HTTPS API. Returns True on success."""
-    api_key = (config.RESEND_API_KEY or "").strip()
+    api_key = _resend_api_key()
     if not api_key:
         return False
 
-    from_addr = (config.RESEND_FROM or config.SMTP_FROM or "").strip()
+    from_addr = _resend_from()
     if not from_addr:
         logger.error("Resend configured but RESEND_FROM / SMTP_FROM is empty")
         return False
@@ -93,6 +128,13 @@ def _send_via_resend(
             payload["to"] = [from_addr]
 
     try:
+        logger.info(
+            "Resend: sending '%s' to %s from %s (key=%s…)",
+            subject,
+            to_email or "bcc-only",
+            from_addr,
+            api_key[:8],
+        )
         res = requests.post(
             RESEND_API_URL,
             headers={
@@ -138,22 +180,38 @@ def _send_email_logic(to_email: str, subject: str, plain_text: str, html_content
     """
     Core logic to send emails: Resend (HTTPS) first, then Zoho SMTP, then console.
     """
+    resend_key = _resend_api_key()
+    skip_smtp = _smtp_disabled()
+
+    logger.info(
+        "Email dispatch: to=%s resend_key=%s smtp_disabled=%s smtp_host=%s",
+        to_email,
+        "yes" if resend_key else "no",
+        skip_smtp,
+        bool(config.SMTP_HOST and config.SMTP_USER and config.SMTP_PASS),
+    )
+
     # --- 1. Resend HTTPS (primary on HF Spaces) ---
-    if config.RESEND_API_KEY:
+    if resend_key:
         if _send_via_resend(to_email, subject, plain_text, html_content, bcc_list):
             return True
-        # Do not fall through to SMTP when Resend is configured — HF Spaces
-        # typically time out on smtp.zoho.com:587 and would delay the request.
+        # Do not fall through to SMTP when Resend is the intended transport —
+        # HF Spaces typically time out on smtp.zoho.com:587.
         logger.warning(
-            f"Resend failed for {to_email}; skipping SMTP (RESEND_API_KEY is set). "
-            "Check domain verification and RESEND_FROM / SMTP_FROM."
+            f"Resend failed for {to_email}; skipping SMTP. "
+            "Verify monteeq.com in Resend and that RESEND_FROM/SMTP_FROM match."
         )
         logger.warning(f"NO EMAIL SERVICE ACTIVE. Email '{subject}' to {to_email}")
         print(f"\n[DEV LOG] EMAIL TO {to_email}\nSUBJECT: {subject}\nCONTENT: {plain_text}\n")
         return False
 
     # --- 2. Zoho SMTP (hosts that allow outbound 587/465) ---
-    if config.SMTP_HOST and config.SMTP_USER and config.SMTP_PASS:
+    if skip_smtp:
+        logger.warning(
+            "SMTP skipped (EMAIL_DISABLE_SMTP / EMAIL_PROVIDER=resend). "
+            "Set RESEND_API_KEY on the host to send mail."
+        )
+    elif config.SMTP_HOST and config.SMTP_USER and config.SMTP_PASS:
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
@@ -991,8 +1049,15 @@ _missing = [v for v, k in {
     "SMTP_FROM": config.SMTP_FROM,
 }.items() if not k]
 
-if _missing:
+_has_resend = bool(_resend_api_key())
+if _has_resend:
+    logger.info(
+        "Email: Resend HTTPS enabled (SMTP will be skipped). from=%s",
+        _resend_from() or "(missing RESEND_FROM/SMTP_FROM)",
+    )
+elif _missing:
     logger.warning(
-        f"EMAIL SERVICE MISCONFIGURED — missing env vars: {{', '.join(_missing)}}. "
+        f"EMAIL SERVICE MISCONFIGURED — missing env vars: {', '.join(_missing)}. "
+        "Set RESEND_API_KEY (recommended on Hugging Face) or SMTP_* . "
         "All emails will fall back to console logging until this is fixed."
     )

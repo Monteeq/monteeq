@@ -50,9 +50,13 @@ SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "Monteeq")
 
 # Resend (HTTPS) — preferred on hosts that block outbound SMTP (e.g. Hugging Face Spaces).
 # Set RESEND_API_KEY in the deployment environment; never commit the key.
-RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+# HF deploys only from `main` via GitHub Actions — merge this before expecting Space updates.
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "") or os.getenv("RESEND_KEY", "")
 # Optional override; defaults to SMTP_FROM (must be a domain verified in Resend).
 RESEND_FROM = os.getenv("RESEND_FROM", "") or SMTP_FROM
+# Force-disable Zoho SMTP (useful on HF even before Resend is fully verified).
+EMAIL_DISABLE_SMTP = os.getenv("EMAIL_DISABLE_SMTP", "").lower() in ("1", "true", "yes")
+EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "").strip().lower()  # e.g. "resend"
 
 # Redis Configuration (Live Cloud)
 REDIS_URL = os.getenv("REDIS_URL")

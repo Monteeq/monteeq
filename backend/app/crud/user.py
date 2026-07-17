@@ -4,6 +4,7 @@ from app.schemas import schemas
 from app.core import security
 from app.models.models import User, Follow, Video, Like, Post, VerificationCode, ChallengeEntry, Challenge
 from datetime import datetime, timedelta
+from typing import Optional
 import random
 import string
 import httpx
@@ -264,32 +265,107 @@ def handle_follow_side_effects(db: Session, follower_id: int, following_id: int)
         import logging
         logging.getLogger(__name__).error(f"Failed to handle follow side effects: {e}")
 
+def _sync_verification_codes_sequence(db: Session):
+    """Repair Postgres serial when it lags behind MAX(id) (common after restores)."""
+    from sqlalchemy import text
+
+    db.execute(
+        text(
+            "SELECT setval("
+            "pg_get_serial_sequence('verification_codes', 'id'), "
+            "COALESCE((SELECT MAX(id) FROM verification_codes), 1))"
+        )
+    )
+    db.commit()
+
+
+def get_latest_verification_code(db: Session, email: str):
+    return (
+        db.query(VerificationCode)
+        .filter(VerificationCode.email.ilike(email.strip()))
+        .order_by(VerificationCode.created_at.desc())
+        .first()
+    )
+
+
+def seconds_since_verification_code(db: Session, email: str) -> Optional[float]:
+    """Age of the latest verification/reset row for this email, or None if none."""
+    existing = get_latest_verification_code(db, email)
+    if not existing or not existing.created_at:
+        return None
+    created = existing.created_at
+    if getattr(created, "tzinfo", None) is not None:
+        created = created.replace(tzinfo=None)
+    return max(0.0, (datetime.utcnow() - created).total_seconds())
+
+
 def create_verification_code(db: Session, email: str):
-    # Delete existing codes
-    db.query(VerificationCode).filter(VerificationCode.email == email).delete()
-    
-    code = ''.join(random.choices(string.digits, k=6))
-    expires_at = datetime.now() + timedelta(minutes=10)
-    
+    """
+    Create or rotate a verification code for an email.
+    Updates the existing row when present so we never fight a stale id sequence on resend.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    email_norm = email.strip()
+    code = "".join(random.choices(string.digits, k=6))
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+    now = datetime.utcnow()
+
+    existing = get_latest_verification_code(db, email_norm)
+    if existing:
+        existing.email = email_norm
+        existing.code = code
+        existing.expires_at = expires_at
+        existing.created_at = now
+        db.commit()
+        return code
+
     ver_code = VerificationCode(
-        email=email,
+        email=email_norm,
         code=code,
-        expires_at=expires_at
+        expires_at=expires_at,
+        created_at=now,
     )
     db.add(ver_code)
-    db.commit()
-    return code
+    try:
+        db.commit()
+        return code
+    except IntegrityError:
+        db.rollback()
+        _sync_verification_codes_sequence(db)
+        # Another row may exist now, or sequence was the only problem — retry safely.
+        existing = get_latest_verification_code(db, email_norm)
+        if existing:
+            existing.email = email_norm
+            existing.code = code
+            existing.expires_at = expires_at
+            existing.created_at = now
+            db.commit()
+            return code
+        ver_code = VerificationCode(
+            email=email_norm,
+            code=code,
+            expires_at=expires_at,
+            created_at=now,
+        )
+        db.add(ver_code)
+        db.commit()
+        return code
+
 
 def verify_code(db: Session, email: str, code: str):
     db_code = db.query(VerificationCode).filter(VerificationCode.email.ilike(email), VerificationCode.code == code).first()
     if not db_code:
         return False
-    
-    if db_code.expires_at < datetime.now():
+
+    expires = db_code.expires_at
+    if getattr(expires, "tzinfo", None) is not None:
+        expires = expires.replace(tzinfo=None)
+    if expires < datetime.utcnow():
         db.delete(db_code)
         db.commit()
         return False
-    
+
     # Success
     db.delete(db_code)
     db.commit()
