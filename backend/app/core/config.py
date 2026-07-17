@@ -48,6 +48,12 @@ SMTP_PASS = os.getenv("SMTP_PASS", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "")
 SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "Monteeq")
 
+# Resend (HTTPS) — preferred on hosts that block outbound SMTP (e.g. Hugging Face Spaces).
+# Set RESEND_API_KEY in the deployment environment; never commit the key.
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+# Optional override; defaults to SMTP_FROM (must be a domain verified in Resend).
+RESEND_FROM = os.getenv("RESEND_FROM", "") or SMTP_FROM
+
 # Redis Configuration (Live Cloud)
 REDIS_URL = os.getenv("REDIS_URL")
 

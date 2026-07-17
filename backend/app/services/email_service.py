@@ -1,6 +1,10 @@
 """
 Email service for Monteeq platform.
-Uses Zoho SMTP for all communications.
+
+Delivery order:
+1. Resend HTTPS API (works on Hugging Face Spaces; SMTP ports often time out there)
+2. Zoho SMTP (local / VPS hosts that allow outbound 587/465)
+3. Console fallback (dev / misconfigured)
 """
 import logging
 import os
@@ -38,6 +42,78 @@ from app.email_templates import social_batch     as _t_sbatch
 
 logger = logging.getLogger(__name__)
 
+RESEND_API_URL = "https://api.resend.com/emails"
+
+
+def _from_header() -> str:
+    from_addr = (config.RESEND_FROM or config.SMTP_FROM or "").strip()
+    name = (config.SMTP_FROM_NAME or "Monteeq").strip()
+    if not from_addr:
+        return name
+    return f"{name} <{from_addr}>"
+
+
+def _send_via_resend(
+    to_email: str,
+    subject: str,
+    plain_text: str,
+    html_content: str,
+    bcc_list: list = None,
+) -> bool:
+    """Send via Resend HTTPS API. Returns True on success."""
+    api_key = (config.RESEND_API_KEY or "").strip()
+    if not api_key:
+        return False
+
+    from_addr = (config.RESEND_FROM or config.SMTP_FROM or "").strip()
+    if not from_addr:
+        logger.error("Resend configured but RESEND_FROM / SMTP_FROM is empty")
+        return False
+
+    recipients = []
+    if to_email:
+        recipients.append(to_email)
+    bcc = [a for a in (bcc_list or []) if a and a not in recipients]
+
+    if not recipients and not bcc:
+        logger.error("Resend: no recipients")
+        return False
+
+    # Resend requires at least one "to"; use from-address as envelope to when BCC-only.
+    payload = {
+        "from": _from_header(),
+        "to": recipients if recipients else [from_addr],
+        "subject": subject,
+        "html": html_content,
+        "text": plain_text,
+    }
+    if bcc:
+        payload["bcc"] = bcc
+        if not recipients:
+            payload["to"] = [from_addr]
+
+    try:
+        res = requests.post(
+            RESEND_API_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=20,
+        )
+        if res.status_code in (200, 201):
+            logger.info(f"Resend: Email '{subject}' sent to {to_email or 'bcc-only'}")
+            return True
+        logger.error(
+            f"Resend failed for {to_email}: HTTP {res.status_code} — {res.text[:500]}"
+        )
+        return False
+    except Exception as e:
+        logger.error(f"Resend request failed for {to_email}: {type(e).__name__}: {e}")
+        return False
+
+
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 def _execute_smtp_send(to_email, all_recipients, msg_string, is_bcc):
     """Executes the SMTP send with automatic retries on failure."""
@@ -60,9 +136,23 @@ def _execute_smtp_send(to_email, all_recipients, msg_string, is_bcc):
 
 def _send_email_logic(to_email: str, subject: str, plain_text: str, html_content: str, bcc_list: list = None) -> bool:
     """
-    Core logic to send emails via Zoho SMTP.
+    Core logic to send emails: Resend (HTTPS) first, then Zoho SMTP, then console.
     """
-    # --- 1. Try Zoho SMTP ---
+    # --- 1. Resend HTTPS (primary on HF Spaces) ---
+    if config.RESEND_API_KEY:
+        if _send_via_resend(to_email, subject, plain_text, html_content, bcc_list):
+            return True
+        # Do not fall through to SMTP when Resend is configured — HF Spaces
+        # typically time out on smtp.zoho.com:587 and would delay the request.
+        logger.warning(
+            f"Resend failed for {to_email}; skipping SMTP (RESEND_API_KEY is set). "
+            "Check domain verification and RESEND_FROM / SMTP_FROM."
+        )
+        logger.warning(f"NO EMAIL SERVICE ACTIVE. Email '{subject}' to {to_email}")
+        print(f"\n[DEV LOG] EMAIL TO {to_email}\nSUBJECT: {subject}\nCONTENT: {plain_text}\n")
+        return False
+
+    # --- 2. Zoho SMTP (hosts that allow outbound 587/465) ---
     if config.SMTP_HOST and config.SMTP_USER and config.SMTP_PASS:
         try:
             msg = MIMEMultipart("alternative")
@@ -93,7 +183,7 @@ def _send_email_logic(to_email: str, subject: str, plain_text: str, html_content
             )
             logger.warning(f"Falling back to console log for email to {to_email}")
 
-    # --- 2. Final Fallback (Console) ---
+    # --- 3. Final Fallback (Console) ---
     logger.warning(f"NO EMAIL SERVICE ACTIVE. Email '{subject}' to {to_email}")
     print(f"\n[DEV LOG] EMAIL TO {to_email}\nSUBJECT: {subject}\nCONTENT: {plain_text}\n")
     return False
