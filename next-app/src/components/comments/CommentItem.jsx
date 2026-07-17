@@ -39,14 +39,15 @@ export default function CommentItem({
   const isOwner = user?.id === comment.owner?.id;
 
   const handleLike = async () => {
-    if (!token || isLiking) return;
+    const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    if (!authToken || isLiking) return;
     const prevLiked = liked;
     const prevCount = likeCount;
     setLiked(!prevLiked);
     setLikeCount(prevLiked ? prevCount - 1 : prevCount + 1);
     setIsLiking(true);
     try {
-      const data = await likeComment(comment.id, token);
+      const data = await likeComment(comment.id, authToken);
       if (data) {
         setLiked(data.liked);
         setLikeCount(data.likes_count);

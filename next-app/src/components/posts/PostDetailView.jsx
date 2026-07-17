@@ -25,10 +25,14 @@ export default function PostDetailView({ post: initialPost, initialComments = []
   const [post, setPost] = useState(base);
   const [showComments, setShowComments] = useState(false);
 
+  const resolveAuth = () =>
+    token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+
   const handleLike = async () => {
-    if (!token) return;
+    const authToken = resolveAuth();
+    if (!authToken) return;
     try {
-      const result = await likePost(post.id, token);
+      const result = await likePost(post.id, authToken);
       setPost((prev) => ({
         ...prev,
         liked_by_user: result.liked,
@@ -40,9 +44,10 @@ export default function PostDetailView({ post: initialPost, initialComments = []
   };
 
   const handleRepost = async () => {
-    if (!token) return;
+    const authToken = resolveAuth();
+    if (!authToken) return;
     try {
-      await repostPost(post.id, token);
+      await repostPost(post.id, authToken);
     } catch (err) {
       console.error(err);
     }

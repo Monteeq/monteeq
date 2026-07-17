@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,8 +10,15 @@ import ProfileTabs from '@/components/profile/ProfileTabs';
 import FeaturedVideo from '@/components/profile/FeaturedVideo';
 import FollowListModal from '@/components/profile/FollowListModal';
 import { useAuth } from '@/context/AuthContext';
-import { toggleFollow, getFollowers, getFollowing } from '@/lib/clientApi';
+import { useNotification } from '@/context/NotificationContext';
+import { toggleFollow, getFollowers, getFollowing, getUserProfile } from '@/lib/clientApi';
 import styles from '@/styles/pages/Profile.module.css';
+
+function resolveToken(token) {
+  if (token) return token;
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
 
 function VideoGridCard({ video, href }) {
   return (
@@ -53,6 +60,7 @@ function VideoGridCard({ video, href }) {
 export default function ProfileView({ profile: initialProfile }) {
   const router = useRouter();
   const { token, user: currentUser } = useAuth();
+  const { showNotification } = useNotification();
   const [profile, setProfile] = useState(initialProfile);
   const [isFollowing, setIsFollowing] = useState(!!initialProfile.is_following);
   const [activeTab, setActiveTab] = useState('videos');
@@ -63,23 +71,49 @@ export default function ProfileView({ profile: initialProfile }) {
     [currentUser, profile]
   );
 
+  // SSR profile is anonymous — sync is_following once the client token is available.
+  useEffect(() => {
+    const authToken = resolveToken(token);
+    const username = profile?.username || initialProfile?.username;
+    if (!authToken || !username) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getUserProfile(username, authToken);
+        if (cancelled || !data) return;
+        setProfile((prev) => ({ ...prev, ...data }));
+        setIsFollowing(!!data.is_following);
+      } catch (err) {
+        console.error('Failed to rehydrate profile follow state:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, profile?.username, initialProfile?.username]);
+
   const handleFollow = async () => {
-    if (!token) {
+    const authToken = resolveToken(token);
+    if (!authToken) {
+      showNotification?.('info', 'Sign in to follow creators');
       router.push('/login');
       return;
     }
     try {
-      const res = await toggleFollow(profile.id, token);
-      setIsFollowing(res.is_following);
+      const res = await toggleFollow(profile.id, authToken);
+      setIsFollowing(!!res.is_following);
       setProfile((prev) => ({
         ...prev,
         followers_count: res.is_following
-          ? prev.followers_count + 1
-          : Math.max(0, prev.followers_count - 1),
-        is_following: res.is_following,
+          ? (prev.followers_count || 0) + 1
+          : Math.max(0, (prev.followers_count || 0) - 1),
+        is_following: !!res.is_following,
       }));
     } catch (err) {
       console.error('Follow error:', err);
+      showNotification?.('error', err?.message || 'Failed to follow');
     }
   };
 

@@ -32,7 +32,16 @@ import {
   updateComment,
   deleteComment,
   toggleFollow,
+  getVideoById,
+  getUserProfile,
 } from '@/lib/clientApi';
+import { useNotification } from '@/context/NotificationContext';
+
+function resolveToken(token) {
+  if (token) return token;
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
 
 function DownloadModal({ video, onClose, user }) {
   const resolutions = [
@@ -295,6 +304,7 @@ export default function WatchView({
 }) {
   const { token, user } = useAuth();
   const { openReportModal } = useReport();
+  const { showNotification } = useNotification();
   const router = useRouter();
   const [video, setVideo] = useState(initialVideo);
   const [comments, setComments] = useState(initialComments || []);
@@ -321,6 +331,48 @@ export default function WatchView({
       window.dispatchEvent(new CustomEvent('monteeq:update-title', { detail: video.title }));
     }
   }, [video?.title]);
+
+  // SSR loads anonymously — rehydrate liked_by_user / is_following once auth is available.
+  useEffect(() => {
+    const authToken = resolveToken(token);
+    if (!authToken || !video?.id) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const [freshVideo, profile] = await Promise.all([
+          getVideoById(video.id, authToken),
+          video.owner?.username
+            ? getUserProfile(video.owner.username, authToken).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+        if (cancelled) return;
+        if (freshVideo) {
+          setVideo((prev) => ({
+            ...prev,
+            ...freshVideo,
+            liked_by_user: !!freshVideo.liked_by_user,
+            likes_count: freshVideo.likes_count ?? prev.likes_count,
+          }));
+        }
+        if (profile) {
+          setIsFollowing(!!profile.is_following);
+          if (typeof profile.followers_count === 'number') {
+            setFollowersCount(profile.followers_count);
+          }
+        } else if (freshVideo?.owner_followed != null) {
+          setIsFollowing(!!freshVideo.owner_followed);
+        }
+      } catch (err) {
+        console.error('Failed to rehydrate watch personalization:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when auth/video id changes
+  }, [token, video?.id, video?.owner?.username]);
 
   // Watch Later "Play all" (and similar) — Next has no location.state, so queue is handed off via sessionStorage
   useEffect(() => {
@@ -373,16 +425,35 @@ export default function WatchView({
   };
 
   const handleLike = async () => {
-    if (!token) return;
+    const authToken = resolveToken(token);
+    if (!authToken) {
+      showNotification?.('info', 'Sign in to like videos');
+      router.push('/login');
+      return;
+    }
+    const wasLiked = !!video.liked_by_user;
+    setVideo((prev) => ({
+      ...prev,
+      liked_by_user: !wasLiked,
+      likes_count: wasLiked ? Math.max(0, (prev.likes_count || 0) - 1) : (prev.likes_count || 0) + 1,
+    }));
     try {
-      await likeVideo(video.id, token);
-      setVideo((prev) => ({
-        ...prev,
-        liked_by_user: !prev.liked_by_user,
-        likes_count: prev.liked_by_user ? prev.likes_count - 1 : prev.likes_count + 1,
-      }));
+      const res = await likeVideo(video.id, authToken);
+      if (res && typeof res.liked === 'boolean') {
+        setVideo((prev) => ({
+          ...prev,
+          liked_by_user: res.liked,
+          likes_count: res.likes_count ?? prev.likes_count,
+        }));
+      }
     } catch (err) {
       console.error(err);
+      setVideo((prev) => ({
+        ...prev,
+        liked_by_user: wasLiked,
+        likes_count: wasLiked ? (prev.likes_count || 0) + 1 : Math.max(0, (prev.likes_count || 0) - 1),
+      }));
+      showNotification?.('error', err?.message || 'Failed to like video');
     }
   };
 
@@ -396,17 +467,28 @@ export default function WatchView({
   };
 
   const handleFollow = async () => {
-    if (!token || followLoading || !video.owner?.id) return;
+    const authToken = resolveToken(token);
+    const ownerId = video.owner?.id ?? video.owner_id;
+    if (!authToken) {
+      showNotification?.('info', 'Sign in to follow creators');
+      router.push('/login');
+      return;
+    }
+    if (followLoading || !ownerId) return;
     setFollowLoading(true);
     const wasFollowing = isFollowing;
     setIsFollowing(!wasFollowing);
     setFollowersCount((c) => (wasFollowing ? Math.max(0, c - 1) : c + 1));
     try {
-      const res = await toggleFollow(video.owner.id, token);
-      setIsFollowing(res.is_following);
-    } catch {
+      const res = await toggleFollow(ownerId, authToken);
+      setIsFollowing(!!res.is_following);
+      if (res.is_following !== !wasFollowing) {
+        setFollowersCount((c) => (res.is_following ? c + 1 : Math.max(0, c - 1)));
+      }
+    } catch (err) {
       setIsFollowing(wasFollowing);
       setFollowersCount((c) => (wasFollowing ? c + 1 : Math.max(0, c - 1)));
+      showNotification?.('error', err?.message || 'Failed to follow');
     } finally {
       setFollowLoading(false);
     }
@@ -414,9 +496,10 @@ export default function WatchView({
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
-    if (!newComment.trim() || !token) return;
+    const authToken = resolveToken(token);
+    if (!newComment.trim() || !authToken) return;
     try {
-      const added = await postComment({ videoId: video.id, content: newComment }, token);
+      const added = await postComment({ videoId: video.id, content: newComment }, authToken);
       setComments([added, ...comments]);
       setNewComment('');
     } catch (err) {
@@ -426,7 +509,7 @@ export default function WatchView({
 
   const handleEditComment = async (commentId, content) => {
     try {
-      const updated = await updateComment({ videoId: video.id, commentId, content }, token);
+      const updated = await updateComment({ videoId: video.id, commentId, content }, resolveToken(token));
       setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, content: updated.content } : c)));
     } catch (err) {
       console.error(err);
@@ -435,7 +518,7 @@ export default function WatchView({
 
   const handleDeleteComment = async (commentId) => {
     try {
-      await deleteComment({ videoId: video.id, commentId }, token);
+      await deleteComment({ videoId: video.id, commentId }, resolveToken(token));
       setComments((prev) => prev.filter((c) => c.id !== commentId));
     } catch (err) {
       console.error(err);
@@ -443,11 +526,12 @@ export default function WatchView({
   };
 
   const handleSubmitReply = async (parentId) => {
-    if (!replyComment.trim() || !token) return;
+    const authToken = resolveToken(token);
+    if (!replyComment.trim() || !authToken) return;
     try {
       const added = await postComment(
         { videoId: video.id, content: replyComment, parent_id: parentId },
-        token
+        authToken
       );
       setComments((prev) =>
         prev.map((c) => (c.id === parentId ? { ...c, replies: [...(c.replies || []), added] } : c))

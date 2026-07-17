@@ -16,6 +16,8 @@ import {
 import CommentsDrawer from '@/components/flash/CommentsDrawer';
 import { useAuth } from '@/context/AuthContext';
 import { useReport } from '@/context/ReportContext';
+import { useNotification } from '@/context/NotificationContext';
+import { useRouter } from 'next/navigation';
 import {
   fetchPostsPage,
   likePost,
@@ -24,6 +26,12 @@ import {
   POSTS_PAGE_SIZE,
 } from '@/lib/clientApi';
 import styles from '@/styles/pages/Posts.module.css';
+
+function resolveToken(token) {
+  if (token) return token;
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
 
 function formatTime(dateStr) {
   if (!dateStr) return 'some time ago';
@@ -243,6 +251,8 @@ function PostCard({
 export default function PostsFeed({ initialPosts = [] }) {
   const { token, user } = useAuth();
   const { openReportModal } = useReport();
+  const { showNotification } = useNotification();
+  const router = useRouter();
   const [posts, setPosts] = useState(initialPosts);
   const [nextSkip, setNextSkip] = useState(initialPosts.length);
   const [hasMore, setHasMore] = useState(initialPosts.length >= POSTS_PAGE_SIZE);
@@ -251,6 +261,7 @@ export default function PostsFeed({ initialPosts = [] }) {
   const [activePostMenuId, setActivePostMenuId] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const loadingRef = useRef(false);
+  const authHydratedRef = useRef(false);
 
   useEffect(() => {
     const handleCloseMenu = () => setActivePostMenuId(null);
@@ -258,12 +269,54 @@ export default function PostsFeed({ initialPosts = [] }) {
     return () => window.removeEventListener('click', handleCloseMenu);
   }, []);
 
+  // SSR posts are anonymous — refresh liked flags once auth is available.
+  useEffect(() => {
+    const authToken = resolveToken(token);
+    if (!authToken || authHydratedRef.current) return;
+    authHydratedRef.current = true;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchPostsPage({ skip: 0, limit: Math.max(posts.length, POSTS_PAGE_SIZE), token: authToken });
+        if (cancelled || !Array.isArray(data)) return;
+        const byId = new Map(data.map((p) => [String(p.id), p]));
+        setPosts((prev) =>
+          prev.map((p) => {
+            const fresh = byId.get(String(p.id));
+            if (!fresh) return p;
+            return {
+              ...p,
+              liked_by_user: !!fresh.liked_by_user,
+              likes_count: fresh.likes_count ?? p.likes_count,
+              original_post: fresh.original_post
+                ? {
+                    ...p.original_post,
+                    ...fresh.original_post,
+                    liked_by_user: !!fresh.original_post.liked_by_user,
+                  }
+                : p.original_post,
+            };
+          })
+        );
+      } catch (err) {
+        console.error('Failed to rehydrate post likes:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMore) return;
     loadingRef.current = true;
     setLoadingMore(true);
     try {
-      const data = await fetchPostsPage({ skip: nextSkip, token });
+      const authToken = resolveToken(token);
+      const data = await fetchPostsPage({ skip: nextSkip, token: authToken });
       const list = Array.isArray(data) ? data : [];
       setPosts((prev) => {
         const seen = new Set(prev.map((p) => p.id));
@@ -293,9 +346,14 @@ export default function PostsFeed({ initialPosts = [] }) {
   );
 
   const handleLike = async (id) => {
-    if (!token) return;
+    const authToken = resolveToken(token);
+    if (!authToken) {
+      showNotification?.('info', 'Sign in to like posts');
+      router.push('/login');
+      return;
+    }
     try {
-      const result = await likePost(id, token);
+      const result = await likePost(id, authToken);
       setPosts((prev) =>
         prev.map((p) => {
           if (p.original_post?.id === id) {
@@ -316,6 +374,7 @@ export default function PostsFeed({ initialPosts = [] }) {
       );
     } catch (err) {
       console.error(err);
+      showNotification?.('error', err?.message || 'Failed to like post');
     }
   };
 

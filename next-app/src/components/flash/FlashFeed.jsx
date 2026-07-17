@@ -8,12 +8,16 @@ import DesktopSidebar from '@/components/flash/DesktopSidebar';
 import CommentsDrawer from '@/components/flash/CommentsDrawer';
 import NativeFeedAd from '@/components/ads/NativeFeedAd';
 import { useAuth } from '@/context/AuthContext';
+import { useNotification } from '@/context/NotificationContext';
+import { useRouter } from 'next/navigation';
 import {
   likeVideo,
   shareVideo,
   getComments,
   fetchCategories,
   fetchCategoryFlashVideos,
+  fetchFlashVideosPage,
+  fetchRecommendedFlash,
 } from '@/lib/clientApi';
 import { adaptiveEngine } from '@/services/adaptiveEngine';
 import { adaptiveDiscovery } from '@/services/adaptiveDiscovery';
@@ -24,9 +28,15 @@ import s from '@/styles/pages/Flash.module.css';
 const formatClips = (raw) =>
   (raw || []).map((v) => ({
     ...v,
-    liked: v.liked_by_user,
-    owner_followed: v.owner?.is_following || false,
+    liked: !!v.liked_by_user,
+    owner_followed: !!(v.owner_followed || v.owner?.is_following),
   }));
+
+function resolveToken(token) {
+  if (token) return token;
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
 
 const dedupeById = (existing, incoming) => {
   const seen = new Set(existing.map((v) => v.id));
@@ -43,6 +53,9 @@ export default function FlashFeed({
   startVideoId = null,
 }) {
   const { token, user } = useAuth();
+  const { showNotification } = useNotification();
+  const router = useRouter();
+  const authHydratedRef = useRef(false);
 
   const [clips, setClips] = useState(() => formatClips(initialClips));
   const [loading, setLoading] = useState(initialClips.length === 0);
@@ -126,7 +139,12 @@ export default function FlashFeed({
 
   const handleLike = useCallback(
     async (id) => {
-      if (!token) return;
+      const authToken = resolveToken(token);
+      if (!authToken) {
+        showNotification?.('info', 'Sign in to like videos');
+        router.push('/login');
+        return;
+      }
       setClips((prev) =>
         prev.map((c) =>
           c.id === id
@@ -135,7 +153,20 @@ export default function FlashFeed({
         )
       );
       try {
-        await likeVideo(id, token);
+        const res = await likeVideo(id, authToken);
+        if (res && typeof res.liked === 'boolean') {
+          setClips((prev) =>
+            prev.map((c) =>
+              c.id === id
+                ? {
+                    ...c,
+                    liked: res.liked,
+                    likes_count: res.likes_count ?? c.likes_count,
+                  }
+                : c
+            )
+          );
+        }
       } catch {
         setClips((prev) =>
           prev.map((c) =>
@@ -150,7 +181,7 @@ export default function FlashFeed({
         );
       }
     },
-    [token]
+    [token, router, showNotification]
   );
 
   useEffect(() => {
@@ -213,7 +244,62 @@ export default function FlashFeed({
 
   useEffect(() => {
     flashFeedManager.configure({ token, mood: activeCategory, feedType });
-  }, [token, activeCategory, feedType]);
+    // configure() resets skip when token changes — restore cursor after SSR seed
+    if (clips.length > 0) {
+      flashFeedManager.seedSkip(clips.length);
+    }
+  }, [token, activeCategory, feedType, clips.length]);
+
+  // Merge authenticated liked_by_user flags onto SSR anonymous clips.
+  useEffect(() => {
+    const authToken = resolveToken(token);
+    if (!authToken || authHydratedRef.current || clips.length === 0) return;
+    authHydratedRef.current = true;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        let raw = [];
+        if (feedType === 'foryou' && !activeCategory) {
+          raw = await fetchRecommendedFlash({
+            limit: Math.max(clips.length, 15),
+            mood: activeCategory,
+            token: authToken,
+          });
+        }
+        if (!Array.isArray(raw) || raw.length === 0) {
+          raw = await fetchFlashVideosPage({
+            skip: 0,
+            limit: Math.max(clips.length, 15),
+            mood: activeCategory,
+            token: authToken,
+            feedMode: feedType,
+          });
+        }
+        if (cancelled || !Array.isArray(raw)) return;
+        const byId = new Map(raw.map((v) => [String(v.id), v]));
+        setClips((prev) =>
+          prev.map((c) => {
+            const fresh = byId.get(String(c.id));
+            if (!fresh) return c;
+            return {
+              ...c,
+              liked: !!fresh.liked_by_user,
+              likes_count: fresh.likes_count ?? c.likes_count,
+              owner_followed: !!(fresh.owner_followed || fresh.owner?.is_following),
+            };
+          })
+        );
+      } catch (err) {
+        console.error('[Flash] Failed to rehydrate likes:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when auth becomes available
+  }, [token]);
 
   useEffect(() => {
     const unsubscribe = flashFeedManager.onPrefetch((newVideos) => {
