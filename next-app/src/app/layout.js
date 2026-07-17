@@ -9,8 +9,9 @@ export const metadata = {
   },
   description: 'Create and share video on Monteeq.',
   icons: {
-    icon: '/favicon.png',
-    apple: '/favicon.png',
+    icon: [{ url: '/favicon.png', type: 'image/png' }],
+    shortcut: '/favicon.png',
+    apple: [{ url: '/favicon.png', type: 'image/png' }],
   },
 };
 
