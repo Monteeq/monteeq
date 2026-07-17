@@ -4,7 +4,7 @@ import Page from '@/components/pages/SettingsPage';
 export async function generateMetadata() {
   return {
     title: 'Settings',
-    description: 'Settings',
+    description: 'Manage your Monteeq account settings.',
     robots: { index: false, follow: false },
   };
 }

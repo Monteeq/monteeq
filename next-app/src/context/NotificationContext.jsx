@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { CheckCircle, AlertCircle, Info, Loader2, Bell } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { getUnreadNotifications, isAbortOrNetworkError } from '@/lib/browserApi';
 import AchievementCelebrationModal from '@/components/AchievementCelebrationModal';
@@ -158,7 +158,7 @@ const NotificationContainer = ({ notifications, removeNotification }) => {
 const NotificationItem = ({ notification, onClose }) => {
     const { type, message, progress, status, link } = notification;
     const [displayProgress, setDisplayProgress] = useState(progress || 0);
-    const navigate = useNavigate();
+    const router = useRouter();
 
     // Smoothly increment displayProgress to catch up to actual progress
     useEffect(() => {
@@ -193,7 +193,7 @@ const NotificationItem = ({ notification, onClose }) => {
 
     const handleToastClick = () => {
         if (link) {
-            navigate(link);
+            router.push(link);
             onClose();
         }
     };

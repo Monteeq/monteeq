@@ -1,6 +1,9 @@
 /** @type {string|null} */
 let openMenuId = null;
 
+/** Ignore scroll-close until this timestamp (ms since epoch). */
+let suppressScrollUntil = 0;
+
 /** @type {Set<() => void>} */
 const listeners = new Set();
 
@@ -26,6 +29,16 @@ export const videoCardMenuStore = {
             videoCardMenuStore.openMenu(id);
         }
     },
+
+    /**
+     * Briefly ignore scroll-to-close (e.g. after focus moves into the menu).
+     * @param {number} ms
+     */
+    suppressScrollClose: (ms = 200) => {
+        suppressScrollUntil = Date.now() + ms;
+    },
+
+    shouldIgnoreScrollClose: () => Date.now() < suppressScrollUntil,
 
     /** @param {() => void} listener */
     subscribe: (listener) => {

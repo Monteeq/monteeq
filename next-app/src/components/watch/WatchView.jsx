@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -21,6 +21,7 @@ import {
 import VideoPlayerV2 from '@/components/player/VideoPlayerV2';
 import CommentItem from '@/components/comments/CommentItem';
 import AdSenseAd from '@/components/ads/AdSenseAd';
+import VideoPreviewCard from '@/components/VideoPreviewCard';
 import { useAuth } from '@/context/AuthContext';
 import { useReport } from '@/context/ReportContext';
 import { useWatchLaterToggle } from '@/hooks/useWatchLaterToggle';
@@ -307,6 +308,7 @@ export default function WatchView({
   const [isTheaterMode, setIsTheaterMode] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [navQueue, setNavQueue] = useState(() => relatedVideos || []);
 
   const {
     isSaved: isSavedToWatchLater,
@@ -314,16 +316,60 @@ export default function WatchView({
     toggle: handleWatchLaterToggle,
   } = useWatchLaterToggle(video?.id);
 
-  const related = relatedVideos.filter((v) => String(v.id) !== String(video.id));
-  const currentIndex = relatedVideos.findIndex((v) => String(v.id) === String(video.id));
+  useEffect(() => {
+    if (video?.title) {
+      window.dispatchEvent(new CustomEvent('monteeq:update-title', { detail: video.title }));
+    }
+  }, [video?.title]);
+
+  // Watch Later "Play all" (and similar) — Next has no location.state, so queue is handed off via sessionStorage
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('monteeq_watch_queue');
+      if (!raw) return;
+      sessionStorage.removeItem('monteeq_watch_queue');
+      const parsed = JSON.parse(raw);
+      const incoming = Array.isArray(parsed?.queue) ? parsed.queue : [];
+      if (incoming.length === 0) return;
+
+      setNavQueue((prev) => {
+        const currentEntry = video
+          ? {
+              id: video.id,
+              title: video.title,
+              thumbnail_url: video.thumbnail_url,
+              duration: video.duration,
+              creator_name: video.owner?.username || video.creator_name,
+            }
+          : null;
+        const incomingIds = new Set(incoming.map((v) => String(v.id)));
+        const head =
+          currentEntry && !incomingIds.has(String(currentEntry.id)) ? [currentEntry] : [];
+        const merged = [...head, ...incoming];
+        const extras = (prev || []).filter(
+          (v) => !merged.some((m) => String(m.id) === String(v.id))
+        );
+        return [...merged, ...extras];
+      });
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- read queue once on mount
+  }, []);
+
+  const related = (navQueue.length ? navQueue : relatedVideos).filter(
+    (v) => String(v.id) !== String(video.id)
+  );
+  const navList = navQueue.length ? navQueue : relatedVideos;
+  const currentIndex = navList.findIndex((v) => String(v.id) === String(video.id));
   const hasPrevious = currentIndex > 0;
-  const hasNext = currentIndex >= 0 && currentIndex < relatedVideos.length - 1;
+  const hasNext = currentIndex >= 0 && currentIndex < navList.length - 1;
 
   const goToPrevious = () => {
-    if (hasPrevious) router.push(`/watch/${relatedVideos[currentIndex - 1].id}`);
+    if (hasPrevious) router.push(`/watch/${navList[currentIndex - 1].id}`);
   };
   const goToNext = () => {
-    if (hasNext) router.push(`/watch/${relatedVideos[currentIndex + 1].id}`);
+    if (hasNext) router.push(`/watch/${navList[currentIndex + 1].id}`);
   };
 
   const handleLike = async () => {
@@ -620,23 +666,12 @@ export default function WatchView({
             <h4 className="suggestedTitle">Up Next</h4>
             <div className="suggestedList">
               {related.map((v) => (
-                <Link key={v.id} href={`/watch/${v.id}`} className="suggestedItem" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
-                  <div style={{ width: 168, height: 94, borderRadius: 8, overflow: 'hidden', background: 'var(--bg-raised)', flexShrink: 0 }}>
-                    {v.thumbnail_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={v.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : null}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', lineHeight: 1.3 }}>{v.title}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                      @{v.owner?.username}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: 2 }}>
-                      {v.views?.toLocaleString()} views
-                    </div>
-                  </div>
-                </Link>
+                <VideoPreviewCard
+                  key={v.id}
+                  video={v}
+                  variant="list"
+                  onClick={() => router.push(`/watch/${v.id}`)}
+                />
               ))}
             </div>
           </div>

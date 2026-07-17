@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { Shield, ShieldCheck, Lock, AlertCircle, ExternalLink, RefreshCw, Flag, Trash2, Ban, ShieldAlert, ListFilter, FileText } from 'lucide-react';
 const logo = '/images/logo.png';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,7 @@ import { API_BASE_URL } from '@/lib/browserApi';
 const AdminPortal = () => {
     const { user, token } = useAuth();
     const { showNotification } = useNotification();
-    const navigate = useNavigate();
+    const router = useRouter();
 
     // Tab control: 'console' | 'reports' | 'audit'
     const [activeTab, setActiveTab] = useState('console');
@@ -155,7 +155,7 @@ const AdminPortal = () => {
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '2.5rem' }}>
                             Please log in with your administrative credentials to continue to the management console.
                         </p>
-                        <button className="hero-btn" onClick={() => navigate('/login?redirect=/admin')} style={{ width: '100%' }}>
+                        <button className="hero-btn" onClick={() => router.push('/login?redirect=/admin')} style={{ width: '100%' }}>
                             Log In to Continue
                         </button>
                     </div>
@@ -180,10 +180,10 @@ const AdminPortal = () => {
                             Access Denied. Your account (<strong>@{user.username}</strong>) does not have the required administrative privileges to access this portal.
                         </p>
                         <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button className="glass" onClick={() => navigate('/home')} style={{ flex: 1, padding: '1rem', borderRadius: '12px', cursor: 'pointer', color: 'white' }}>
+                            <button className="glass" onClick={() => router.push('/home')} style={{ flex: 1, padding: '1rem', borderRadius: '12px', cursor: 'pointer', color: 'white' }}>
                                 Back to Home
                             </button>
-                            <button className="hero-btn" onClick={() => navigate('/login')} style={{ flex: 1 }}>
+                            <button className="hero-btn" onClick={() => router.push('/login')} style={{ flex: 1 }}>
                                 Switch Account
                             </button>
                         </div>

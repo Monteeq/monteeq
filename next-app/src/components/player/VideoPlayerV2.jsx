@@ -59,7 +59,12 @@ const VideoPlayerV2 = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(() => {
-    return parseFloat(localStorage.getItem('monteeq_volume')) || 1;
+    if (typeof window === 'undefined') return 1;
+    try {
+      return parseFloat(localStorage.getItem('monteeq_volume')) || 1;
+    } catch {
+      return 1;
+    }
   });
   const [progress, setProgress] = useState(0);
   const [bufferedPercent, setBufferedPercent] = useState(0);

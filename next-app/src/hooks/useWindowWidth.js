@@ -2,24 +2,26 @@
 
 import { useState, useEffect } from 'react';
 
-export default function useWindowWidth() {
-    const [width, setWidth] = useState(window.innerWidth);
+export default function useWindowWidth(fallback = 1200) {
+  const [width, setWidth] = useState(fallback);
 
-    useEffect(() => {
-        let timeoutId;
-        const handleResize = () => {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => {
-                setWidth(window.innerWidth);
-            }, 150);
-        };
+  useEffect(() => {
+    setWidth(window.innerWidth);
 
-        window.addEventListener('resize', handleResize);
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            clearTimeout(timeoutId);
-        };
-    }, []);
+    let timeoutId;
+    const handleResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setWidth(window.innerWidth);
+      }, 150);
+    };
 
-    return width;
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  return width;
 }

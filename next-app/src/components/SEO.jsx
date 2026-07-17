@@ -65,7 +65,6 @@ const SEO = ({
                 "uploadDate": video.created_at,
                 "duration": video.duration ? `PT${Math.floor(video.duration / 60)}M${video.duration % 60}S` : "PT1M30S",
                 "contentUrl": video.video_url,
-                "embedUrl": `${window.location.origin}/embed/${video.id}`,
                 "interactionStatistic": {
                     "@type": "InteractionCounter",
                     "interactionType": { "@type": "WatchAction" },

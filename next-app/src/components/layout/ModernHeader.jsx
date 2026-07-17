@@ -141,7 +141,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
         <header className={s.header}>
             <div className={`${s.navSection} ${s.sectionLeft}`}>
                 <button className={s.menuBtn} onClick={onMenuToggle}>
-                    <Menu size={24} />
+                    <Menu size={28} />
                 </button>
                 <div className={s.logo} onClick={() => router.push('/home')} onMouseEnter={prefetchHome}>
 
@@ -233,12 +233,12 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
 
             <div className={`${s.navSection} ${s.sectionRight}`}>
                 <button className={s.mobileOnlySearch} onClick={() => setIsSearchExpanded(true)}>
-                    <Search size={22} />
+                    <Search size={28} />
                 </button>
 
                 {token && (
                     <button className={s.uploadBtn} onClick={() => router.push('/upload')}>
-                        <Plus size={20} />
+                        <Plus size={28} />
                         <span>Upload</span>
                     </button>
                 )}
@@ -246,7 +246,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                 <div className={s.actionGroup}>
                     <button className={s.actionBtn} onClick={() => router.push('/notifications')} onMouseEnter={prefetchNotifications}>
 
-                        <Bell size={22} />
+                        <Bell size={28} />
                         {unreadCount > 0 && <span className={s.dashBadge} title={`${unreadCount} unread`} />}
                     </button>
 

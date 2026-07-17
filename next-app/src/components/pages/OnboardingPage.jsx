@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { Zap, ChevronRight, CheckCircle2, Sparkles, MapPin, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
@@ -14,7 +14,7 @@ const Onboarding = () => {
     const [goals, setGoals] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { token, user, refreshUser } = useAuth();
-    const navigate = useNavigate();
+    const router = useRouter();
 
     const categories = [
         "AMV/Anime", "gaming", "Football", "Movies/Series", "Animation",
@@ -48,7 +48,7 @@ const Onboarding = () => {
 
             if (response.ok) {
                 await refreshUser();
-                navigate('/home');
+                router.push('/home');
             }
         } catch (err) {
             console.error("Onboarding failed", err);

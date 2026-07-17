@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
+
 import {
     User,
     Settings as AccountIcon,
@@ -27,16 +28,16 @@ import axios from 'axios';
 import { API_BASE_URL, linkGoogleAccount } from '@/lib/browserApi';
 import DashboardBannerAd from '@/components/ads/DashboardBannerAd';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useLocation } from 'react-router-dom';
+
 
 const Settings = () => {
     const { user, token, updateAuthToken, setUser } = useAuth();
-    const navigate = useNavigate();
-    const location = useLocation();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { showNotification } = useNotification();
 
     // Deep link support via query params (e.g., ?tab=payments)
-    const queryParams = new URLSearchParams(location.search);
+    const queryParams = searchParams;
     const initialTab = queryParams.get('tab') || 'profile';
 
     const [activeTab, setActiveTab] = useState(initialTab);
@@ -519,7 +520,7 @@ const Settings = () => {
                                     </div>
                                 </div>
                                 <div className="setting-tile-action">
-                                    <button className="tile-btn-minimal" onClick={() => navigate('/manage')}>View All</button>
+                                    <button className="tile-btn-minimal" onClick={() => router.push('/manage')}>View All</button>
                                 </div>
                             </div>
                         </section>

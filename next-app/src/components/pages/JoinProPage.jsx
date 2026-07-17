@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
+
 import { 
   Check, Zap, Crown, Star, ShieldCheck, Flame, 
   ChevronRight, Play, Maximize2, Sparkles, 
@@ -50,7 +51,7 @@ const CARD_ELEMENT_OPTIONS = {
 };
 
 const JoinProContent = () => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const { user, token, refreshUser } = useAuth();
     const { showNotification } = useNotification();
     const stripe = useStripe();
@@ -107,7 +108,7 @@ const JoinProContent = () => {
     const handleSelectPlan = () => {
         if (!token) {
             showNotification('info', 'Please log in to join Monteeq Pro');
-            navigate('/login');
+            router.push('/login');
             return;
         }
         setCheckoutStep('checkout');
@@ -610,7 +611,7 @@ const JoinProContent = () => {
             </p>
             <button 
                 className="successActionBtn" 
-                onClick={() => navigate('/')}
+                onClick={() => router.push('/')}
             >
                 Start Creating
             </button>

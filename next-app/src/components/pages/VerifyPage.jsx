@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
+
 import { API_BASE_URL } from '@/lib/browserApi';
 import { Mail, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -14,20 +15,19 @@ const Verify = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isResending, setIsResending] = useState(false);
     const [error, setError] = useState('');
-    const navigate = useNavigate();
-    const location = useLocation();
+    const router = useRouter();
     const { showNotification } = useNotification();
 
     // If not logged in, redirect to login
     useEffect(() => {
         if (!loading && !user) {
-            navigate('/login');
+            router.push('/login');
         }
         // If already verified, redirect to home
         if (!loading && user?.is_verified) {
-            navigate('/home');
+            router.push('/home');
         }
-    }, [user, loading, navigate]);
+    }, [user, loading, router]);
 
     const handleVerifyCode = async (e) => {
         e.preventDefault();
@@ -48,9 +48,9 @@ const Verify = () => {
             // Navigate based on onboarding status
             const updatedUser = await refreshUser();
             if (updatedUser && !updatedUser.is_onboarded) {
-                navigate('/onboarding');
+                router.push('/onboarding');
             } else {
-                navigate('/home');
+                router.push('/home');
             }
         } catch (err) {
             setError(err.message || 'Verification failed');

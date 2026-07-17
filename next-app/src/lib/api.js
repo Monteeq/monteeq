@@ -2,8 +2,8 @@
  * Server-side FastAPI client for Next.js Server Components / Route Handlers.
  *
  * Mirrors frontend/src/api.js for public read endpoints used by crawlable pages.
- * Does NOT read localStorage or dispatch browser events — pass an optional
- * token when you have one from cookies/headers later.
+ * Does NOT read localStorage — pass an optional token when available (e.g. from
+ * a request header). Browser auth stays localStorage + Bearer on the client.
  *
  * Env: API_BASE_URL = FastAPI origin (e.g. http://localhost:8000), no /api/v1 suffix.
  */

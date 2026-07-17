@@ -348,6 +348,12 @@ export default function FlashFeed({
     [clips, activeVideoId]
   );
 
+  useEffect(() => {
+    if (activeClip?.title) {
+      window.dispatchEvent(new CustomEvent('monteeq:update-title', { detail: activeClip.title }));
+    }
+  }, [activeClip?.title]);
+
   // Shorts-style URL sync
   useEffect(() => {
     if (!activeVideoId) return;

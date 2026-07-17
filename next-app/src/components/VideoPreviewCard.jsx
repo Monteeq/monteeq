@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Hls from 'hls.js';
 import { Play, AlertTriangle, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { getStreamUrl } from '@/utils/streamUrl';
 import { useAuth } from '@/context/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,7 +27,7 @@ if (typeof window !== 'undefined') {
 }
 
 const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant = 'grid' }, ref) => {
-    const navigate = useNavigate();
+    const router = useRouter();
     const { token } = useAuth();
     const queryClient = useQueryClient();
 
@@ -191,7 +191,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
     const handleAvatarClick = (e) => {
         e.stopPropagation();
         if (video.owner?.username) {
-            navigate(`/profile/${video.owner.username}`);
+            router.push(`/profile/${video.owner.username}`);
         }
     };
 
@@ -238,8 +238,6 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                         </div>
                     )}
 
-                    <VideoCardMenu videoId={video.id} />
-
                     {/* Duration Badge */}
                     {video.duration > 0 && (
                         <div className="vc-duration">
@@ -283,7 +281,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                 </div>
             </div>
 
-            {/* Metadata Section */}
+            {/* Metadata Section — YouTube-style ⋮ beside title */}
             <div className="vc-info-area">
                 <div className="vc-info-flex">
                     {variant === 'grid' && (
@@ -307,6 +305,8 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                             </div>
                         </div>
                     </div>
+
+                    <VideoCardMenu videoId={video.id} placement="meta" />
                 </div>
             </div>
         </div>

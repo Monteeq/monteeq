@@ -8,6 +8,14 @@ export const metadata = {
     template: '%s | Monteeq',
   },
   description: 'Create and share video on Monteeq.',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
+};
+
+export const viewport = {
+  themeColor: '#000000',
 };
 
 export default function RootLayout({ children }) {

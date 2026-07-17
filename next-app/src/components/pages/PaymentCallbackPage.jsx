@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
+
 import { CheckCircle, XCircle, Clock, Loader, ArrowRight, Wallet, Crown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { verifyDeposit, verifyProSubscription } from '@/lib/browserApi';
@@ -27,8 +28,8 @@ const STATES = {
 };
 
 export default function PaymentCallback() {
-  const [searchParams] = useSearchParams();
-  const navigate        = useNavigate();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { token, user, refreshUser } = useAuth();
   const { showNotification } = useNotification();
 
@@ -52,7 +53,7 @@ export default function PaymentCallback() {
 
     if (!token) {
       // User isn't logged in — redirect to login then come back
-      navigate(`/login?next=/payment?status=${status}&reference=${reference}`);
+      router.push(`/login?next=/payment?status=${status}&reference=${reference}`);
       return;
     }
 
@@ -168,13 +169,13 @@ export default function PaymentCallback() {
               <div style={styles.actions}>
                 {state === STATES.SUCCESS && isPro && (
                   <button id="pcb-explore-pro" style={{ ...styles.btn, ...styles.btnPrimary, background: 'linear-gradient(135deg, #ffd700, #ff8c00)', color: '#000' }}
-                    onClick={() => navigate('/pro')}>
+                    onClick={() => router.push('/pro')}>
                     Explore Pro <ArrowRight size={16} />
                   </button>
                 )}
                 {state === STATES.SUCCESS && !isPro && (
                   <button id="pcb-go-wallet" style={{ ...styles.btn, ...styles.btnPrimary }}
-                    onClick={() => navigate(`/profile/${user?.username}`)}>
+                    onClick={() => router.push(`/profile/${user?.username}`)}>
                     Go to Wallet <ArrowRight size={16} />
                   </button>
                 )}
@@ -185,7 +186,7 @@ export default function PaymentCallback() {
                   </button>
                 )}
                 <button id="pcb-home" style={{ ...styles.btn, ...styles.btnGhost }}
-                  onClick={() => navigate('/home')}>
+                  onClick={() => router.push('/home')}>
                   Back to Home
                 </button>
               </div>
