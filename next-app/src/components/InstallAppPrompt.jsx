@@ -9,7 +9,7 @@ import {
   clearPendingInstallPromptAfterLogin,
 } from '@/utils/installPrompt';
 
-const DAY_KEY = 'monteeq_install_prompt_day';
+const SESSION_KEY = 'monteeq_install_prompt_session';
 const INSTALLED_KEY = 'monteeq_app_installed';
 const HIDDEN_PATHS = [
   '/login',
@@ -21,22 +21,17 @@ const HIDDEN_PATHS = [
   '/payment',
 ];
 
-function todayStamp() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function markDaySeen() {
+function markSessionSeen() {
   try {
-    localStorage.setItem(DAY_KEY, todayStamp());
+    sessionStorage.setItem(SESSION_KEY, '1');
   } catch {
     /* ignore */
   }
 }
 
-function seenToday() {
+function seenThisSession() {
   try {
-    return localStorage.getItem(DAY_KEY) === todayStamp();
+    return sessionStorage.getItem(SESSION_KEY) === '1';
   } catch {
     return false;
   }
@@ -90,7 +85,7 @@ function isPathHidden(pathname) {
 /**
  * Prompt to install Monteeq (phone + desktop) until the user installs:
  * - after every successful login
- * - once per calendar day otherwise
+ * - on every new site visit/session (closing the tab/browser clears it)
  */
 export default function InstallAppPrompt() {
   const pathname = usePathname() || '/';
@@ -139,7 +134,7 @@ export default function InstallAppPrompt() {
         }
         if (isPathHidden(pathname)) return;
         clearPendingInstallPromptAfterLogin();
-        markDaySeen();
+        markSessionSeen();
         setShowSteps(false);
         setOpen(true);
       }, delayMs);
@@ -161,8 +156,8 @@ export default function InstallAppPrompt() {
         return;
       }
 
-      // Otherwise once per day for users who still haven't installed.
-      if (!seenToday()) {
+      // Otherwise once per visit/session until they install.
+      if (!seenThisSession()) {
         openPrompt(2800);
       }
     };
@@ -180,7 +175,7 @@ export default function InstallAppPrompt() {
 
   const dismiss = () => {
     clearPendingInstallPromptAfterLogin();
-    markDaySeen();
+    markSessionSeen();
     setOpen(false);
     setShowSteps(false);
   };
