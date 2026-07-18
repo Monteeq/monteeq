@@ -14,7 +14,7 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Monteeq';
   const options = {
     body: data.body || '',
-    icon: '/logo.png',
+    icon: '/images/logo.png',
     badge: '/favicon.png',
     data: { url: data.data?.url || '/' },
     vibrate: [200, 100, 200],

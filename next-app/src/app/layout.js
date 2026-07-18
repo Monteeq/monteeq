@@ -8,6 +8,12 @@ export const metadata = {
     template: '%s | Monteeq',
   },
   description: 'Create and share video on Monteeq.',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Monteeq',
+  },
   icons: {
     icon: [{ url: '/favicon.png', type: 'image/png' }],
     shortcut: '/favicon.png',
