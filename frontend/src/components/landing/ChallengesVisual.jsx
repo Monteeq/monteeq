@@ -52,7 +52,7 @@ const ChallengesVisual = () => {
                             <Trophy size={20} color="#ffd700" />
                             <div className="node-text">
                                 <strong>REWARDS</strong>
-                                <span style={{ color: '#ffd700' }}>₦500k + SPOTLIGHT</span>
+                                <span style={{ color: '#ffd700' }}>Trophy + Spotlight</span>
                             </div>
                         </div>
                     </motion.div>

@@ -568,6 +568,10 @@ export const getFollowing = async (username, skip = 0, limit = 100) => {
     return apiFetch(`${API_BASE_URL}/users/${username}/following?skip=${skip}&limit=${limit}`);
 };
 
+export const getPublicStats = async () => {
+    return apiFetch('/metrics/public');
+};
+
 // Challenges API
 export const getChallenges = async () => {
     return apiFetch(`${API_BASE_URL}/challenges/`);

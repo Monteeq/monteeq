@@ -11,9 +11,9 @@ const PerformanceVisual = () => {
                 
                 {/* Inputs: Saves, Shares, Watchtime */}
                 {[
-                    { label: "SAVES", weight: "x5", color: "#eb0000", pos: [-100, -80] },
-                    { label: "SHARES", weight: "x10", color: "#ff4444", pos: [-100, 0] },
-                    { label: "WATCHTIME", weight: "x2", color: "#fff", pos: [-100, 80] }
+                    { label: "SHARES", weight: "Strongest", color: "#ff4444", pos: [-100, -80] },
+                    { label: "COMMENTS", weight: "Strong", color: "#eb0000", pos: [-100, 0] },
+                    { label: "LIKES", weight: "Solid", color: "#ff7777", pos: [-100, 80] }
                 ].map((input, i) => (
                     <motion.div 
                         key={i}
@@ -91,9 +91,9 @@ const PerformanceVisual = () => {
                         backdropFilter: 'blur(10px)'
                     }}
                 >
-                    <div style={{ fontSize: '0.5rem', opacity: 0.6 }}>AUDIENCE REACH</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#eb0000' }}>+1.2M</div>
-                    <div style={{ fontSize: '0.4rem', color: '#fff', opacity: 0.3, marginTop: '4px' }}>PER_100K_ENGAGEMENT</div>
+                    <div style={{ fontSize: '0.5rem', opacity: 0.6 }}>PLATFORM VIEWS</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#eb0000' }}>LIVE</div>
+                    <div style={{ fontSize: '0.4rem', color: '#fff', opacity: 0.3, marginTop: '4px' }}>DISCOVERY_SCORE</div>
                 </motion.div>
             </div>
         </div>

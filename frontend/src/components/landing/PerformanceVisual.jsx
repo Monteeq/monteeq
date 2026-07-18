@@ -90,7 +90,7 @@ const PerformanceVisual = () => {
                     }}
                 >
                     <div style={{ fontSize: '0.5rem', opacity: 0.6 }}>AUDIENCE REACH</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#eb0000' }}>+1.2M</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#eb0000' }}>LIVE</div>
                     <div style={{ fontSize: '0.4rem', color: '#fff', opacity: 0.3, marginTop: '4px' }}>PER_100K_ENGAGEMENT</div>
                 </motion.div>
             </div>
