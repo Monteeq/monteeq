@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Smartphone, Share, MoreVertical, X, Download } from 'lucide-react';
+import { MonitorSmartphone, Share, MoreVertical, X, Download } from 'lucide-react';
 
 const DAY_KEY = 'monteeq_install_prompt_day';
 const INSTALLED_KEY = 'monteeq_app_installed';
@@ -46,14 +46,6 @@ function isStandaloneApp() {
   );
 }
 
-function isPhoneLike() {
-  if (typeof window === 'undefined') return false;
-  const ua = navigator.userAgent || '';
-  const mobileUa = /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-  const narrow = window.matchMedia('(max-width: 820px)').matches;
-  return mobileUa || narrow;
-}
-
 function isIos() {
   if (typeof window === 'undefined') return false;
   return (
@@ -62,21 +54,28 @@ function isIos() {
   );
 }
 
+function isDesktopSafari() {
+  if (typeof window === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|Edg|OPR|Android/i.test(ua);
+  const isIosDevice = isIos();
+  return isSafari && !isIosDevice;
+}
+
 /**
- * Once-per-day prompt to install Monteeq as an app via the browser.
- * Uses native beforeinstallprompt when available; otherwise shows OS-specific steps.
+ * Once-per-day prompt to install Monteeq (phone + desktop).
+ * Install button triggers the browser native install sheet when available.
  */
 export default function InstallAppPrompt() {
   const pathname = usePathname() || '/';
   const [open, setOpen] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [installing, setInstalling] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
+  const deferredRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // Already running as installed app — never prompt again.
     if (isStandaloneApp()) {
       markInstalled();
       return;
@@ -89,13 +88,13 @@ export default function InstallAppPrompt() {
 
     const onBip = (e) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      deferredRef.current = e;
     };
     const onInstalled = () => {
       markInstalled();
+      deferredRef.current = null;
       setOpen(false);
       setShowSteps(false);
-      setDeferredPrompt(null);
     };
     window.addEventListener('beforeinstallprompt', onBip);
     window.addEventListener('appinstalled', onInstalled);
@@ -105,12 +104,6 @@ export default function InstallAppPrompt() {
     );
     if (pathHidden) {
       setOpen(false);
-      return () => {
-        window.removeEventListener('beforeinstallprompt', onBip);
-        window.removeEventListener('appinstalled', onInstalled);
-      };
-    }
-    if (!isPhoneLike()) {
       return () => {
         window.removeEventListener('beforeinstallprompt', onBip);
         window.removeEventListener('appinstalled', onInstalled);
@@ -143,31 +136,56 @@ export default function InstallAppPrompt() {
     setShowSteps(false);
   };
 
+  const waitForNativePrompt = (timeoutMs = 5000) =>
+    new Promise((resolve) => {
+      if (deferredRef.current) {
+        resolve(deferredRef.current);
+        return;
+      }
+      const started = Date.now();
+      const id = setInterval(() => {
+        if (deferredRef.current) {
+          clearInterval(id);
+          resolve(deferredRef.current);
+        } else if (Date.now() - started >= timeoutMs) {
+          clearInterval(id);
+          resolve(null);
+        }
+      }, 100);
+    });
+
   const handleInstall = async () => {
-    if (deferredPrompt) {
-      setInstalling(true);
-      try {
-        deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
-        setDeferredPrompt(null);
+    setInstalling(true);
+    setShowSteps(false);
+
+    try {
+      const promptEvent = await waitForNativePrompt(isIos() ? 800 : 5000);
+      if (promptEvent?.prompt) {
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
+        deferredRef.current = null;
         if (choice?.outcome === 'accepted') {
           markInstalled();
           setOpen(false);
           setShowSteps(false);
           return;
         }
-      } catch {
-        /* show manual steps */
-      } finally {
-        setInstalling(false);
+        // User closed the native sheet — keep daily prompt logic, don't spam steps
+        return;
       }
+      // Browser has no programmable install (e.g. iOS Safari) — show steps
+      setShowSteps(true);
+    } catch {
+      setShowSteps(true);
+    } finally {
+      setInstalling(false);
     }
-    setShowSteps(true);
   };
 
   if (!open) return null;
 
   const ios = isIos();
+  const desktopSafari = isDesktopSafari();
 
   return (
     <div className="modal-overlay" onClick={dismissForToday} role="presentation">
@@ -190,13 +208,13 @@ export default function InstallAppPrompt() {
         <div className="install-app-icon-wrap">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/favicon.png" alt="" width={64} height={64} className="install-app-logo" />
-          <Smartphone size={22} className="install-app-phone-badge" aria-hidden />
+          <MonitorSmartphone size={22} className="install-app-phone-badge" aria-hidden />
         </div>
 
-        <h2 id="install-app-title">Install Monteeq on your phone</h2>
+        <h2 id="install-app-title">Install Monteeq</h2>
         <p className="install-app-body">
-          Add Monteeq to your home screen for faster access, fullscreen video, and a
-          native-app feel — installed right from this browser. No app store needed.
+          Install Monteeq from this browser for faster launch, fullscreen video, and a
+          native-app feel on your phone or desktop. No app store needed.
         </p>
 
         {!showSteps ? (
@@ -208,7 +226,7 @@ export default function InstallAppPrompt() {
               disabled={installing}
             >
               <Download size={18} />
-              {installing ? 'Opening install…' : 'Install via browser'}
+              {installing ? 'Installing…' : 'Install app'}
             </button>
             <button type="button" className="install-app-secondary" onClick={dismissForToday}>
               Not today
@@ -217,7 +235,11 @@ export default function InstallAppPrompt() {
         ) : (
           <div className="install-app-steps">
             <p className="install-app-steps-label">
-              {ios ? 'On iPhone / iPad (Safari)' : 'In your browser menu'}
+              {ios
+                ? 'On iPhone / iPad (Safari)'
+                : desktopSafari
+                  ? 'On Mac (Safari)'
+                  : 'Install from your browser'}
             </p>
             {ios ? (
               <ol>
@@ -231,20 +253,34 @@ export default function InstallAppPrompt() {
                   Tap <strong>Add</strong> to confirm
                 </li>
               </ol>
+            ) : desktopSafari ? (
+              <ol>
+                <li>
+                  Open the <Share size={14} className="install-inline-icon" /> Share menu
+                </li>
+                <li>
+                  Choose <strong>Add to Dock</strong> or <strong>Add to Home Screen</strong>
+                </li>
+                <li>Confirm to install Monteeq</li>
+              </ol>
             ) : (
               <ol>
                 <li>
-                  Tap <MoreVertical size={14} className="install-inline-icon" /> in the
-                  browser toolbar
+                  Open the browser menu{' '}
+                  <MoreVertical size={14} className="install-inline-icon" />
                 </li>
                 <li>
-                  Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>
+                  Choose <strong>Install app</strong> or <strong>Install Monteeq</strong>
                 </li>
-                <li>Confirm to place Monteeq on your home screen</li>
+                <li>Confirm to finish installing</li>
               </ol>
             )}
             <div className="install-app-actions">
-              <button type="button" className="install-app-primary" onClick={dismissForToday}>
+              <button type="button" className="install-app-primary" onClick={handleInstall}>
+                <Download size={18} />
+                Try install again
+              </button>
+              <button type="button" className="install-app-secondary" onClick={dismissForToday}>
                 Got it
               </button>
               <button
@@ -264,7 +300,7 @@ export default function InstallAppPrompt() {
 
         <style>{`
           .install-app-modal {
-            width: min(92vw, 400px);
+            width: min(92vw, 420px);
             padding: 2rem 1.5rem 1.5rem;
             text-align: center;
             background: linear-gradient(160deg, rgba(28, 28, 28, 0.98) 0%, rgba(8, 8, 8, 0.99) 100%);
