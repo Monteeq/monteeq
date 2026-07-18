@@ -43,14 +43,13 @@ export async function generateMetadata() {
   const canonical = `${siteOrigin()}/`;
   const title = 'Home for Top Editors';
   const stats = await getPublicStats().catch(() => null);
-  const algo = stats?.algorithm || { likes: 10, comments: 20, shares: 30 };
   const liveBits = [];
   if (stats?.creators) liveBits.push(`${formatMetaStat(stats.creators)} editors`);
   if (stats?.videos) liveBits.push(`${formatMetaStat(stats.videos)} videos`);
   if (stats?.views) liveBits.push(`${formatMetaStat(stats.views)} views`);
   const description = liveBits.length
-    ? `Monteeq — home to ${liveBits.join(', ')}. Discovery weighted by shares ×${algo.shares}, comments ×${algo.comments}, likes ×${algo.likes}. Challenges, Insights, and tools built for video editors.`
-    : `Monteeq is the platform for video editors. Quality-weighted discovery (shares ×${algo.shares}, comments ×${algo.comments}, likes ×${algo.likes}), competitive challenges, and creator insights — so your craft owns the audience.`;
+    ? `Monteeq — home to ${liveBits.join(', ')}. Discovery that rewards real engagement over empty views. Challenges, Insights, and tools built for video editors.`
+    : 'Monteeq is the platform for video editors. Quality-weighted discovery, competitive challenges, and creator insights — so your craft owns the audience.';
 
   return {
     title,

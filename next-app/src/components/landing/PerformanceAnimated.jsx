@@ -4,15 +4,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Activity, TrendingUp } from 'lucide-react';
 
-const PerformanceAnimated = ({
-  weights = { likes: 10, comments: 20, shares: 30, views: 1 },
-  views = 0,
-}) => {
+const PerformanceAnimated = ({ views = 0 }) => {
   const nodes = [
-    { label: 'SHARES', weight: `×${weights.shares}`, color: '#ff4444' },
-    { label: 'COMMENTS', weight: `×${weights.comments}`, color: '#eb0000' },
-    { label: 'LIKES', weight: `×${weights.likes}`, color: '#ff7777' },
-    { label: 'VIEWS', weight: `×${weights.views}`, color: '#fff' },
+    { label: 'SHARES', signal: 'Strongest', color: '#ff4444' },
+    { label: 'COMMENTS', signal: 'Strong', color: '#eb0000' },
+    { label: 'LIKES', signal: 'Solid', color: '#ff7777' },
+    { label: 'VIEWS', signal: 'Baseline', color: '#fff' },
   ];
 
   const reachLabel =
@@ -63,7 +60,7 @@ const PerformanceAnimated = ({
               }}
             >
               <span style={{ opacity: 0.55 }}>{n.label}</span>
-              <span style={{ color: n.color }}>{n.weight}</span>
+              <span style={{ color: n.color }}>{n.signal}</span>
             </motion.div>
           ))}
         </div>

@@ -75,14 +75,6 @@ def public_platform_stats(db: Session = Depends(get_db)):
             if featured_challenge
             else None
         ),
-        # Discovery score weights from video_tasks.update_discovery_score_task
-        "algorithm": {
-            "likes": 10,
-            "comments": 20,
-            "shares": 30,
-            "views": 1,
-            "gravity": 1.8,
-        },
     }
 
 @router.post("/batch")

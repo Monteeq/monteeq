@@ -11,9 +11,9 @@ const PerformanceVisual = () => {
                 
                 {/* Inputs: Saves, Shares, Watchtime */}
                 {[
-                    { label: "SHARES", weight: "×30", color: "#ff4444", pos: [-100, -80] },
-                    { label: "COMMENTS", weight: "×20", color: "#eb0000", pos: [-100, 0] },
-                    { label: "LIKES", weight: "×10", color: "#ff7777", pos: [-100, 80] }
+                    { label: "SHARES", weight: "Strongest", color: "#ff4444", pos: [-100, -80] },
+                    { label: "COMMENTS", weight: "Strong", color: "#eb0000", pos: [-100, 0] },
+                    { label: "LIKES", weight: "Solid", color: "#ff7777", pos: [-100, 80] }
                 ].map((input, i) => (
                     <motion.div 
                         key={i}

@@ -35,7 +35,6 @@ const Landing = () => {
     const views = stats?.views ?? 0;
     const openChallenges = stats?.open_challenges ?? 0;
     const countries = stats?.countries ?? 0;
-    const algo = stats?.algorithm || { likes: 10, comments: 20, shares: 30, views: 1 };
     const featured = stats?.featured_challenge;
     const prizeLabel = featured?.prize || 'Trophy + Spotlight';
 
@@ -84,9 +83,8 @@ const Landing = () => {
                             <span className="ld-v4-outline">Top Editors.</span>
                         </motion.h1>
                         <motion.p className="ld-v4-subtitle" variants={fadeInUp}>
-                            Monteeq is built so editors own their audience. Quality-weighted discovery
-                            (shares ×{algo.shares}, comments ×{algo.comments}, likes ×{algo.likes})
-                            puts craft ahead of raw upload volume.
+                            Monteeq is built so editors own their audience. Discovery rewards real
+                            engagement — shares, comments, and likes — so craft beats raw upload volume.
                         </motion.p>
                         <motion.div
                             className="ld-v4-cta-wrap"
@@ -154,13 +152,13 @@ const Landing = () => {
                             {[
                                 {
                                     icon: <Activity />,
-                                    title: 'Real Discovery Weights',
-                                    text: `We score content as likes ×${algo.likes} + comments ×${algo.comments} + shares ×${algo.shares} + views ×${algo.views}, then apply gravity decay so fresh craft stays visible.`,
+                                    title: 'Engagement Over Empty Plays',
+                                    text: 'Shares, comments, and likes carry more discovery weight than passive views — so meaningful edits surface ahead of filler.',
                                 },
                                 {
                                     icon: <Target />,
-                                    title: 'Gravity-Based Discovery',
-                                    text: 'A gravity curve of 1.8 ages older posts so new edits still earn a fair shot on the feed — without burying quality.',
+                                    title: 'Fresh Craft Stays Visible',
+                                    text: 'Older posts ease down the feed over time so new edits still get a fair shot — without burying lasting quality.',
                                 },
                                 {
                                     icon: <Zap />,
