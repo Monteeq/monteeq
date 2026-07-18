@@ -4,7 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Crown, Trophy, Target, Star } from 'lucide-react';
 
-const ChallengesVisual = () => {
+const ChallengesVisual = ({ prize = 'Trophy + Spotlight' }) => {
     return (
         <div className="meaningful-3d-wrap">
             <div className="css-3d-scene-mini" style={{ width: '350px', height: '350px' }}>
@@ -21,8 +21,8 @@ const ChallengesVisual = () => {
                         <div className="challenge-node">
                             <Target size={20} />
                             <div className="node-text">
-                                <strong>QUALIFIERS</strong>
-                                <span>TOP 20% ADVANCE</span>
+                                <strong>ENTER</strong>
+                                <span>UPLOAD YOUR EDIT</span>
                             </div>
                         </div>
                     </motion.div>
@@ -37,8 +37,8 @@ const ChallengesVisual = () => {
                         <div className="challenge-node highlight">
                             <Star size={24} fill="#eb0000" />
                             <div className="node-text">
-                                <strong>GRAND FINALS</strong>
-                                <span>LIVE EDIT-OFF</span>
+                                <strong>LEADERBOARD</strong>
+                                <span>COMMUNITY VOTES</span>
                             </div>
                         </div>
                     </motion.div>
@@ -54,7 +54,7 @@ const ChallengesVisual = () => {
                             <Trophy size={20} color="#ffd700" />
                             <div className="node-text">
                                 <strong>REWARDS</strong>
-                                <span style={{ color: '#ffd700' }}>₦500k + SPOTLIGHT</span>
+                                <span style={{ color: '#ffd700' }}>{prize}</span>
                             </div>
                         </div>
                     </motion.div>

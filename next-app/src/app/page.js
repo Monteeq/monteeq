@@ -1,6 +1,6 @@
 import LandingPage from '@/components/landing/LandingPage';
 import RootAuthGate from '@/components/home/RootAuthGate';
-import { getVideos, getCategories } from '@/lib/api';
+import { getVideos, getCategories, getPublicStats } from '@/lib/api';
 
 /** Always SSR with a live first page of feed (not build-time snapshot). */
 export const dynamic = 'force-dynamic';
@@ -31,19 +31,33 @@ async function loadInitialFeed() {
   };
 }
 
+function formatMetaStat(n) {
+  const num = Number(n) || 0;
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
+  return String(num);
+}
+
 /** Marketing SEO for logged-out `/`. Logged-in users hydrate to Home client-side. */
 export async function generateMetadata() {
   const canonical = `${siteOrigin()}/`;
-  const title = 'Create and Share';
-  const description =
-    'Monteeq is the home for the world’s top editors. Showcase your craft, compete in challenges, and grow with quality-first discovery.';
+  const title = 'Home for Top Editors';
+  const stats = await getPublicStats().catch(() => null);
+  const algo = stats?.algorithm || { likes: 10, comments: 20, shares: 30 };
+  const liveBits = [];
+  if (stats?.creators) liveBits.push(`${formatMetaStat(stats.creators)} editors`);
+  if (stats?.videos) liveBits.push(`${formatMetaStat(stats.videos)} videos`);
+  if (stats?.views) liveBits.push(`${formatMetaStat(stats.views)} views`);
+  const description = liveBits.length
+    ? `Monteeq — home to ${liveBits.join(', ')}. Discovery weighted by shares ×${algo.shares}, comments ×${algo.comments}, likes ×${algo.likes}. Challenges, Insights, and tools built for video editors.`
+    : `Monteeq is the platform for video editors. Quality-weighted discovery (shares ×${algo.shares}, comments ×${algo.comments}, likes ×${algo.likes}), competitive challenges, and creator insights — so your craft owns the audience.`;
 
   return {
     title,
     description,
     alternates: { canonical },
     openGraph: {
-      title: 'Monteeq | Create and Share',
+      title: 'Monteeq | Home for Top Editors',
       description,
       url: canonical,
       siteName: 'Monteeq',
@@ -52,7 +66,7 @@ export async function generateMetadata() {
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'Monteeq | Create and Share',
+      title: 'Monteeq | Home for Top Editors',
       description,
     },
     robots: { index: true, follow: true },
@@ -60,9 +74,10 @@ export async function generateMetadata() {
 }
 
 export default async function RootPage() {
-  // Prefetch feed so logged-in users can hydrate Home without a blank first paint.
-  // Crawlers / logged-out users still get Landing as the primary SSR content.
-  const feed = await loadInitialFeed();
+  const [feed, stats] = await Promise.all([
+    loadInitialFeed(),
+    getPublicStats().catch(() => null),
+  ]);
 
   const orgJsonLd = {
     '@context': 'https://schema.org',
@@ -83,7 +98,7 @@ export default async function RootPage() {
           initialFlash={feed.flash}
           initialCategories={feed.categories}
         >
-          <LandingPage />
+          <LandingPage stats={stats} />
         </RootAuthGate>
     </>
   );

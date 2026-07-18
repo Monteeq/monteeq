@@ -164,6 +164,10 @@ export async function getCategoryVideos(categoryName, videoType = 'flash', limit
   );
 }
 
+export async function getPublicStats() {
+  return apiFetch('/metrics/public', { next: { revalidate: 60 } });
+}
+
 export async function getChallenges() {
   return apiFetch('/challenges/');
 }
