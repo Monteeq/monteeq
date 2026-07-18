@@ -3,6 +3,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { MonitorSmartphone, Share, MoreVertical, X, Download } from 'lucide-react';
+import {
+  INSTALL_PROMPT_EVENT,
+  hasPendingInstallPromptAfterLogin,
+  clearPendingInstallPromptAfterLogin,
+} from '@/utils/installPrompt';
 
 const DAY_KEY = 'monteeq_install_prompt_day';
 const INSTALLED_KEY = 'monteeq_app_installed';
@@ -21,12 +26,29 @@ function todayStamp() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function markDaySeen() {
+  try {
+    localStorage.setItem(DAY_KEY, todayStamp());
+  } catch {
+    /* ignore */
+  }
+}
+
+function seenToday() {
+  try {
+    return localStorage.getItem(DAY_KEY) === todayStamp();
+  } catch {
+    return false;
+  }
+}
+
 function markInstalled() {
   try {
     localStorage.setItem(INSTALLED_KEY, '1');
   } catch {
     /* ignore */
   }
+  clearPendingInstallPromptAfterLogin();
 }
 
 function hasInstalledBefore() {
@@ -58,13 +80,17 @@ function isDesktopSafari() {
   if (typeof window === 'undefined') return false;
   const ua = navigator.userAgent || '';
   const isSafari = /Safari/i.test(ua) && !/Chrome|Chromium|Edg|OPR|Android/i.test(ua);
-  const isIosDevice = isIos();
-  return isSafari && !isIosDevice;
+  return isSafari && !isIos();
+}
+
+function isPathHidden(pathname) {
+  return HIDDEN_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 /**
- * Once-per-day prompt to install Monteeq (phone + desktop).
- * Install button triggers the browser native install sheet when available.
+ * Prompt to install Monteeq (phone + desktop) until the user installs:
+ * - after every successful login
+ * - once per calendar day otherwise
  */
 export default function InstallAppPrompt() {
   const pathname = usePathname() || '/';
@@ -80,7 +106,10 @@ export default function InstallAppPrompt() {
       markInstalled();
       return;
     }
-    if (hasInstalledBefore()) return;
+    if (hasInstalledBefore()) {
+      clearPendingInstallPromptAfterLogin();
+      return;
+    }
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});
@@ -99,39 +128,59 @@ export default function InstallAppPrompt() {
     window.addEventListener('beforeinstallprompt', onBip);
     window.addEventListener('appinstalled', onInstalled);
 
-    const pathHidden = HIDDEN_PATHS.some(
-      (p) => pathname === p || pathname.startsWith(`${p}/`)
-    );
-    if (pathHidden) {
-      setOpen(false);
-      return () => {
-        window.removeEventListener('beforeinstallprompt', onBip);
-        window.removeEventListener('appinstalled', onInstalled);
-      };
-    }
+    let timer;
 
-    if (localStorage.getItem(DAY_KEY) === todayStamp()) {
-      return () => {
-        window.removeEventListener('beforeinstallprompt', onBip);
-        window.removeEventListener('appinstalled', onInstalled);
-      };
-    }
+    const openPrompt = (delayMs) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (hasInstalledBefore() || isStandaloneApp()) {
+          markInstalled();
+          return;
+        }
+        if (isPathHidden(pathname)) return;
+        clearPendingInstallPromptAfterLogin();
+        markDaySeen();
+        setShowSteps(false);
+        setOpen(true);
+      }, delayMs);
+    };
 
-    const timer = setTimeout(() => setOpen(true), 2800);
+    const tryShow = () => {
+      if (hasInstalledBefore() || isStandaloneApp()) {
+        markInstalled();
+        return;
+      }
+      if (isPathHidden(pathname)) {
+        setOpen(false);
+        return;
+      }
+
+      // Prefer post-login prompt whenever a login just happened.
+      if (hasPendingInstallPromptAfterLogin()) {
+        openPrompt(1200);
+        return;
+      }
+
+      // Otherwise once per day for users who still haven't installed.
+      if (!seenToday()) {
+        openPrompt(2800);
+      }
+    };
+
+    tryShow();
+    window.addEventListener(INSTALL_PROMPT_EVENT, tryShow);
 
     return () => {
       clearTimeout(timer);
       window.removeEventListener('beforeinstallprompt', onBip);
       window.removeEventListener('appinstalled', onInstalled);
+      window.removeEventListener(INSTALL_PROMPT_EVENT, tryShow);
     };
   }, [pathname]);
 
-  const dismissForToday = () => {
-    try {
-      localStorage.setItem(DAY_KEY, todayStamp());
-    } catch {
-      /* ignore */
-    }
+  const dismiss = () => {
+    clearPendingInstallPromptAfterLogin();
+    markDaySeen();
     setOpen(false);
     setShowSteps(false);
   };
@@ -170,10 +219,8 @@ export default function InstallAppPrompt() {
           setShowSteps(false);
           return;
         }
-        // User closed the native sheet — keep daily prompt logic, don't spam steps
         return;
       }
-      // Browser has no programmable install (e.g. iOS Safari) — show steps
       setShowSteps(true);
     } catch {
       setShowSteps(true);
@@ -188,7 +235,7 @@ export default function InstallAppPrompt() {
   const desktopSafari = isDesktopSafari();
 
   return (
-    <div className="modal-overlay" onClick={dismissForToday} role="presentation">
+    <div className="modal-overlay" onClick={dismiss} role="presentation">
       <div
         className="modal-content install-app-modal"
         onClick={(e) => e.stopPropagation()}
@@ -199,7 +246,7 @@ export default function InstallAppPrompt() {
         <button
           type="button"
           className="install-app-close"
-          onClick={dismissForToday}
+          onClick={dismiss}
           aria-label="Close"
         >
           <X size={20} />
@@ -228,8 +275,8 @@ export default function InstallAppPrompt() {
               <Download size={18} />
               {installing ? 'Installing…' : 'Install app'}
             </button>
-            <button type="button" className="install-app-secondary" onClick={dismissForToday}>
-              Not today
+            <button type="button" className="install-app-secondary" onClick={dismiss}>
+              Not now
             </button>
           </div>
         ) : (
@@ -280,7 +327,7 @@ export default function InstallAppPrompt() {
                 <Download size={18} />
                 Try install again
               </button>
-              <button type="button" className="install-app-secondary" onClick={dismissForToday}>
+              <button type="button" className="install-app-secondary" onClick={dismiss}>
                 Got it
               </button>
               <button
