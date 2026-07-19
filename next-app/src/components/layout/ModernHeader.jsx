@@ -26,14 +26,21 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
 
     const dropdownRef = useRef(null);
     const profileRef = useRef(null);
-    const { token, user, logout } = useAuth();
+    const { token, user, logout, loading } = useAuth();
     const { unreadCount } = useNotification();
     const router = useRouter();
+    const [hasMounted, setHasMounted] = useState(false);
+
+    // Auth-dependent chrome must match SSR until after mount + auth resolve.
+    const showAuthedChrome = hasMounted && !loading && !!token;
 
     const prefetchHome = () => {};
 
     const prefetchNotifications = () => {};
 
+    useEffect(() => {
+        setHasMounted(true);
+    }, []);
 
     useEffect(() => {
         const history = JSON.parse(localStorage.getItem('monteeq_search_history') || '[]');
@@ -236,7 +243,7 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                     <Search size={28} />
                 </button>
 
-                {token && (
+                {showAuthedChrome && (
                     <button className={s.uploadBtn} onClick={() => router.push('/upload')}>
                         <Plus size={28} />
                         <span>Upload</span>
@@ -247,11 +254,13 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                     <button className={s.actionBtn} onClick={() => router.push('/notifications')} onMouseEnter={prefetchNotifications}>
 
                         <Bell size={28} />
-                        {unreadCount > 0 && <span className={s.dashBadge} title={`${unreadCount} unread`} />}
+                        {hasMounted && unreadCount > 0 && (
+                            <span className={s.dashBadge} title={`${unreadCount} unread`} />
+                        )}
                     </button>
 
                     <div className={s.profileMenu} ref={profileRef}>
-                        {token ? (
+                        {showAuthedChrome ? (
                             <button className={s.avatarLink} onClick={() => setShowProfileMenu(true)}>
                                 {user?.profile_pic ? (
                                     <img src={user.profile_pic} alt="" />
