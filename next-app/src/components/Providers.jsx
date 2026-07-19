@@ -11,6 +11,7 @@ import VideoCardMenuRouteListener from '@/components/VideoCardMenuRouteListener'
 import NotificationManager from '@/components/NotificationManager';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import DynamicTitle from '@/components/DynamicTitle';
+import InstallAppPrompt from '@/components/InstallAppPrompt';
 import { useEffect, useState } from 'react';
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -68,6 +69,7 @@ function AppProviders({ children }) {
               <VideoCardMenuRouteListener />
               <NotificationManager />
               <DynamicTitle />
+              <InstallAppPrompt />
               <AppShell>
                 <ErrorBoundary>{children}</ErrorBoundary>
               </AppShell>

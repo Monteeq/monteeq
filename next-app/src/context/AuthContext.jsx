@@ -8,6 +8,7 @@ import {
   googleAuth,
   verifyLogin2FA as verifyLogin2FARequest,
 } from '@/lib/clientApi';
+import { requestInstallPromptAfterLogin } from '@/utils/installPrompt';
 
 async function registerPushSafe(accessToken) {
   try {
@@ -99,6 +100,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('token', access_token);
       setToken(access_token);
       registerPushSafe(access_token);
+      requestInstallPromptAfterLogin();
       return fetchUser(access_token);
     },
     [fetchUser]
@@ -117,6 +119,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem('token', access_token);
         setToken(access_token);
         registerPushSafe(access_token);
+        requestInstallPromptAfterLogin();
         return fetchUser(access_token);
       }
       return data;
@@ -131,6 +134,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('token', access_token);
       setToken(access_token);
       registerPushSafe(access_token);
+      requestInstallPromptAfterLogin();
       return fetchUser(access_token);
     },
     [fetchUser]
