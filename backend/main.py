@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from app.api.v1.api import api_router
 from app.api.v1.endpoints import seo
 from app.core import dependencies
+from app.core.config import CORS_ALLOW_ORIGIN_REGEX, CORS_ALLOWED_ORIGINS
 from app.core.error_handlers import register_exception_handlers
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi_cache import FastAPICache
@@ -21,6 +22,7 @@ import logging
 import os
 
 logger = logging.getLogger("monteeq")
+ALLOWED_ORIGINS = set(CORS_ALLOWED_ORIGINS)
 
 app = FastAPI(
     title="Monteeq Video Platform",
@@ -48,16 +50,6 @@ app.add_middleware(RequestIDMiddleware)
 class AntiBotMiddleware(BaseHTTPMiddleware):
     """Identify and block malicious bots globally with CORS support."""
 
-    ALLOWED_ORIGINS = {
-        "https://www.monteeq.com",
-        "https://monteeq.com",
-        "https://admin.monteeq.com",
-        "https://www.admin.monteeq.com",
-        "https://monteeqorg-backend.hf.space",
-        "http://localhost:5173",
-        "http://localhost:5174",
-    }
-
     async def dispatch(self, request: Request, call_next):
         from app.core import security
 
@@ -67,7 +59,7 @@ class AntiBotMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             origin = request.headers.get("Origin", "")
             response = JSONResponse(status_code=200, content={})
-            if origin in self.ALLOWED_ORIGINS:
+            if origin in ALLOWED_ORIGINS:
                 response.headers["Access-Control-Allow-Origin"] = origin
                 response.headers["Access-Control-Allow-Credentials"] = "true"
                 response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
@@ -91,7 +83,7 @@ class AntiBotMiddleware(BaseHTTPMiddleware):
                 status_code=403,
                 content={"detail": "Access denied. Automated traffic detected.", "ua": ua}
             )
-            if origin in self.ALLOWED_ORIGINS:
+            if origin in ALLOWED_ORIGINS:
                 response.headers["Access-Control-Allow-Origin"] = origin
                 response.headers["Access-Control-Allow-Credentials"] = "true"
             return response
@@ -104,19 +96,8 @@ app.add_middleware(AntiBotMiddleware)
 # CORS middleware - MUST be added before other middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://www.monteeq.com",
-        "https://monteeq.com",
-        "https://admin.monteeq.com",
-        "https://www.admin.monteeq.com",
-        "https://monteeqorg-backend.hf.space",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
-    # Regex covers any localhost / 127.0.0.1 port for local dev.
-    # Production origins are covered by the explicit list above.
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_origin_regex=CORS_ALLOW_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],

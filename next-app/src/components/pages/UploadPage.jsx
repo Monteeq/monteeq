@@ -35,9 +35,11 @@ const Upload = () => {
     const router = useRouter();
     const { showNotification } = useNotification();
 
-    // Wake up the video engine on Render to mitigate cold starts
+    // Wake up the video engine to mitigate cold starts
     useEffect(() => {
-        fetch('https://engine.monteeq.com/health', { mode: 'no-cors' }).catch(() => {});
+        const rustOrigin = (process.env.NEXT_PUBLIC_RUST_API_URL || '').replace(/\/$/, '');
+        if (!rustOrigin) return;
+        fetch(`${rustOrigin}/health`, { mode: 'no-cors' }).catch(() => {});
     }, []);
 
     // Workflow State: 'select' | 'details'

@@ -15,6 +15,25 @@ RUST_SERVICE_URL = os.getenv("RUST_SERVICE_URL")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "")
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "static")
 
+# Comma-separated browser origins for CORS + AntiBot preflight headers.
+# Example: https://monteeq.com,https://www.monteeq.com,http://localhost:3000
+def _parse_origins(raw: str) -> list[str]:
+    return [origin.strip().rstrip("/") for origin in (raw or "").split(",") if origin.strip()]
+
+
+CORS_ALLOWED_ORIGINS = _parse_origins(os.getenv("CORS_ALLOWED_ORIGINS", ""))
+_frontend = (FRONTEND_URL or "").strip().rstrip("/")
+if _frontend and _frontend not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(_frontend)
+
+# Optional regex for additional origin matches (local ports by default).
+# Set to empty string to disable.
+CORS_ALLOW_ORIGIN_REGEX = os.getenv(
+    "CORS_ALLOW_ORIGIN_REGEX",
+    r"http://(localhost|127\.0\.0\.1)(:\d+)?$",
+).strip() or None
+
+
 # Database Configuration
 DATABASE_URL = os.getenv("DATABASE_URL")
 
