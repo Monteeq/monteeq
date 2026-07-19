@@ -19,6 +19,9 @@ import {
   getStorageMode, updateStorageMode, getPerformanceStats, getAdminConfig,
   createChallenge, deleteChallenge, takeReportAction, getAuditLogs, promoteUser
 } from './api';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 import './styles/variables.css';
 import './styles/animations.css';
@@ -259,37 +262,50 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
     }
   };
 
+  const navBtnClass = (isActive) =>
+    cn(
+      'relative flex w-full items-center justify-between rounded-xl border border-transparent px-3.5 py-2.5 text-left text-sm font-medium text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-white',
+      isActive &&
+        'border-red-500/15 bg-red-500/[0.06] font-semibold text-red-300 before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-r before:bg-[#FF3B30]',
+    );
+
+  const iconBtnClass =
+    'relative flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.04] text-slate-400 transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white';
+
   return (
-    <div className="dashboard-wrapper">
-      <div className="dashboard-bg-grid" />
+    <div className="relative flex min-h-screen overflow-x-hidden bg-[#080E1A] font-sans text-white">
+      <div
+        className="pointer-events-none fixed inset-0 z-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_at_50%_30%,black_40%,transparent_95%)]"
+        aria-hidden="true"
+      />
 
       {/* ── COLLAPSIBLE SIDEBAR (DESKTOP) ── */}
       <motion.aside
-        className="sidebar-container"
+        className="sticky top-0 z-[100] hidden h-screen shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-white/10 bg-[rgba(11,17,32,0.65)] p-4 backdrop-blur-xl lg:flex"
         animate={{ width: collapsed ? 84 : 260 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="sidebar-header">
-          <div className="sidebar-logo-group">
-            <div className="sidebar-logo-icon">
+        <div className="mb-8 flex items-center justify-between px-2">
+          <div className="flex items-center gap-3">
+            <div className="flex h-[38px] w-[38px] items-center justify-center rounded-[14px] bg-gradient-to-br from-[#FF3B30] via-[#FF6B6B] to-[#FFa0a0] text-white shadow-[0_8px_32px_rgba(255,59,48,0.28)]">
               <Sparkles size={18} />
             </div>
             {!collapsed && (
-              <motion.span 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                className="sidebar-logo-text"
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-lg font-extrabold tracking-tight text-white"
               >
                 Monteeq
               </motion.span>
             )}
           </div>
-          <button className="sidebar-toggle-btn" onClick={() => setCollapsed(!collapsed)}>
+          <button type="button" className={iconBtnClass} onClick={() => setCollapsed(!collapsed)}>
             <Menu size={16} />
           </button>
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="flex flex-1 flex-col gap-3">
           {[
             {
               title: 'Workspace',
@@ -308,9 +324,11 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
               items: ['Notifications', 'Settings']
             }
           ].map(section => (
-            <div className="sidebar-section" key={section.title}>
+            <div className="flex flex-col gap-1" key={section.title}>
               {!collapsed && (
-                <div className="sidebar-section-title">{section.title}</div>
+                <div className="mb-1 mt-2 px-3.5 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                  {section.title}
+                </div>
               )}
               {section.items.map(itemId => {
                 const item = sidebarItems.find(x => x.id === itemId);
@@ -331,19 +349,22 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
                 return (
                   <button
                     key={item.id}
-                    className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                    type="button"
+                    className={navBtnClass(isActive)}
                     onClick={() => {
                       setActiveTab(item.id);
                       setMobileOpen(false);
                     }}
                     title={item.label}
                   >
-                    <div className="sidebar-nav-item-inner">
-                      <Icon size={16} style={{ flexShrink: 0 }} />
+                    <div className="flex items-center gap-3">
+                      <Icon size={16} className="shrink-0" />
                       {!collapsed && <span>{item.label}</span>}
                     </div>
                     {!collapsed && badgeVal !== null && (
-                      <span className="sidebar-badge">{badgeVal}</span>
+                      <span className="ml-auto rounded-full bg-red-500/12 px-1.5 py-0.5 text-[9px] font-bold text-red-300">
+                        {badgeVal}
+                      </span>
                     )}
                   </button>
                 );
@@ -352,40 +373,43 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
           ))}
         </nav>
 
-        <div className="sidebar-footer">
+        <div className="mt-auto flex flex-col gap-2.5 border-t border-white/10 pt-4">
           {!collapsed ? (
             <>
-              <div className="sidebar-health-widget">
-                <div className="sidebar-health-title">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
                   <ShieldCheck size={12} color="#22C55E" />
                   Operational
                 </div>
-                <div className="sidebar-health-desc">
+                <div className="mt-1 text-[11px] text-slate-500">
                   DB sync healthy. Latency 24ms.
                 </div>
               </div>
 
-              <div className="sidebar-profile-card" onClick={handleLogout} title="Sign Out">
+              <button
+                type="button"
+                className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-left transition-colors hover:border-white/20 hover:bg-white/[0.05]"
+                onClick={handleLogout}
+                title="Sign Out"
+              >
                 <img
                   src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"
                   alt="Profile"
-                  className="admin-avatar"
-                  style={{ width: '28px', height: '28px', border: '1px solid var(--border-soft)' }}
+                  className="h-7 w-7 rounded-full border border-white/20 object-cover"
                 />
-                <div className="sidebar-profile-info">
-                  <span className="sidebar-profile-name">Administrator</span>
-                  <span className="sidebar-profile-role">Secure Access</span>
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-semibold text-white">Administrator</span>
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500">Secure Access</span>
                 </div>
-              </div>
+              </button>
             </>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+            <div className="flex flex-col items-center gap-3">
               <ShieldCheck size={18} color="#22C55E" />
               <img
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"
                 alt="Profile"
-                className="admin-avatar"
-                style={{ width: '28px', height: '28px', border: '1px solid var(--border-soft)', cursor: 'pointer' }}
+                className="h-7 w-7 cursor-pointer rounded-full border border-white/20 object-cover"
                 onClick={handleLogout}
                 title="Sign Out"
               />
@@ -398,34 +422,35 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
       <AnimatePresence>
         {mobileOpen && (
           <>
-            <motion.div 
-              className="mobile-drawer-overlay"
+            <motion.div
+              className="fixed inset-0 z-[1000] bg-black/60 lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileOpen(false)}
             />
-            <motion.div 
-              className="mobile-drawer-card"
+            <motion.div
+              className="fixed bottom-0 left-0 top-0 z-[1001] flex w-[280px] flex-col bg-[#0B1120] p-6 lg:hidden"
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="sidebar-header" style={{ marginBottom: '1.5rem' }}>
-                <span className="mobile-logo-name">Monteeq Admin</span>
-                <button className="sidebar-toggle-btn" onClick={() => setMobileOpen(false)}>
+              <div className="mb-6 flex items-center justify-between">
+                <span className="text-base font-extrabold tracking-tight text-white">Monteeq Admin</span>
+                <button type="button" className={iconBtnClass} onClick={() => setMobileOpen(false)}>
                   <X size={16} />
                 </button>
               </div>
-              <nav className="sidebar-nav">
+              <nav className="flex flex-col gap-1">
                 {sidebarItems.map(item => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
                   return (
                     <button
                       key={item.id}
-                      className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                      type="button"
+                      className={cn(navBtnClass(isActive), 'gap-3')}
                       onClick={() => {
                         setActiveTab(item.id);
                         setMobileOpen(false);
@@ -443,81 +468,94 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
       </AnimatePresence>
 
       {/* ── MAIN WORKSPACE ── */}
-      <div className="main-content-layout">
+      <div className="relative z-[1] flex min-w-0 flex-1 flex-col">
         
         {/* MOBILE TOP BAR */}
-        <header className="mobile-navbar">
-          <button className="sidebar-toggle-btn" onClick={() => setMobileOpen(true)}>
+        <header className="sticky top-0 z-[95] flex h-16 items-center justify-between border-b border-white/10 bg-[rgba(11,17,32,0.7)] px-5 backdrop-blur-xl lg:hidden">
+          <button type="button" className={iconBtnClass} onClick={() => setMobileOpen(true)}>
             <Menu size={16} />
           </button>
-          <span className="mobile-logo-name">Monteeq Panel</span>
-          <button className="top-nav-btn" onClick={toggleTheme}>
+          <span className="text-base font-extrabold tracking-tight text-white">Monteeq Panel</span>
+          <button type="button" className={iconBtnClass} onClick={toggleTheme}>
             {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
           </button>
         </header>
 
         {/* STICKY TOP NAVBAR (DESKTOP) */}
-        <header className="top-navbar">
-          <div className="top-nav-left">
-            <div className="breadcrumb-nav">
-              <span className="breadcrumb-item">Monteeq</span>
-              <span className="breadcrumb-separator">/</span>
-              <span className="breadcrumb-item">Admin</span>
-              <span className="breadcrumb-separator">/</span>
-              <span className="breadcrumb-current">{activeTab}</span>
+        <header className="sticky top-0 z-[90] hidden h-[72px] items-center justify-between border-b border-white/10 bg-[rgba(11,17,32,0.5)] px-8 backdrop-blur-2xl lg:flex">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-500">Monteeq</span>
+              <span className="text-slate-500">/</span>
+              <span className="text-slate-500">Admin</span>
+              <span className="text-slate-500">/</span>
+              <span className="font-semibold text-white">{activeTab}</span>
             </div>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{dateStr}</span>
+            <span className="text-xs text-slate-500">{dateStr}</span>
           </div>
 
-          <div className="top-nav-right">
-            <div className="global-search-container">
-              <Search size={14} className="global-search-icon" />
-              <input
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Input
                 type="text"
                 placeholder="Global command search..."
-                className="global-search-input"
+                className="h-9 w-60 rounded-full border-white/10 bg-white/[0.04] pl-9 text-sm text-white transition-[width] placeholder:text-slate-500 focus-visible:w-80 focus-visible:border-red-500/65 focus-visible:ring-red-500/20"
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
               />
             </div>
 
-            <button className="top-nav-btn" onClick={() => setDrawerOpen(true)}>
+            <button type="button" className={iconBtnClass} onClick={() => setDrawerOpen(true)}>
               <Bell size={15} />
-              <div className="top-nav-btn-badge" />
+              <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full border-2 border-[#080E1A] bg-[#FF3B30]" />
             </button>
 
-            <button className="top-nav-btn" onClick={toggleTheme}>
+            <button type="button" className={iconBtnClass} onClick={toggleTheme}>
               {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
             </button>
 
-            <button className="table-action-btn btn-primary-brand" onClick={() => setQuickMenuOpen(!quickMenuOpen)}>
+            <Button
+              type="button"
+              className="h-9 gap-1.5 bg-gradient-to-r from-[#E02B20] via-[#FF3B30] to-[#FF6B6B] text-white hover:opacity-90"
+              onClick={() => setQuickMenuOpen(!quickMenuOpen)}
+            >
               <Plus size={14} /> Quick action
-            </button>
+            </Button>
 
-            <div style={{ width: '1px', height: '24px', background: 'var(--border-subtle)' }} />
+            <div className="h-6 w-px bg-white/10" />
 
-            <button className="profile-dropdown-trigger" onClick={handleLogout} title="Sign Out">
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-full border-0 bg-transparent p-1"
+              onClick={handleLogout}
+              title="Sign Out"
+            >
               <img
                 src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80"
                 alt="Profile"
-                className="admin-avatar"
+                className="h-8 w-8 rounded-full border-2 border-red-500/30 object-cover"
               />
-              <LogOut size={14} color="var(--text-muted)" />
+              <LogOut size={14} className="text-slate-500" />
             </button>
           </div>
         </header>
 
         {/* FLOATING QUICK ACTIONS MENU */}
         {quickMenuOpen && (
-          <div className="floating-menu-card">
-            <button className="floating-menu-item" onClick={() => { setActiveModal('challenge'); setQuickMenuOpen(false); }}>
+          <div className="fixed bottom-24 right-8 z-[80] flex w-[260px] flex-col gap-1 rounded-2xl border border-white/20 bg-slate-900/95 p-2 shadow-2xl backdrop-blur-md">
+            <button
+              type="button"
+              className="flex items-center gap-3 rounded-xl border-0 bg-transparent px-3 py-2.5 text-left text-sm font-medium text-slate-400 hover:bg-white/[0.05] hover:text-white"
+              onClick={() => { setActiveModal('challenge'); setQuickMenuOpen(false); }}
+            >
               <Sparkles size={14} /> Create challenge
             </button>
           </div>
         )}
 
         {/* ── MAIN CONTENT RENDER AREA ── */}
-        <main className="dashboard-content-area">
+        <main className="relative flex-1 overflow-y-auto px-5 py-6 md:px-8 md:py-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -528,10 +566,14 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
             >
               
               {/* PAGE TITLE BLOCK */}
-              <div className="page-header-row">
+              <div className="mb-8 flex items-start justify-between">
                 <div>
-                  <h1 className="page-title">{activeTab}</h1>
-                  <p className="page-subtitle">Configure, moderate, and monitor Monteeq creators economy.</p>
+                  <h1 className="m-0 bg-gradient-to-r from-[#FF3B30] via-[#FF6B6B] to-[#FFa0a0] bg-clip-text text-3xl font-extrabold tracking-tight text-transparent">
+                    {activeTab}
+                  </h1>
+                  <p className="mt-1 mb-0 text-sm text-slate-400">
+                    Configure, moderate, and monitor Monteeq creators economy.
+                  </p>
                 </div>
               </div>
 
@@ -648,7 +690,7 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
                 <div className="table-card-container">
                   <div className="table-filter-bar">
                     <div className="table-search-box">
-                      <Search size={14} className="global-search-icon" />
+                      <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                       <input
                         type="text"
                         placeholder="Search videos library..."
@@ -734,7 +776,7 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
                 <div className="table-card-container">
                   <div className="table-filter-bar">
                     <div className="table-search-box">
-                      <Search size={14} className="global-search-icon" />
+                      <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                       <input
                         type="text"
                         placeholder="Search users..."
@@ -1113,36 +1155,37 @@ export default function Dashboard({ token, setToken, theme, toggleTheme, initial
       <AnimatePresence>
         {drawerOpen && (
           <>
-            <div className="mobile-drawer-overlay" onClick={() => setDrawerOpen(false)} />
+            <div className="fixed inset-0 z-[1000] bg-black/60" onClick={() => setDrawerOpen(false)} />
             <motion.div
-              className="mobile-drawer-card"
-              style={{ left: 'auto', right: 0 }}
+              className="fixed bottom-0 right-0 top-0 z-[1001] flex w-[280px] flex-col bg-[#0B1120] p-6"
               initial={{ x: 280 }}
               animate={{ x: 0 }}
               exit={{ x: 280 }}
               transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="sidebar-header" style={{ marginBottom: '1.5rem' }}>
-                <span className="mobile-logo-name">Insights Drawer</span>
-                <button className="sidebar-toggle-btn" onClick={() => setDrawerOpen(false)}>
+              <div className="mb-6 flex items-center justify-between">
+                <span className="text-base font-extrabold tracking-tight text-white">Insights Drawer</span>
+                <button type="button" className={iconBtnClass} onClick={() => setDrawerOpen(false)}>
                   <X size={16} />
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontWeight: 600, fontSize: '13px' }}>Storage capacity</div>
-                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', marginTop: '8px', overflow: 'hidden' }}>
-                    <div style={{ width: '82%', height: '100%', background: 'var(--grad-brand)' }} />
+              <div className="flex flex-col gap-3">
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="text-[13px] font-semibold">Storage capacity</div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-sm bg-white/10">
+                    <div className="h-full w-[82%] bg-gradient-to-r from-[#FF3B30] to-[#FF6B6B]" />
                   </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'right' }}>82% filled</div>
+                  <div className="mt-1 text-right text-[11px] text-slate-500">82% filled</div>
                 </div>
 
-                <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <AlertTriangle size={16} color="var(--red-light)" />
+                <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <AlertTriangle size={16} className="text-red-300" />
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '13px' }}>Pending moderation</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{reports.filter(r => r.status === 'Pending').length} priority reports</div>
+                    <div className="text-[13px] font-semibold">Pending moderation</div>
+                    <div className="text-[11px] text-slate-500">
+                      {reports.filter(r => r.status === 'Pending').length} priority reports
+                    </div>
                   </div>
                 </div>
               </div>
