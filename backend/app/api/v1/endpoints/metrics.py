@@ -33,8 +33,11 @@ def public_platform_stats(db: Session = Depends(get_db)):
         .scalar()
         or 0
     )
-    videos = db.query(func.count(Video.id)).scalar() or 0
-    views = db.query(func.coalesce(func.sum(Video.views), 0)).scalar() or 0
+    approved = Video.status == "approved"
+    videos = db.query(func.count(Video.id)).filter(approved).scalar() or 0
+    views = (
+        db.query(func.coalesce(func.sum(Video.views), 0)).filter(approved).scalar() or 0
+    )
     likes = db.query(func.count(Like.id)).scalar() or 0
     comments = db.query(func.count(Comment.id)).scalar() or 0
     open_challenges = (
