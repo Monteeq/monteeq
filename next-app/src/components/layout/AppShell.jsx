@@ -15,10 +15,15 @@ const ONBOARDING_EXCLUDED = ['/onboarding', '/verify', '/payment', '/login', '/s
  * Same hideHeader / hideSidebar / immersive rules — only routing APIs changed.
  */
 export default function AppShell({ children }) {
-  const { token, user } = useAuth();
+  const { token, user, loading } = useAuth();
   const pathname = usePathname() || '/';
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [hasMounted, setHasMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Vite App.jsx: force /verify then /onboarding when profile incomplete
   React.useEffect(() => {
@@ -36,9 +41,13 @@ export default function AppShell({ children }) {
     }
   }, [token, user, pathname, router]);
 
+  // Until the client has mounted + auth has resolved, treat as logged-out for
+  // layout chrome so SSR HTML and the first client render match.
+  const resolvedToken = hasMounted && !loading ? token : null;
+
   const isFlashPage = pathname.startsWith('/flash');
-  const isHomePage = pathname === '/home' || (pathname === '/' && !!token);
-  const isLandingPage = pathname === '/' && !token;
+  const isHomePage = pathname === '/home' || (pathname === '/' && !!resolvedToken);
+  const isLandingPage = pathname === '/' && !resolvedToken;
 
   const isAuthPage = ['/login', '/signup', '/verify', '/forgot-password', '/reset-password'].includes(
     pathname
