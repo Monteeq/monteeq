@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, Loader2, X, AlertCircle } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Loader2, X, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUploadStatus } from '@/hooks/useUploadStatus';
 import { useUploadStore } from '@/stores/useUploadStore';
@@ -9,6 +10,7 @@ import styles from './UploadNotifications.module.css';
 
 const TERMINAL = new Set(['completed', 'failed']);
 const POLLABLE = new Set(['queued', 'processing']);
+const COLLAPSE_THRESHOLD = 4;
 
 function statusLabel(status, error) {
   switch (status) {
@@ -148,8 +150,70 @@ function UploadCard({ upload }) {
   );
 }
 
+function UploadSummary({ uploads, expanded, onToggle }) {
+  const uploading = uploads.filter((u) => !TERMINAL.has(u.status)).length;
+  const done = uploads.filter((u) => u.status === 'completed').length;
+  const avg =
+    uploads.length === 0
+      ? 0
+      : Math.round(
+          uploads.reduce((sum, u) => sum + progressFor(u.status, u.progress), 0) /
+            uploads.length
+        );
+
+  const uploadingLabel =
+    uploading === 1 ? '1 video uploading' : `${uploading} videos uploading`;
+
+  return (
+    <motion.div
+      layout
+      className={styles.summary}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
+      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+    >
+      <button
+        type="button"
+        className={styles.summaryMain}
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-label={expanded ? 'Collapse upload list' : 'Expand upload list'}
+      >
+        <div className={styles.summaryMeta}>
+          <div className={styles.summaryRow}>
+            <span className={styles.summaryTitle}>
+              {uploadingLabel}, {done} done
+            </span>
+            {(uploading > 0) && <Loader2 className={styles.spin} size={14} />}
+          </div>
+          <div className={styles.progressTrack} aria-hidden>
+            <div className={styles.progressFill} style={{ width: `${avg}%` }} />
+          </div>
+        </div>
+        <ChevronDown
+          size={18}
+          className={`${styles.summaryChevron} ${expanded ? styles.summaryChevronOpen : ''}`}
+        />
+      </button>
+    </motion.div>
+  );
+}
+
 export default function UploadNotifications() {
   const activeUploads = useUploadStore((s) => s.activeUploads);
+  const [expanded, setExpanded] = useState(false);
+
+  const count = activeUploads.length;
+  const useSummary = count >= COLLAPSE_THRESHOLD;
+
+  // Auto-collapse when the batch shrinks back to 3 or fewer
+  useEffect(() => {
+    if (count < COLLAPSE_THRESHOLD) {
+      setExpanded(false);
+    }
+  }, [count]);
+
   const pollJobIds = activeUploads
     .filter(
       (u) =>
@@ -159,18 +223,29 @@ export default function UploadNotifications() {
     )
     .map((u) => u.jobId);
 
+  const showIndividualCards = !useSummary || expanded;
+
   return (
     <>
       {pollJobIds.map((jobId) => (
         <UploadJobPoller key={jobId} jobId={jobId} />
       ))}
 
-      {activeUploads.length > 0 && (
+      {count > 0 && (
         <div className={styles.stack} aria-label="Upload progress">
           <AnimatePresence initial={false}>
-            {activeUploads.map((upload) => (
-              <UploadCard key={upload.jobId} upload={upload} />
-            ))}
+            {useSummary && (
+              <UploadSummary
+                key="upload-summary"
+                uploads={activeUploads}
+                expanded={expanded}
+                onToggle={() => setExpanded((v) => !v)}
+              />
+            )}
+            {showIndividualCards &&
+              activeUploads.map((upload) => (
+                <UploadCard key={upload.jobId} upload={upload} />
+              ))}
           </AnimatePresence>
         </div>
       )}

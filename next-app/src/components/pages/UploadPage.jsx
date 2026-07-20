@@ -35,8 +35,11 @@ import {
     MAX_VIDEO_BYTES,
 } from '@/utils/videoSelect';
 import { dataUrlToBlob } from '@/utils/coverFrame';
+import { asyncPool } from '@/utils/asyncPool';
 import VideoBatchDetails from '@/components/upload/VideoBatchDetails';
 import s from '@/styles/pages/UploadV2.module.css';
+
+const BATCH_UPLOAD_CONCURRENCY = 3;
 
 const Upload = () => {
     const { user, token, refreshUser } = useAuth();
@@ -255,116 +258,143 @@ const Upload = () => {
 
     const CHUNK_SIZE_BATCH = 5 * 1024 * 1024;
 
-    /** Upload one prepared video; progress tracked in the global toast store. */
+    /**
+     * Upload one video → S3 (via finalize) → its own upload_jobs + Celery task.
+     * Never throws to the pool; failures are isolated per file.
+     * @returns {Promise<{ ok: true, jobId: string } | { ok: false, error: string }>}
+     */
     const uploadVideoItem = async ({ file: videoFile, caption, tags: itemTags, coverBlob, coverUrl }) => {
-        const toastId = `local-${crypto.randomUUID()}`;
-        addUpload({
-            jobId: toastId,
-            fileName: videoFile.name || caption || 'Video',
-            thumbnailUrl: coverUrl || null,
-            progress: 0,
-            status: 'uploading',
-            error: null,
-        });
+        const fileName = videoFile.name || caption || 'Video';
+        const thumb = coverUrl || null;
+        /** Provisional id for mid-upload progress; replaced by server job_id after S3. */
+        const localId = `local-${crypto.randomUUID()}`;
+        let storeRegistered = false;
 
-        const initFormData = new FormData();
-        initFormData.append('title', caption);
-        initFormData.append('description', caption);
-        initFormData.append('tags', itemTags || '');
-        initFormData.append('video_type', videoType);
-        initFormData.append('filename', videoFile.name);
-        if (coverBlob) {
-            initFormData.append('thumbnail', coverBlob, 'cover.jpg');
-        }
+        const fail = (error) => {
+            const msg = error?.message || String(error) || 'Upload failed';
+            if (storeRegistered) {
+                updateUpload(localId, { status: 'failed', error: msg });
+            } else {
+                // S3 never completed — still surface an independent failed toast
+                addUpload({
+                    jobId: localId,
+                    fileName,
+                    thumbnailUrl: thumb,
+                    progress: 0,
+                    status: 'failed',
+                    error: msg,
+                });
+            }
+            return { ok: false, error: msg };
+        };
 
-        const initRes = await fetch(`${API_BASE_URL}/videos/upload/initiate`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: initFormData,
-        });
-        if (!initRes.ok) {
-            const errData = await initRes.json().catch(() => ({}));
-            const msg = errData.detail || 'Failed to initiate upload';
-            updateUpload(toastId, { status: 'failed', error: msg });
-            throw new Error(msg);
-        }
+        try {
+            // Show progress for this file as soon as its concurrency slot starts
+            addUpload({
+                jobId: localId,
+                fileName,
+                thumbnailUrl: thumb,
+                progress: 0,
+                status: 'uploading',
+                error: null,
+            });
+            storeRegistered = true;
 
-        const { upload_id: currentUploadId } = await initRes.json();
-        const totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE_BATCH);
-        const completedSet = new Set();
+            const initFormData = new FormData();
+            initFormData.append('title', caption);
+            initFormData.append('description', caption);
+            initFormData.append('tags', itemTags || '');
+            initFormData.append('video_type', videoType);
+            initFormData.append('filename', videoFile.name);
+            if (coverBlob) {
+                initFormData.append('thumbnail', coverBlob, 'cover.jpg');
+            }
 
-        for (let i = 0; i < totalChunks; i++) {
-            const start = i * CHUNK_SIZE_BATCH;
-            const end = Math.min(videoFile.size, start + CHUNK_SIZE_BATCH);
-            const chunkBlob = videoFile.slice(start, end);
-            const formData = new FormData();
-            formData.append('upload_id', currentUploadId);
-            formData.append('chunk_index', i);
-            formData.append('file', chunkBlob, videoFile.name);
+            const initRes = await fetch(`${API_BASE_URL}/videos/upload/initiate`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: initFormData,
+            });
+            if (!initRes.ok) {
+                const errData = await initRes.json().catch(() => ({}));
+                return fail(new Error(errData.detail || 'Failed to initiate upload'));
+            }
 
-            let retries = 3;
-            let ok = false;
-            while (!ok && retries > 0) {
-                try {
-                    const res = await fetch(`${API_BASE_URL}/videos/upload/chunk`, {
-                        method: 'POST',
-                        headers: { Authorization: `Bearer ${token}` },
-                        body: formData,
-                    });
-                    if (!res.ok) throw new Error(`Chunk ${i} failed`);
-                    completedSet.add(i);
-                    updateUpload(toastId, {
-                        progress: Math.round((completedSet.size / totalChunks) * 100),
-                        status: 'uploading',
-                    });
-                    ok = true;
-                } catch (err) {
-                    retries -= 1;
-                    if (retries === 0) {
-                        updateUpload(toastId, {
-                            status: 'failed',
-                            error: err.message || 'Upload failed',
+            const { upload_id: currentUploadId } = await initRes.json();
+            const totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE_BATCH);
+            const completedSet = new Set();
+
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE_BATCH;
+                const end = Math.min(videoFile.size, start + CHUNK_SIZE_BATCH);
+                const chunkBlob = videoFile.slice(start, end);
+                const formData = new FormData();
+                formData.append('upload_id', currentUploadId);
+                formData.append('chunk_index', i);
+                formData.append('file', chunkBlob, videoFile.name);
+
+                let retries = 3;
+                let chunkOk = false;
+                while (!chunkOk && retries > 0) {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/videos/upload/chunk`, {
+                            method: 'POST',
+                            headers: { Authorization: `Bearer ${token}` },
+                            body: formData,
                         });
-                        throw err;
+                        if (!res.ok) throw new Error(`Chunk ${i} failed`);
+                        completedSet.add(i);
+                        updateUpload(localId, {
+                            progress: Math.round((completedSet.size / totalChunks) * 100),
+                            status: 'uploading',
+                        });
+                        chunkOk = true;
+                    } catch (err) {
+                        retries -= 1;
+                        if (retries === 0) {
+                            return fail(err);
+                        }
+                        await new Promise((r) => setTimeout(r, (3 - retries) * 2000));
                     }
-                    await new Promise((r) => setTimeout(r, (3 - retries) * 2000));
                 }
             }
+
+            // finalize merges chunks → S3 → creates upload_jobs row → enqueues Celery
+            const finalizeFormData = new FormData();
+            finalizeFormData.append('upload_id', currentUploadId);
+            finalizeFormData.append('total_chunks', totalChunks);
+            finalizeFormData.append('filename', videoFile.name);
+
+            const finalizeRes = await fetch(`${API_BASE_URL}/videos/upload/finalize`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: finalizeFormData,
+            });
+            if (!finalizeRes.ok) {
+                const errorData = await finalizeRes.json().catch(() => ({}));
+                return fail(new Error(errorData.detail || 'Finalization failed'));
+            }
+
+            const data = await finalizeRes.json();
+            if (!data.job_id) {
+                return fail(new Error('Server did not return a job id'));
+            }
+
+            // S3 + separate upload_jobs row + Celery task ready — promote this
+            // file's toast to the server job_id immediately (siblings may still be uploading)
+            updateUpload(localId, {
+                jobId: data.job_id,
+                progress: 100,
+                status: 'queued',
+                processingKey: data.processing_key || currentUploadId,
+                videoId: data.video_id || null,
+                error: null,
+            });
+
+            return { ok: true, jobId: data.job_id };
+        } catch (err) {
+            return fail(err);
         }
-
-        updateUpload(toastId, { progress: 100, status: 'queued' });
-
-        const finalizeFormData = new FormData();
-        finalizeFormData.append('upload_id', currentUploadId);
-        finalizeFormData.append('total_chunks', totalChunks);
-        finalizeFormData.append('filename', videoFile.name);
-
-        const finalizeRes = await fetch(`${API_BASE_URL}/videos/upload/finalize`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: finalizeFormData,
-        });
-        if (!finalizeRes.ok) {
-            const errorData = await finalizeRes.json().catch(() => ({}));
-            const msg = errorData.detail || 'Finalization failed';
-            updateUpload(toastId, { status: 'failed', error: msg });
-            throw new Error(msg);
-        }
-
-        const data = await finalizeRes.json();
-        if (!data.job_id) {
-            updateUpload(toastId, { status: 'failed', error: 'No job id returned' });
-            throw new Error('Server did not return a job id');
-        }
-
-        updateUpload(toastId, {
-            jobId: data.job_id,
-            status: 'queued',
-            progress: 100,
-            processingKey: currentUploadId,
-            videoId: null,
-            error: null,
-        });
     };
 
     const handlePostAll = async () => {
@@ -372,38 +402,54 @@ const Upload = () => {
         const ready = batchVideos.every((v) => (videoDrafts[v.id]?.caption || '').trim().length > 0);
         if (!ready) return;
 
-        setPostingBatch(true);
-        try {
-            for (const v of batchVideos) {
-                const d = videoDrafts[v.id];
-                const caption = d.caption.trim();
-                let coverBlob = d.coverBlob;
-                if (!coverBlob && d.coverUrl) {
-                    coverBlob = dataUrlToBlob(d.coverUrl);
-                }
-                await uploadVideoItem({
-                    file: v.file,
-                    caption,
-                    tags: d.tags || '',
-                    coverBlob,
-                    coverUrl: d.coverUrl || v.thumbnailUrl,
-                });
+        const payload = batchVideos.map((v) => {
+            const d = videoDrafts[v.id];
+            let coverBlob = d.coverBlob;
+            if (!coverBlob && d.coverUrl) {
+                coverBlob = dataUrlToBlob(d.coverUrl);
             }
-            showNotification('success', `${batchVideos.length} upload${batchVideos.length > 1 ? 's' : ''} started`);
-            // Revoke blob covers we created
-            Object.values(videoDrafts).forEach((d) => {
-                if (d.coverUrl && d.coverUrl.startsWith('blob:')) {
-                    URL.revokeObjectURL(d.coverUrl);
-                }
-            });
-            setSelectedVideos([]);
-            setBatchVideos([]);
-            setVideoDrafts({});
-            setActiveVideoId(null);
-            setStep('select');
+            return {
+                file: v.file,
+                caption: d.caption.trim(),
+                tags: d.tags || '',
+                coverBlob,
+                coverUrl: d.coverUrl || v.thumbnailUrl,
+            };
+        });
+
+        // Clear the form immediately so toasts own progress while uploads run in parallel.
+        // Do not revoke cover blob URLs here — active upload toasts still reference them.
+        setSelectedVideos([]);
+        setBatchVideos([]);
+        setVideoDrafts({});
+        setActiveVideoId(null);
+        setStep('select');
+        setPostingBatch(true);
+
+        try {
+            const results = await asyncPool(
+                payload,
+                BATCH_UPLOAD_CONCURRENCY,
+                (item) => uploadVideoItem(item)
+            );
+
+            const succeeded = results.filter((r) => r?.ok).length;
+            const failed = results.length - succeeded;
+
+            if (succeeded > 0 && failed === 0) {
+                showNotification(
+                    'success',
+                    `${succeeded} upload${succeeded > 1 ? 's' : ''} started`
+                );
+            } else if (succeeded > 0 && failed > 0) {
+                showNotification(
+                    'info',
+                    `${succeeded} started · ${failed} failed`
+                );
+            } else {
+                showNotification('error', 'All uploads failed');
+            }
             refreshUser();
-        } catch (err) {
-            showNotification('error', err.message || 'Batch upload failed');
         } finally {
             setPostingBatch(false);
         }
