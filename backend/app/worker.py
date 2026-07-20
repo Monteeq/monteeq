@@ -28,14 +28,15 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     task_time_limit=3600,
-    broker_pool_limit=20,
-    redis_max_connections=20,
-    # prefork/spawn pools crash on Windows (WinError 6 / Access denied)
-    worker_pool="solo" if sys.platform == "win32" else "prefork",
-    worker_concurrency=1 if sys.platform == "win32" else 4,
+    # Stay well under Redis Cloud free-tier ~30 concurrent clients
+    broker_pool_limit=2,
+    redis_max_connections=5,
+    # solo keeps Redis client count low (also required on Windows)
+    worker_pool="solo",
+    worker_concurrency=1,
     broker_transport_options={
         'visibility_timeout': 3600,
-        'max_connections': 20
+        'max_connections': 2,
     },
     beat_schedule={
         # Morning push notifications — daily 08:00 UTC

@@ -161,7 +161,12 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
 @app.on_event("startup")
 async def startup():
     from app.core.config import REDIS_URL
-    redis = aioredis.from_url(REDIS_URL, encoding="utf8", decode_responses=True)
+    redis = aioredis.from_url(
+        REDIS_URL,
+        encoding="utf8",
+        decode_responses=True,
+        max_connections=5,
+    )
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
 
 @app.get("/", tags=["System"])

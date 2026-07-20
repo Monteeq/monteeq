@@ -4,7 +4,7 @@ set -e
 echo "Starting Celery worker in background..."
 celery -A app.worker.celery_app worker \
     --loglevel=info \
-    --concurrency=2 \
+    --concurrency=1 \
     --pool=solo &
 
 echo "Starting Celery beat scheduler in background..."

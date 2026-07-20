@@ -28,23 +28,26 @@ class RedisManager:
         """Initializes the Redis client and validates the connection."""
         try:
             # Use connection pooling for efficiency and stability
+            # Keep this low — Redis Cloud free tier allows ~30 clients total
+            # across backend, Celery, beat, cache, and the video service.
             pool = redis.ConnectionPool.from_url(
                 REDIS_URL,
                 decode_responses=True,
                 socket_timeout=5,
                 socket_connect_timeout=5,
                 retry_on_timeout=True,
-                max_connections=50
+                max_connections=5,
+                health_check_interval=30,
             )
             self._client = redis.StrictRedis(connection_pool=pool)
             
             # Simple health check to ensure Redis is responsive
             self._client.ping()
             self.last_error = None
-            logger.info(f"Successfully connected to Redis Cloud at {REDIS_URL[:20]}...")
+            logger.info(f"Successfully connected to Redis at {REDIS_URL[:32]}...")
         except Exception as e:
             self.last_error = f"{type(e).__name__}: {str(e)}"
-            logger.error(f"FATAL: Could not connect to Redis Cloud. Error: {e}")
+            logger.error(f"FATAL: Could not connect to Redis. Error: {e}")
             # We don't raise here to allow the app to start, 
             # but specific features requiring Redis will fail gracefully later.
             self._client = None
