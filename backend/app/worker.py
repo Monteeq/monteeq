@@ -20,6 +20,11 @@ celery_app = Celery(
     ]
 )
 
+# Ensure @shared_task.delay() from FastAPI/scripts always uses this Redis broker
+# (otherwise Celery falls back to amqp://localhost and enqueue silently fails).
+celery_app.set_default()
+celery_app.set_current()
+
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],

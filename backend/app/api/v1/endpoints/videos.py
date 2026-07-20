@@ -758,8 +758,9 @@ async def finalize_upload(
     
     # Trigger Celery — do not wait for Rust/transcode
     try:
+        import app.worker  # noqa: F401 — set Redis Celery app as default before delay()
         from app.tasks.video_tasks import process_video_task
-        process_video_task.delay(
+        async_result = process_video_task.delay(
             source_key,
             video.video_type,
             video.title,
@@ -768,7 +769,10 @@ async def finalize_upload(
             video.processing_key,
             str(job.id),
         )
-        logger.info(f"Transcoding celery task enqueued for video_id={video.id} job_id={job.id}")
+        logger.info(
+            f"Transcoding celery task enqueued for video_id={video.id} "
+            f"job_id={job.id} celery_id={async_result.id}"
+        )
     except Exception as e:
         logger.error(f"Failed to enqueue Celery transcoding task: {str(e)}")
         video.status = "failed"
