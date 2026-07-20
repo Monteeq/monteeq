@@ -309,6 +309,21 @@ def process_video_task(
     )
     db = SessionLocal()
     try:
+        # Prefer cover metadata from the upload_jobs row when present
+        cover_source = "custom" if thumbnail_provided else "auto"
+        cover_s3_key = None
+        if upload_job_id:
+            try:
+                from uuid import UUID as _UUID
+                job_row = db.query(UploadJob).filter(UploadJob.id == _UUID(str(upload_job_id))).first()
+                if job_row:
+                    cover_source = getattr(job_row, "cover_source", None) or cover_source
+                    cover_s3_key = getattr(job_row, "cover_s3_key", None)
+                    if cover_source == "custom":
+                        thumbnail_provided = True
+            except Exception as e:
+                logger.debug(f"upload_job cover lookup skipped: {e}")
+
         # Resolve tier best-effort — never block the Rust handoff on a flaky DB
         try:
             tier = _resolve_user_tier(db, video_id)
@@ -322,7 +337,8 @@ def process_video_task(
 
         # Call Rust FIRST so DB blips cannot prevent transcode from starting
         logger.info(
-            f"POST {config.RUST_SERVICE_URL}/process source={source_key} tier={tier}"
+            f"POST {config.RUST_SERVICE_URL}/process source={source_key} tier={tier} "
+            f"cover_source={cover_source} cover_s3_key={cover_s3_key}"
         )
         try:
             rust_response = requests.post(
@@ -330,9 +346,11 @@ def process_video_task(
                 json={
                     "video_id": source_key,
                     "target_format": video_type,
-                    "skip_thumbnail": thumbnail_provided,
+                    "skip_thumbnail": thumbnail_provided or cover_source == "custom",
                     "task_id": task_id,
                     "tier": tier,
+                    "cover_source": cover_source,
+                    "cover_s3_key": cover_s3_key,
                 },
                 timeout=30.0,
             )

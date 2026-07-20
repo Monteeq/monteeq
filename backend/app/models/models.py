@@ -241,6 +241,9 @@ class UploadJob(Base):
     )
     video_id = Column(Integer, ForeignKey("videos.id", ondelete="SET NULL"), nullable=True, index=True)
     error_message = Column(Text, nullable=True)
+    # "auto" = Rust generates thumbnail; "custom" = cover_s3_key was uploaded by client
+    cover_source = Column(String, nullable=False, default="auto", server_default="auto")
+    cover_s3_key = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),

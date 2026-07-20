@@ -34,7 +34,6 @@ import {
     formatDuration,
     MAX_VIDEO_BYTES,
 } from '@/utils/videoSelect';
-import { dataUrlToBlob } from '@/utils/coverFrame';
 import { asyncPool } from '@/utils/asyncPool';
 import VideoBatchDetails from '@/components/upload/VideoBatchDetails';
 import s from '@/styles/pages/UploadV2.module.css';
@@ -72,7 +71,7 @@ const Upload = () => {
     const [isPickingFiles, setIsPickingFiles] = useState(false);
     /** Valid videos carried into the per-item details step */
     const [batchVideos, setBatchVideos] = useState([]);
-    /** @type {[Record<string, { caption: string, tags: string, coverTime: number, coverUrl: string|null, coverBlob: Blob|null }>, Function]} */
+    /** @type {[Record<string, { caption: string, tags: string, coverSource: 'auto'|'custom', coverFile: File|null, coverPreviewUrl: string|null }>, Function]} */
     const [videoDrafts, setVideoDrafts] = useState({});
     const [activeVideoId, setActiveVideoId] = useState(null);
     const [thumbnailFile, setThumbnailFile] = useState(null);
@@ -234,13 +233,12 @@ const Upload = () => {
 
         const drafts = {};
         for (const v of valid) {
-            const coverTime = v.duration && v.duration > 2 ? 1 : 0;
             drafts[v.id] = {
                 caption: '',
                 tags: '',
-                coverTime,
-                coverUrl: v.thumbnailUrl,
-                coverBlob: null,
+                coverSource: 'auto',
+                coverFile: null,
+                coverPreviewUrl: null,
             };
         }
         setBatchVideos(valid);
@@ -260,12 +258,22 @@ const Upload = () => {
 
     /**
      * Upload one video → S3 (via finalize) → its own upload_jobs + Celery task.
+     * Cover: auto → cover_source only; custom → cover file uploaded at finalize to covers/{job_id}.jpg.
      * Never throws to the pool; failures are isolated per file.
      * @returns {Promise<{ ok: true, jobId: string } | { ok: false, error: string }>}
      */
-    const uploadVideoItem = async ({ file: videoFile, caption, tags: itemTags, coverBlob, coverUrl }) => {
+    const uploadVideoItem = async ({
+        file: videoFile,
+        caption,
+        tags: itemTags,
+        coverSource = 'auto',
+        coverFile = null,
+        coverPreviewUrl = null,
+        fallbackThumbUrl = null,
+    }) => {
         const fileName = videoFile.name || caption || 'Video';
-        const thumb = coverUrl || null;
+        const source = coverSource === 'custom' && coverFile ? 'custom' : 'auto';
+        const thumb = source === 'custom' ? coverPreviewUrl || fallbackThumbUrl : fallbackThumbUrl;
         /** Provisional id for mid-upload progress; replaced by server job_id after S3. */
         const localId = `local-${crypto.randomUUID()}`;
         let storeRegistered = false;
@@ -300,15 +308,14 @@ const Upload = () => {
             });
             storeRegistered = true;
 
+            // Initiate — no cover upload here (job_id does not exist yet)
             const initFormData = new FormData();
             initFormData.append('title', caption);
             initFormData.append('description', caption);
             initFormData.append('tags', itemTags || '');
             initFormData.append('video_type', videoType);
             initFormData.append('filename', videoFile.name);
-            if (coverBlob) {
-                initFormData.append('thumbnail', coverBlob, 'cover.jpg');
-            }
+            initFormData.append('cover_source', source);
 
             const initRes = await fetch(`${API_BASE_URL}/videos/upload/initiate`, {
                 method: 'POST',
@@ -359,11 +366,19 @@ const Upload = () => {
                 }
             }
 
-            // finalize merges chunks → S3 → creates upload_jobs row → enqueues Celery
+            // Finalize: video → S3, create upload_jobs (+ cover_source / cover_s3_key), enqueue Celery
             const finalizeFormData = new FormData();
             finalizeFormData.append('upload_id', currentUploadId);
             finalizeFormData.append('total_chunks', totalChunks);
             finalizeFormData.append('filename', videoFile.name);
+            finalizeFormData.append('cover_source', source);
+            if (source === 'custom' && coverFile) {
+                const coverName =
+                    coverFile instanceof File && coverFile.name
+                        ? coverFile.name
+                        : 'cover.jpg';
+                finalizeFormData.append('cover', coverFile, coverName);
+            }
 
             const finalizeRes = await fetch(`${API_BASE_URL}/videos/upload/finalize`, {
                 method: 'POST',
@@ -391,7 +406,12 @@ const Upload = () => {
                 error: null,
             });
 
-            return { ok: true, jobId: data.job_id };
+            return {
+                ok: true,
+                jobId: data.job_id,
+                coverSource: data.cover_source || source,
+                coverS3Key: data.cover_s3_key || null,
+            };
         } catch (err) {
             return fail(err);
         }
@@ -404,21 +424,20 @@ const Upload = () => {
 
         const payload = batchVideos.map((v) => {
             const d = videoDrafts[v.id];
-            let coverBlob = d.coverBlob;
-            if (!coverBlob && d.coverUrl) {
-                coverBlob = dataUrlToBlob(d.coverUrl);
-            }
+            const coverSource = d.coverSource === 'custom' && d.coverFile ? 'custom' : 'auto';
             return {
                 file: v.file,
                 caption: d.caption.trim(),
                 tags: d.tags || '',
-                coverBlob,
-                coverUrl: d.coverUrl || v.thumbnailUrl,
+                coverSource,
+                coverFile: coverSource === 'custom' ? d.coverFile : null,
+                coverPreviewUrl: d.coverPreviewUrl || null,
+                fallbackThumbUrl: v.thumbnailUrl,
             };
         });
 
         // Clear the form immediately so toasts own progress while uploads run in parallel.
-        // Do not revoke cover blob URLs here — active upload toasts still reference them.
+        // Keep custom cover blob: URLs alive for toast thumbnails.
         setSelectedVideos([]);
         setBatchVideos([]);
         setVideoDrafts({});

@@ -1,17 +1,31 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { AlignLeft, ChevronLeft, Loader2, Tag, Video, Zap } from 'lucide-react';
-import { captureCoverFrame } from '@/utils/coverFrame';
-import { formatDuration } from '@/utils/videoSelect';
+import React, { useRef } from 'react';
+import {
+  AlignLeft,
+  ChevronLeft,
+  Image as ImageIcon,
+  Loader2,
+  Sparkles,
+  Tag,
+  Video,
+  X,
+  Zap,
+} from 'lucide-react';
 import s from '@/styles/pages/UploadV2.module.css';
 
 /**
- * Per-video caption / tags / cover-frame step after multi-select.
+ * Per-video caption / tags / cover step after multi-select.
  *
  * @param {{
  *   videos: Array<{ id: string, file: File, name: string, thumbnailUrl: string|null, duration: number|null }>,
- *   drafts: Record<string, { caption: string, tags: string, coverTime: number, coverUrl: string|null, coverBlob: Blob|null }>,
+ *   drafts: Record<string, {
+ *     caption: string,
+ *     tags: string,
+ *     coverSource: 'auto' | 'custom',
+ *     coverFile: File|null,
+ *     coverPreviewUrl: string|null,
+ *   }>,
  *   activeId: string,
  *   onActiveChange: (id: string) => void,
  *   onDraftChange: (id: string, patch: object) => void,
@@ -34,11 +48,7 @@ export default function VideoBatchDetails({
   videoType = 'home',
   onVideoTypeChange,
 }) {
-  const videoRef = useRef(null);
-  const scrubTimerRef = useRef(null);
-  const [objectUrl, setObjectUrl] = useState(null);
-  const [scrubbing, setScrubbing] = useState(false);
-  const [capturing, setCapturing] = useState(false);
+  const coverInputRef = useRef(null);
 
   const active = videos.find((v) => v.id === activeId) || videos[0];
   const draft = active ? drafts[active.id] : null;
@@ -46,74 +56,64 @@ export default function VideoBatchDetails({
   const allHaveCaption = videos.every((v) => (drafts[v.id]?.caption || '').trim().length > 0);
   const captionReadyCount = videos.filter((v) => (drafts[v.id]?.caption || '').trim().length > 0).length;
 
-  // Object URL for the active video (cover scrubber)
-  useEffect(() => {
-    if (!active?.file) {
-      setObjectUrl(null);
-      return undefined;
-    }
-    const url = URL.createObjectURL(active.file);
-    setObjectUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [active?.id, active?.file]);
-
-  // Seek preview video when coverTime / objectUrl changes
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el || !objectUrl || draft == null) return;
-    const t = draft.coverTime ?? 0;
-    const apply = () => {
-      try {
-        if (Number.isFinite(el.duration) && el.duration > 0) {
-          el.currentTime = Math.min(t, Math.max(0, el.duration - 0.05));
-        } else {
-          el.currentTime = t;
-        }
-      } catch {
-        /* ignore seek race */
-      }
-    };
-    if (el.readyState >= 1) apply();
-    else el.addEventListener('loadedmetadata', apply, { once: true });
-  }, [objectUrl, draft?.coverTime, active?.id]);
-
-  useEffect(() => {
-    return () => {
-      if (scrubTimerRef.current) clearTimeout(scrubTimerRef.current);
-    };
-  }, []);
-
   if (!active || !draft) return null;
 
-  const duration = active.duration ?? 0;
-  const maxTime = duration > 0 ? Math.max(0, duration - 0.05) : 0;
+  const coverSource = draft.coverSource === 'custom' ? 'custom' : 'auto';
 
-  const scheduleCoverCapture = (timeSec) => {
-    if (scrubTimerRef.current) clearTimeout(scrubTimerRef.current);
-    setScrubbing(true);
-    scrubTimerRef.current = setTimeout(async () => {
-      setCapturing(true);
-      try {
-        const { coverUrl, coverBlob } = await captureCoverFrame(active.file, timeSec);
-        const prevUrl = drafts[active.id]?.coverUrl;
-        onDraftChange(active.id, { coverTime: timeSec, coverUrl, coverBlob });
-        // Revoke previous blob: URL (not data: from initial select)
-        if (prevUrl && prevUrl.startsWith('blob:') && prevUrl !== coverUrl) {
-          URL.revokeObjectURL(prevUrl);
-        }
-      } catch (err) {
-        console.warn('Cover capture failed', err);
-      } finally {
-        setCapturing(false);
-        setScrubbing(false);
-      }
-    }, 180);
+  const stripThumbFor = (v) => {
+    const d = drafts[v.id];
+    if (d?.coverSource === 'custom' && d?.coverPreviewUrl) return d.coverPreviewUrl;
+    return v.thumbnailUrl;
   };
 
-  const onScrub = (value) => {
-    const timeSec = Number(value);
-    onDraftChange(active.id, { coverTime: timeSec });
-    scheduleCoverCapture(timeSec);
+  const setCoverSource = (source) => {
+    if (source === 'auto') {
+      const prevUrl = draft.coverPreviewUrl;
+      onDraftChange(active.id, {
+        coverSource: 'auto',
+        coverFile: null,
+        coverPreviewUrl: null,
+      });
+      if (prevUrl && prevUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(prevUrl);
+      }
+      return;
+    }
+    onDraftChange(active.id, { coverSource: 'custom' });
+    // Open picker if nothing selected yet
+    if (!draft.coverFile) {
+      requestAnimationFrame(() => coverInputRef.current?.click());
+    }
+  };
+
+  const onCoverFilePicked = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+
+    const prevUrl = draft.coverPreviewUrl;
+    const coverPreviewUrl = URL.createObjectURL(file);
+    onDraftChange(active.id, {
+      coverSource: 'custom',
+      coverFile: file,
+      coverPreviewUrl,
+    });
+    if (prevUrl && prevUrl.startsWith('blob:') && prevUrl !== coverPreviewUrl) {
+      URL.revokeObjectURL(prevUrl);
+    }
+  };
+
+  const clearCustomCover = (e) => {
+    e.stopPropagation();
+    const prevUrl = draft.coverPreviewUrl;
+    onDraftChange(active.id, {
+      coverSource: 'custom',
+      coverFile: null,
+      coverPreviewUrl: null,
+    });
+    if (prevUrl && prevUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(prevUrl);
+    }
   };
 
   return (
@@ -138,7 +138,7 @@ export default function VideoBatchDetails({
             const d = drafts[v.id];
             const hasCaption = (d?.caption || '').trim().length > 0;
             const isActive = v.id === active.id;
-            const thumb = d?.coverUrl || v.thumbnailUrl;
+            const thumb = stripThumbFor(v);
             return (
               <button
                 key={v.id}
@@ -173,49 +173,81 @@ export default function VideoBatchDetails({
         {/* Active editor */}
         <div className={s.batchEditor}>
           <div className={s.batchCoverBlock}>
-            <label className={s.label}>Cover frame</label>
-            <div className={s.batchCoverPreview}>
-              {objectUrl ? (
-                <video
-                  ref={videoRef}
-                  src={objectUrl}
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className={s.batchCoverVideo}
-                />
-              ) : null}
-              {(scrubbing || capturing) && (
-                <div className={s.batchCoverBusy}>
-                  <Loader2 className={s.spin} size={22} />
-                </div>
-              )}
-              {draft.coverUrl && (
-                <div className={s.batchCoverBadge}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={draft.coverUrl} alt="" />
-                  <span>Cover</span>
-                </div>
-              )}
+            <label className={s.label}>Cover</label>
+            <div className={s.coverToggle} role="tablist" aria-label="Cover source">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={coverSource === 'auto'}
+                className={`${s.coverToggleBtn} ${coverSource === 'auto' ? s.coverToggleBtnActive : ''}`}
+                disabled={posting}
+                onClick={() => setCoverSource('auto')}
+              >
+                <Sparkles size={16} />
+                Use thumbnail
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={coverSource === 'custom'}
+                className={`${s.coverToggleBtn} ${coverSource === 'custom' ? s.coverToggleBtnActive : ''}`}
+                disabled={posting}
+                onClick={() => setCoverSource('custom')}
+              >
+                <ImageIcon size={16} />
+                Upload cover
+              </button>
             </div>
-            <div className={s.batchScrubRow}>
-              <input
-                type="range"
-                className={s.batchScrub}
-                min={0}
-                max={maxTime || 0}
-                step={0.05}
-                value={Math.min(draft.coverTime || 0, maxTime || 0)}
-                disabled={!maxTime || posting || capturing}
-                onChange={(e) => onScrub(e.target.value)}
-                aria-label="Scrub to pick cover frame"
-              />
-              <span className={s.batchScrubTime}>
-                {formatDuration(draft.coverTime || 0)}
-                {duration ? ` / ${formatDuration(duration)}` : ''}
-              </span>
-            </div>
-            <p className={s.batchHint}>Drag to choose the frame that appears as the thumbnail.</p>
+
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={onCoverFilePicked}
+            />
+
+            {coverSource === 'auto' ? (
+              <p className={s.batchHint}>We&apos;ll generate one automatically</p>
+            ) : (
+              <div className={s.coverUploadPanel}>
+                {draft.coverPreviewUrl ? (
+                  <div className={s.coverUploadPreview}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={draft.coverPreviewUrl} alt="Cover preview" />
+                    <button
+                      type="button"
+                      className={s.coverUploadClear}
+                      aria-label="Remove cover"
+                      disabled={posting}
+                      onClick={clearCustomCover}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={s.coverUploadEmpty}
+                    disabled={posting}
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    <ImageIcon size={28} />
+                    <span>Choose an image</span>
+                  </button>
+                )}
+                {draft.coverFile && (
+                  <button
+                    type="button"
+                    className={s.coverUploadChange}
+                    disabled={posting}
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    Change image
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className={s.formGroup}>

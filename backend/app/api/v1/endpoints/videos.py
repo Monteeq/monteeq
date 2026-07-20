@@ -679,11 +679,17 @@ async def finalize_upload(
     upload_id: str = Form(...),
     total_chunks: int = Form(...),
     filename: str = Form(...),
+    cover_source: str = Form("auto"),
+    cover: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Merge chunks → S3 (threadpool) → queue Celery → return job id immediately."""
+    """Merge chunks → S3 (threadpool) → optional cover → queue Celery → return job id."""
     logger.info(f"Finalizing chunked upload {upload_id} with {total_chunks} chunks")
+
+    source = (cover_source or "auto").strip().lower()
+    if source not in ("auto", "custom"):
+        raise HTTPException(status_code=400, detail="cover_source must be 'auto' or 'custom'")
     
     backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
     temp_dir = os.path.join(backend_dir, "static", "temp_uploads", upload_id)
@@ -751,12 +757,39 @@ async def finalize_upload(
         user_id=current_user.id,
         status=UploadJobStatus.QUEUED,
         video_id=video.id,  # link immediately for progress lookups while processing
+        cover_source=source,
+        cover_s3_key=None,
     )
     db.add(job)
     db.commit()
     db.refresh(job)
+
+    cover_s3_key = None
+    if source == "custom":
+        if cover is None or not getattr(cover, "filename", None):
+            job.status = UploadJobStatus.FAILED
+            job.error_message = "cover_source is custom but no cover file was provided"
+            video.status = "failed"
+            db.commit()
+            raise HTTPException(status_code=400, detail="Cover file required when cover_source is custom")
+        cover_s3_key = f"covers/{job.id}.jpg"
+        try:
+            cover_url = await storage.async_upload_file_obj(cover.file, cover_s3_key)
+            job.cover_s3_key = cover_s3_key
+            video.thumbnail_url = cover_url
+            db.commit()
+            logger.info(f"Custom cover uploaded for job_id={job.id} key={cover_s3_key}")
+        except Exception as e:
+            logger.error(f"Failed to upload custom cover for job_id={job.id}: {e}")
+            job.status = UploadJobStatus.FAILED
+            job.error_message = f"Cover upload failed: {e}"
+            video.status = "failed"
+            db.commit()
+            raise HTTPException(status_code=500, detail="Failed to upload cover image to storage")
     
     # Trigger Celery — do not wait for Rust/transcode
+    # thumbnail_provided / skip_thumbnail when custom cover already on S3
+    thumbnail_provided = source == "custom" and bool(cover_s3_key)
     try:
         import app.worker  # noqa: F401 — set Redis Celery app as default before delay()
         from app.tasks.video_tasks import process_video_task
@@ -765,13 +798,14 @@ async def finalize_upload(
             video.video_type,
             video.title,
             video.id,
-            video.thumbnail_url != "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=60",
+            thumbnail_provided,
             video.processing_key,
             str(job.id),
         )
         logger.info(
             f"Transcoding celery task enqueued for video_id={video.id} "
-            f"job_id={job.id} celery_id={async_result.id}"
+            f"job_id={job.id} cover_source={source} cover_s3_key={cover_s3_key} "
+            f"celery_id={async_result.id}"
         )
     except Exception as e:
         logger.error(f"Failed to enqueue Celery transcoding task: {str(e)}")
@@ -786,6 +820,8 @@ async def finalize_upload(
         "status": UploadJobStatus.QUEUED.value,
         "video_id": video.public_id,
         "processing_key": video.processing_key,
+        "cover_source": source,
+        "cover_s3_key": cover_s3_key,
     }
 
 
@@ -867,6 +903,7 @@ async def _direct_upload_one(
     tags: Optional[str],
     video_type: str,
     thumbnail: Optional[UploadFile] = None,
+    cover_source: str = "auto",
     raise_http: bool = False,
 ) -> dict:
     """
@@ -874,12 +911,17 @@ async def _direct_upload_one(
     When raise_http=False (batch), returns a per-file result dict and never raises
     for storage/enqueue failures. When raise_http=True (single /upload), raises HTTPException.
     """
-    import time
     import re
     import unicodedata
     import traceback
 
     filename = file.filename or "video"
+    source = (cover_source or "auto").strip().lower()
+    if source not in ("auto", "custom"):
+        source = "auto"
+    # Legacy: a thumbnail file implies custom cover
+    if source == "auto" and thumbnail is not None and getattr(thumbnail, "filename", None):
+        source = "custom"
 
     def _fail(error: str, status_code: int = 500) -> dict:
         logger.error(f"Direct upload failed for '{filename}': {error}")
@@ -891,6 +933,8 @@ async def _direct_upload_one(
             "status": "failed",
             "video_id": None,
             "error": error,
+            "cover_source": source,
+            "cover_s3_key": None,
         }
 
     if not current_user.is_premium:
@@ -927,19 +971,6 @@ async def _direct_upload_one(
         processing_key=task_id,
     )
 
-    has_custom_thumb = False
-    if thumbnail is not None and getattr(thumbnail, "filename", None):
-        safe_thumb_name = thumbnail.filename.replace(" ", "_")
-        timestamp = int(time.time())
-        thumb_key = f"thumbs/custom_{timestamp}_{safe_thumb_name}"
-        try:
-            video_create_data.thumbnail_url = await storage.async_upload_file_obj(
-                thumbnail.file, thumb_key
-            )
-            has_custom_thumb = True
-        except Exception as e:
-            logger.error(f"Failed to upload thumbnail to storage: {str(e)}")
-
     if video_type == "flash":
         current_user.flash_uploads = (current_user.flash_uploads or 0) + 1
     else:
@@ -956,10 +987,36 @@ async def _direct_upload_one(
         user_id=current_user.id,
         status=UploadJobStatus.QUEUED,
         video_id=db_video.id,
+        cover_source=source,
+        cover_s3_key=None,
     )
     db.add(job)
     db.commit()
     db.refresh(job)
+
+    cover_s3_key = None
+    if source == "custom":
+        if thumbnail is None or not getattr(thumbnail, "filename", None):
+            db_video.status = "failed"
+            job.status = UploadJobStatus.FAILED
+            job.error_message = "cover_source is custom but no cover file was provided"
+            db.commit()
+            return _fail("Cover file required when cover_source is custom", status_code=400)
+        cover_s3_key = f"covers/{job.id}.jpg"
+        try:
+            cover_url = await storage.async_upload_file_obj(thumbnail.file, cover_s3_key)
+            job.cover_s3_key = cover_s3_key
+            db_video.thumbnail_url = cover_url
+            db.commit()
+        except Exception as e:
+            logger.error(f"Failed to upload cover to storage: {e}")
+            db_video.status = "failed"
+            job.status = UploadJobStatus.FAILED
+            job.error_message = f"Cover upload failed: {e}"
+            db.commit()
+            return _fail(f"Cover upload failed: {e}")
+
+    thumbnail_provided = source == "custom" and bool(cover_s3_key)
 
     try:
         import app.worker  # noqa: F401 — bind Redis Celery app before delay()
@@ -970,11 +1027,14 @@ async def _direct_upload_one(
             video_type,
             title,
             db_video.id,
-            has_custom_thumb,
+            thumbnail_provided,
             db_video.processing_key,
             str(job.id),
         )
-        logger.info(f"Celery task enqueued for video_id={db_video.id} job_id={job.id}")
+        logger.info(
+            f"Celery task enqueued for video_id={db_video.id} job_id={job.id} "
+            f"cover_source={source} cover_s3_key={cover_s3_key}"
+        )
     except Exception as e:
         logger.error(f"Failed to enqueue Celery task: {str(e)}")
         db_video.status = "failed"
@@ -989,6 +1049,8 @@ async def _direct_upload_one(
         "status": UploadJobStatus.QUEUED.value,
         "video_id": db_video.public_id,
         "error": None,
+        "cover_source": source,
+        "cover_s3_key": cover_s3_key,
     }
 
 
@@ -1000,6 +1062,7 @@ async def upload_video(
     video_type: str = Form(...),
     file: UploadFile = File(...),
     thumbnail: Optional[UploadFile] = File(None),
+    cover_source: str = Form("auto"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1017,12 +1080,15 @@ async def upload_video(
         tags=tags,
         video_type=video_type,
         thumbnail=thumbnail,
+        cover_source=cover_source,
         raise_http=True,
     )
     return {
         "job_id": result["job_id"],
         "status": result["status"],
         "video_id": result["video_id"],
+        "cover_source": result.get("cover_source"),
+        "cover_s3_key": result.get("cover_s3_key"),
     }
 
 
@@ -1033,6 +1099,7 @@ async def upload_videos_batch(
     video_type: str = Form(...),
     descriptions: Optional[List[str]] = Form(None),
     tags: Optional[List[str]] = Form(None),
+    cover_sources: Optional[List[str]] = Form(None),
     thumbnails: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -1055,6 +1122,7 @@ async def upload_videos_batch(
     desc_list = list(descriptions or [])
     tags_list = list(tags or [])
     thumb_list = list(thumbnails or [])
+    cover_list = list(cover_sources or [])
 
     # Pad optional parallel fields so zip never IndexErrors
     while len(desc_list) < len(files):
@@ -1063,6 +1131,8 @@ async def upload_videos_batch(
         tags_list.append(None)
     while len(thumb_list) < len(files):
         thumb_list.append(None)
+    while len(cover_list) < len(files):
+        cover_list.append("auto")
 
     logger.info(
         f"Batch upload initiated: count={len(files)}, type='{video_type}', "
@@ -1070,8 +1140,8 @@ async def upload_videos_batch(
     )
 
     results = []
-    for index, (file, title, description, file_tags, thumbnail) in enumerate(
-        zip(files, titles, desc_list, tags_list, thumb_list)
+    for index, (file, title, description, file_tags, thumbnail, cov) in enumerate(
+        zip(files, titles, desc_list, tags_list, thumb_list, cover_list)
     ):
         # Skip empty thumbnail slots (some clients send blank file parts)
         thumb = thumbnail
@@ -1088,6 +1158,7 @@ async def upload_videos_batch(
             tags=file_tags,
             video_type=video_type,
             thumbnail=thumb,
+            cover_source=cov or "auto",
             raise_http=False,
         )
         result["index"] = index
