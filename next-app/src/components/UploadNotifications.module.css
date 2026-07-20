@@ -128,6 +128,11 @@
   color: #f87171;
 }
 
+.pct {
+  color: #c7c7cc;
+  font-variant-numeric: tabular-nums;
+}
+
 .progressTrack {
   margin-top: 2px;
   height: 3px;
@@ -153,21 +158,22 @@
 
 .dismiss {
   flex-shrink: 0;
-  width: 36px;
+  width: 40px;
+  min-width: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
-  background: transparent;
-  color: #8e8e93;
+  background: rgba(255, 255, 255, 0.03);
+  color: #f2f2f7;
   cursor: pointer;
   transition: color 0.15s ease, background 0.15s ease;
 }
 
 .dismiss:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .spin {

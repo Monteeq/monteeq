@@ -90,6 +90,7 @@ impl WorkerPool {
                             match res {
                                 Ok(_) => {
                                     println!("Completed Task: {}", task_id);
+                                    transcoder::set_job_progress(&scheduler, &task_id, 100).await;
                                     let status = TaskStatus {
                                         progress: 100,
                                         status: "completed".to_string(),
@@ -101,6 +102,7 @@ impl WorkerPool {
                                 },
                                 Err(e) if attempt == 3 => {
                                     eprintln!("Failed Task {} after 3 attempts: {}", task_id, e);
+                                    transcoder::clear_job_progress(&scheduler, &task_id).await;
                                     let status = TaskStatus {
                                         progress: 0,
                                         status: "error".to_string(),
@@ -110,6 +112,7 @@ impl WorkerPool {
                                     let _: () = scheduler.client().set(format!("task:status:{}", task_id), status_json, Some(fred::types::Expiration::EX(86400)), None, false).await.unwrap_or_default();
                                 },
                                 Err(_) => {
+                                    transcoder::clear_job_progress(&scheduler, &task_id).await;
                                     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                                 }
                             }

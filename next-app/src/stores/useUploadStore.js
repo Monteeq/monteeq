@@ -11,6 +11,7 @@ import { create } from 'zustand';
  *   status: 'uploading'|'queued'|'processing'|'completed'|'failed',
  *   error: string|null,
  *   videoId?: string|null,
+ *   processingKey?: string|null,
  * }} ActiveUpload
  */
 
@@ -30,6 +31,7 @@ export const useUploadStore = create((set, get) => ({
       status: job.status || 'uploading',
       error: job.error ?? null,
       videoId: job.videoId ?? null,
+      processingKey: job.processingKey ?? null,
     };
 
     set((state) => {

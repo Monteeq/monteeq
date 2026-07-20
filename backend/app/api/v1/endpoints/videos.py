@@ -750,7 +750,7 @@ async def finalize_upload(
         id=uuid.uuid4(),
         user_id=current_user.id,
         status=UploadJobStatus.QUEUED,
-        video_id=None,
+        video_id=video.id,  # link immediately for progress lookups while processing
     )
     db.add(job)
     db.commit()
@@ -781,6 +781,7 @@ async def finalize_upload(
         "job_id": str(job.id),
         "status": UploadJobStatus.QUEUED.value,
         "video_id": video.public_id,
+        "processing_key": video.processing_key,
     }
 
 
@@ -792,7 +793,7 @@ async def get_upload_job(
 ):
     """
     Poll async upload/transcode job status.
-    Returns status, video_id (when completed), and error_message (when failed).
+    Returns status, video_id (when completed), live progress, and error_message (when failed).
     """
     try:
         job_uuid = uuid.UUID(job_id)
@@ -805,17 +806,47 @@ async def get_upload_job(
     if job.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    status = job.status.value if hasattr(job.status, "value") else job.status
+    status = job.status.value if hasattr(job.status, "value") else str(job.status)
 
-    video_public_id = None
+    video = None
     if job.video_id:
         video = db.query(Video).filter(Video.id == job.video_id).first()
+
+    # Only expose watchable public id once the job is done
+    video_public_id = None
+    if status == UploadJobStatus.COMPLETED.value or status == "completed":
         video_public_id = video.public_id if video else None
+
+    progress = None
+    processing_key = video.processing_key if video else None
+    if processing_key:
+        try:
+            raw = redis_client.get(f"job:progress:{processing_key}")
+            if raw is not None:
+                progress = int(float(raw))
+            else:
+                status_raw = redis_client.get(f"task:status:{processing_key}")
+                if status_raw:
+                    import json
+                    payload = json.loads(status_raw)
+                    if isinstance(payload.get("progress"), (int, float)):
+                        progress = int(payload["progress"])
+        except Exception as e:
+            logger.debug(f"Progress lookup failed for job {job_id}: {e}")
+
+    if status == "completed":
+        progress = 100
+    elif status == "queued" and progress is None:
+        progress = 5
+    elif status == "processing" and progress is None:
+        progress = 15
 
     return {
         "job_id": str(job.id),
         "status": status,
         "video_id": video_public_id,
+        "processing_key": processing_key,
+        "progress": progress,
         "error_message": job.error_message,
         "created_at": job.created_at,
         "updated_at": job.updated_at,
@@ -907,7 +938,7 @@ async def upload_video(
         id=uuid.uuid4(),
         user_id=current_user.id,
         status=UploadJobStatus.QUEUED,
-        video_id=None,  # filled when transcode completes
+        video_id=db_video.id,
     )
     db.add(job)
     db.commit()
@@ -975,7 +1006,7 @@ async def reupload_video(
         id=uuid.uuid4(),
         user_id=current_user.id,
         status=UploadJobStatus.QUEUED,
-        video_id=None,
+        video_id=video.id,
     )
     db.add(job)
     db.commit()

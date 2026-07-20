@@ -1,16 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, Loader2, X, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
-import { getUploadJob } from '@/lib/browserApi';
+import { useUploadStatus } from '@/hooks/useUploadStatus';
 import { useUploadStore } from '@/stores/useUploadStore';
 import styles from './UploadNotifications.module.css';
 
-const POLL_MS = 2500;
-const MAX_NETWORK_RETRIES = 3;
 const TERMINAL = new Set(['completed', 'failed']);
 const POLLABLE = new Set(['queued', 'processing']);
 
@@ -33,88 +29,21 @@ function statusLabel(status, error) {
 function progressFor(status, progress) {
   if (status === 'completed') return 100;
   if (status === 'queued') return Math.max(progress || 0, 92);
-  if (status === 'processing') return Math.max(progress || 0, 95);
+  if (status === 'processing') return Math.max(progress || 0, 15);
   if (status === 'failed') return progress || 0;
   return Math.min(100, Math.max(0, progress || 0));
 }
 
-/** Polls server jobs so toast state survives leaving the upload page. */
-function useGlobalUploadPoller() {
-  const { token } = useAuth();
-  const activeUploads = useUploadStore((s) => s.activeUploads);
-  const updateUpload = useUploadStore((s) => s.updateUpload);
-  const failsRef = useRef(/** @type {Record<string, number>} */ ({}));
-  const inFlightRef = useRef(/** @type {Record<string, boolean>} */ ({}));
-
-  const pollableIds = activeUploads
-    .filter((u) => POLLABLE.has(u.status) && u.jobId && !String(u.jobId).startsWith('local-'))
-    .map((u) => u.jobId)
-    .sort()
-    .join(',');
-
-  useEffect(() => {
-    if (!token || !pollableIds) return undefined;
-
-    let cancelled = false;
-    const ids = pollableIds.split(',').filter(Boolean);
-
-    const tick = async () => {
-      await Promise.all(
-        ids.map(async (jobId) => {
-          if (cancelled || inFlightRef.current[jobId]) return;
-          inFlightRef.current[jobId] = true;
-          try {
-            const job = await getUploadJob(jobId, token);
-            if (cancelled) return;
-            failsRef.current[jobId] = 0;
-
-            const nextStatus = (job?.status || '').toLowerCase();
-            if (!nextStatus) return;
-
-            const updates = {
-              status: nextStatus,
-              error: job?.error_message ?? null,
-              videoId: job?.video_id ?? null,
-            };
-            if (nextStatus === 'completed') {
-              updates.progress = 100;
-              updates.error = null;
-            } else if (nextStatus === 'processing') {
-              updates.progress = Math.max(95, useUploadStore.getState().getUpload(jobId)?.progress ?? 0);
-            } else if (nextStatus === 'queued') {
-              updates.progress = Math.max(92, useUploadStore.getState().getUpload(jobId)?.progress ?? 0);
-            }
-
-            updateUpload(jobId, updates);
-          } catch (err) {
-            if (cancelled) return;
-            failsRef.current[jobId] = (failsRef.current[jobId] || 0) + 1;
-            if (failsRef.current[jobId] >= MAX_NETWORK_RETRIES) {
-              updateUpload(jobId, {
-                status: 'failed',
-                error: err?.message || 'Lost connection while checking upload status',
-              });
-            }
-          } finally {
-            inFlightRef.current[jobId] = false;
-          }
-        })
-      );
-    };
-
-    tick();
-    const interval = setInterval(tick, POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [token, pollableIds, updateUpload]);
+/** One poller per server job — lives in the global toast host, not the upload page. */
+function UploadJobPoller({ jobId }) {
+  useUploadStatus(jobId);
+  return null;
 }
 
 function UploadCard({ upload }) {
   const router = useRouter();
   const removeUpload = useUploadStore((s) => s.removeUpload);
-  const canDismiss = TERMINAL.has(upload.status);
+  const isTerminal = TERMINAL.has(upload.status);
   const pct = progressFor(upload.status, upload.progress);
   const label = statusLabel(upload.status, upload.error);
 
@@ -122,6 +51,12 @@ function UploadCard({ upload }) {
     if (upload.status === 'completed' && upload.videoId) {
       router.push(`/watch/${upload.videoId}`);
     }
+  };
+
+  const onCancelOrDismiss = (e) => {
+    e.stopPropagation();
+    // Hides the toast. In-flight server work may continue; X is always available.
+    removeUpload(upload.jobId);
   };
 
   return (
@@ -181,6 +116,9 @@ function UploadCard({ upload }) {
             }`}
           >
             {label}
+            {!isTerminal && typeof upload.progress === 'number' && upload.progress > 0 && (
+              <span className={styles.pct}> {Math.round(pct)}%</span>
+            )}
           </span>
           <div className={styles.progressTrack} aria-hidden>
             <div
@@ -197,33 +135,45 @@ function UploadCard({ upload }) {
         </div>
       </button>
 
-      {canDismiss && (
-        <button
-          type="button"
-          className={styles.dismiss}
-          aria-label="Dismiss"
-          onClick={() => removeUpload(upload.jobId)}
-        >
-          <X size={14} />
-        </button>
-      )}
+      <button
+        type="button"
+        className={styles.dismiss}
+        aria-label={isTerminal ? 'Dismiss' : 'Cancel'}
+        title={isTerminal ? 'Dismiss' : 'Cancel'}
+        onClick={onCancelOrDismiss}
+      >
+        <X size={14} />
+      </button>
     </motion.div>
   );
 }
 
 export default function UploadNotifications() {
-  useGlobalUploadPoller();
   const activeUploads = useUploadStore((s) => s.activeUploads);
-
-  if (!activeUploads.length) return null;
+  const pollJobIds = activeUploads
+    .filter(
+      (u) =>
+        u.jobId &&
+        !String(u.jobId).startsWith('local-') &&
+        POLLABLE.has(u.status)
+    )
+    .map((u) => u.jobId);
 
   return (
-    <div className={styles.stack} aria-label="Upload progress">
-      <AnimatePresence initial={false}>
-        {activeUploads.map((upload) => (
-          <UploadCard key={upload.jobId} upload={upload} />
-        ))}
-      </AnimatePresence>
-    </div>
+    <>
+      {pollJobIds.map((jobId) => (
+        <UploadJobPoller key={jobId} jobId={jobId} />
+      ))}
+
+      {activeUploads.length > 0 && (
+        <div className={styles.stack} aria-label="Upload progress">
+          <AnimatePresence initial={false}>
+            {activeUploads.map((upload) => (
+              <UploadCard key={upload.jobId} upload={upload} />
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+    </>
   );
 }

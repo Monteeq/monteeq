@@ -144,7 +144,7 @@ const Sidebar = ({ isOpen, onClose }) => {
         <NavItem
           to="/upload"
           icon={<UploadCloud size={24} strokeWidth={2.5} />}
-          label="Create"
+          label="Upload"
           onClick={onClose}
           accent="var(--accent-primary)"
           bold

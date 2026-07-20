@@ -48,12 +48,8 @@ const Upload = () => {
 
     // Workflow State: 'select' | 'details'
     const [step, setStep] = useState('select');
+    /** Local only for in-flight chunk loop / post publish — progress & job status live in the store. */
     const [uploading, setUploading] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [processingProgress, setProcessingProgress] = useState(0);
-    const [currentStatusMessage, setCurrentStatusMessage] = useState('');
-    const [processingStatus, setProcessingStatus] = useState(null); // 'uploading' | 'processing' | 'completed' | 'error'
-    const [jobId, setJobId] = useState(null);
 
     // Form Data
     const [title, setTitle] = useState('');
@@ -76,12 +72,11 @@ const Upload = () => {
     // Chunked Upload State
     const [uploadId, setUploadId] = useState(null);
     const [isPaused, setIsPaused] = useState(false);
-    const [isUploadError, setIsUploadError] = useState(false);
 
     const uploadIdRef = useRef(null);
     const isPausedRef = useRef(false);
     const handledTerminalJobRef = useRef(null);
-    /** Tracks the toast entry id (local-* until finalize, then server job_id). */
+    /** Tracks the store entry id (local-* until finalize, then server job_id). */
     const [trackingJobId, setTrackingJobId] = useState(null);
     const trackingJobIdRef = useRef(null);
 
@@ -89,11 +84,19 @@ const Upload = () => {
         const id = trackingJobIdRef.current || trackingJobId;
         return id ? s.activeUploads.find((u) => u.jobId === id) || null : null;
     });
+
     const jobStatus = storeEntry?.status ?? null;
     const jobVideoId = storeEntry?.videoId ?? null;
     const jobError = storeEntry?.error ?? null;
-    const isPolling =
-        !!storeEntry && (storeEntry.status === 'queued' || storeEntry.status === 'processing');
+    const progress = storeEntry?.progress ?? 0;
+    const isPolling = jobStatus === 'queued' || jobStatus === 'processing';
+    // Map store statuses onto the page's existing UI labels
+    const processingStatus =
+        jobStatus === 'failed'
+            ? 'error'
+            : jobStatus === 'queued' || jobStatus === 'processing'
+              ? 'processing'
+              : jobStatus;
 
     // Sync refs
     useEffect(() => {
@@ -108,51 +111,30 @@ const Upload = () => {
         trackingJobIdRef.current = trackingJobId;
     }, [trackingJobId]);
 
-    // React to global store / poller results
+    // One-shot page notifications when the global poller marks terminal
     useEffect(() => {
         if (!storeEntry) return;
-        const status = storeEntry.status;
+        const { jobId: id, status, videoId, error } = storeEntry;
+        if (handledTerminalJobRef.current === id) return;
 
-        if (status === 'uploading') {
-            setProcessingStatus('uploading');
-            setProgress(storeEntry.progress || 0);
-            return;
-        }
-
-        if (status === 'queued' || status === 'processing') {
-            setProcessingStatus('processing');
-            setCurrentStatusMessage('Processing your video…');
-            setProgress(100);
-            return;
-        }
-
-        if (status === 'completed' && handledTerminalJobRef.current !== storeEntry.jobId) {
-            handledTerminalJobRef.current = storeEntry.jobId;
-            if (storeEntry.videoId) setDbVideoId(storeEntry.videoId);
-            setProcessingStatus('completed');
+        if (status === 'completed') {
+            handledTerminalJobRef.current = id;
+            if (videoId) setDbVideoId(videoId);
             setUploading(false);
-            setProgress(100);
-            setProcessingProgress(100);
-            setCurrentStatusMessage('Live');
             showNotification('success', 'Video is now live!');
             refreshUser();
-            return;
-        }
-
-        if (status === 'failed' && handledTerminalJobRef.current !== storeEntry.jobId) {
-            handledTerminalJobRef.current = storeEntry.jobId;
-            setProcessingStatus('error');
+        } else if (status === 'failed') {
+            handledTerminalJobRef.current = id;
             setUploading(false);
-            setIsUploadError(true);
-            setCurrentStatusMessage(storeEntry.error || 'Processing failed');
-            showNotification('error', storeEntry.error || 'Processing failed.');
+            setIsPaused(true);
+            showNotification('error', error || 'Processing failed.');
         }
     }, [storeEntry, showNotification, refreshUser]);
 
-    // Unload prevention
+    // Warn on tab close while a tracked upload is still active
     useEffect(() => {
         const handleBeforeUnload = (e) => {
-            if ((uploading || isPolling) && processingStatus !== 'completed') {
+            if (storeEntry && !['completed', 'failed'].includes(storeEntry.status)) {
                 e.preventDefault();
                 e.returnValue = 'Upload is in progress. Are you sure you want to close this page?';
                 return e.returnValue;
@@ -162,7 +144,7 @@ const Upload = () => {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [uploading, isPolling, processingStatus]);
+    }, [storeEntry]);
 
     const fileInputRef = useRef(null);
     const thumbnailInputRef = useRef(null);
@@ -214,21 +196,15 @@ const Upload = () => {
         handledTerminalJobRef.current = null;
         trackingJobIdRef.current = null;
         setTrackingJobId(null);
-        setJobId(null);
         setUploadId(null);
         uploadIdRef.current = null;
-        setIsUploadError(false);
         setIsPaused(false);
-        setProcessingStatus(null);
-        setCurrentStatusMessage('');
-        setProgress(0);
-        setProcessingProgress(0);
+        setUploading(false);
         setDbVideoId(null);
     };
 
     const handleRetryAfterFailure = () => {
         resetForRetry();
-        // Allow React to clear jobId before restarting upload
         setTimeout(() => startUpload(), 0);
     };
 
@@ -277,7 +253,6 @@ const Upload = () => {
 
                     completedSet.add(i);
                     const overallProgress = Math.round((completedSet.size / totalChunks) * 100);
-                    setProgress(overallProgress);
                     if (toastId) {
                         updateUpload(toastId, { progress: overallProgress, status: 'uploading' });
                     }
@@ -286,7 +261,6 @@ const Upload = () => {
                     console.error(`Chunk ${i} upload error, retries left: ${retries - 1}`, err);
                     retries--;
                     if (retries === 0) {
-                        setIsUploadError(true);
                         setIsPaused(true);
                         setUploading(false);
                         if (toastId) {
@@ -305,11 +279,12 @@ const Upload = () => {
             }
         }
 
-        // Finalize: server saves to S3, enqueues Celery, returns job_id immediately
-        setProcessingStatus('processing');
-        setCurrentStatusMessage('Processing your video…');
-        setProgress(100);
-        
+        // Finalize: server saves to S3, enqueues Celery, returns job_id immediately.
+        // Global useUploadStatus (via UploadNotifications) owns polling after this.
+        if (toastId) {
+            updateUpload(toastId, { progress: 100, status: 'queued' });
+        }
+
         const finalizeFormData = new FormData();
         finalizeFormData.append("upload_id", currentUploadId);
         finalizeFormData.append("total_chunks", totalChunks);
@@ -333,15 +308,18 @@ const Upload = () => {
             if (!data.job_id) {
                 throw new Error('Server did not return a job id');
             }
-            // Remap local toast id → server job_id; global poller takes over
+
             handledTerminalJobRef.current = null;
             trackingJobIdRef.current = data.job_id;
+            // upload_id === Video.processing_key — used for live Redis/Rust progress polling
+            const processingKey = currentUploadId;
             if (toastId) {
                 updateUpload(toastId, {
                     jobId: data.job_id,
                     status: 'queued',
                     progress: 100,
-                    videoId: data.video_id ?? null,
+                    videoId: null,
+                    processingKey,
                     error: null,
                 });
             } else {
@@ -351,17 +329,16 @@ const Upload = () => {
                     thumbnailUrl: thumbnailPreview || previewUrl,
                     progress: 100,
                     status: 'queued',
-                    videoId: data.video_id ?? null,
+                    processingKey,
+                    videoId: null,
                 });
             }
             setTrackingJobId(data.job_id);
-            setJobId(data.job_id);
+            setUploading(false);
         } catch (err) {
             console.error("Finalization error:", err);
-            setIsUploadError(true);
             setUploading(false);
-            setProcessingStatus('error');
-            setCurrentStatusMessage(err.message || 'Failed to finalize video upload.');
+            setIsPaused(true);
             if (toastId) {
                 updateUpload(toastId, {
                     status: 'failed',
@@ -376,13 +353,11 @@ const Upload = () => {
         if (uploading) return;
         setUploading(true);
         setIsPaused(false);
-        setIsUploadError(false);
-        setProcessingStatus('uploading');
 
         let currentUploadId = uploadIdRef.current;
         let completedSet = new Set();
 
-        // Register toast immediately so it survives navigation during chunk upload
+        // Progress lives in the store from the first byte — toast survives navigation
         let toastId = trackingJobId;
         if (!toastId) {
             toastId = `local-${crypto.randomUUID()}`;
@@ -400,12 +375,11 @@ const Upload = () => {
             updateUpload(toastId, {
                 status: 'uploading',
                 error: null,
-                progress: progress || 0,
+                progress: storeEntry?.progress || 0,
             });
         }
 
         if (!currentUploadId) {
-            // First time initiating upload
             const initFormData = new FormData();
             initFormData.append('title', title);
             initFormData.append('description', description);
@@ -435,13 +409,11 @@ const Upload = () => {
             } catch (err) {
                 setUploading(false);
                 setIsPaused(true);
-                setIsUploadError(true);
                 updateUpload(toastId, { status: 'failed', error: err.message });
                 showNotification('error', err.message);
                 return;
             }
         } else {
-            // Resume upload - check completed chunks status
             try {
                 const statusRes = await fetch(`${API_BASE_URL}/videos/upload/status/${currentUploadId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -454,13 +426,11 @@ const Upload = () => {
             } catch (err) {
                 setUploading(false);
                 setIsPaused(true);
-                setIsUploadError(true);
                 showNotification('error', 'Failed to resume upload session. Retrying...');
                 return;
             }
         }
 
-        // Run chunked upload loop
         await uploadLoop(currentUploadId, completedSet, toastId);
     };
 
@@ -523,8 +493,8 @@ const Upload = () => {
             );
         }
 
-        // Video uploads
-        if (!uploadId && !uploading) {
+        // Video uploads — idle only when nothing is tracked in the store
+        if (!storeEntry && !uploading) {
             return (
                 <button
                     className="btn-primary"
@@ -537,7 +507,7 @@ const Upload = () => {
             );
         }
 
-        if (uploading && processingStatus === 'uploading') {
+        if (processingStatus === 'uploading' && !isPaused) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                     <div className="btn-loading" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -554,7 +524,7 @@ const Upload = () => {
             );
         }
 
-        if (isPaused && processingStatus === 'uploading') {
+        if (isPaused && (processingStatus === 'uploading' || processingStatus === 'error') && uploadId && jobStatus !== 'failed') {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                     <button
@@ -564,11 +534,9 @@ const Upload = () => {
                     >
                         RESUME UPLOAD
                     </button>
-                    {uploadId && (
-                        <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            Upload paused at {progress}%
-                        </div>
-                    )}
+                    <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Upload paused at {progress}%
+                    </div>
                 </div>
             );
         }
@@ -580,7 +548,7 @@ const Upload = () => {
                         <Loader2 className={s.spin} size={20} /> Processing your video…
                     </span>
                     <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.75 }}>
-                        {currentStatusMessage || (jobStatus === 'queued' ? 'Queued' : 'Transcoding')}
+                        {jobStatus === 'queued' ? 'Queued' : 'Transcoding'}
                     </span>
                 </div>
             );
@@ -590,7 +558,7 @@ const Upload = () => {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
                     <div style={{ fontSize: '0.85rem', color: '#f87171', textAlign: 'center' }}>
-                        {jobError || currentStatusMessage || 'Processing failed'}
+                        {jobError || 'Processing failed'}
                     </div>
                     <button className="btn-primary" style={{ width: '100%' }} onClick={handleRetryAfterFailure}>
                         RETRY UPLOAD
@@ -861,7 +829,7 @@ const Upload = () => {
                         <div className={s.previewCard}>
                             <div className={`${s.videoWrapper} ${videoType === 'home' ? s.landscape : s.portrait}`}>
                                 {previewUrl && <video src={previewUrl} muted autoPlay loop style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }} />}
-                                {(uploading || processingStatus === 'processing') && processingStatus !== 'completed' && (
+                                {(processingStatus === 'uploading' || processingStatus === 'processing') && (
                                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}>
                                         <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', borderTop: '4px solid var(--accent-primary)', animation: 'spin 1s linear infinite' }} />
                                         <div style={{ marginTop: '1rem', fontWeight: 900, fontSize: '1.25rem' }}>
@@ -885,7 +853,7 @@ const Upload = () => {
                                         <X size={40} color="#f87171" />
                                         <div style={{ marginTop: '0.75rem', fontWeight: 700, color: '#f87171' }}>Failed</div>
                                         <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
-                                            {currentStatusMessage || 'Something went wrong'}
+                                            {jobError || 'Something went wrong'}
                                         </div>
                                     </div>
                                 )}
@@ -909,8 +877,12 @@ const Upload = () => {
                                     </div>
                                     <div className={s.statusText}>
                                         <div className={s.statusTitle}>Edge Transcoding</div>
-                                        {processingStatus === 'processing' && <div className={s.statusSub}>{currentStatusMessage}</div>}
-                                        {processingStatus === 'error' && <div className={s.statusSub}>{currentStatusMessage || 'Failed'}</div>}
+                                        {processingStatus === 'processing' && (
+                                            <div className={s.statusSub}>Processing your video…</div>
+                                        )}
+                                        {processingStatus === 'error' && (
+                                            <div className={s.statusSub}>{jobError || 'Failed'}</div>
+                                        )}
                                     </div>
                                 </div>
 
