@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   AlignLeft,
   ChevronLeft,
@@ -12,19 +12,36 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import {
+  defaultVideoTypeForOrientation,
+  readVideoAspect,
+} from '@/utils/videoSelect';
 import s from '@/styles/pages/UploadV2.module.css';
 
 /**
- * Per-video caption / tags / cover step after multi-select.
+ * Per-video caption / tags / cover / format step after multi-select.
  *
  * @param {{
- *   videos: Array<{ id: string, file: File, name: string, thumbnailUrl: string|null, duration: number|null }>,
+ *   videos: Array<{
+ *     id: string,
+ *     file: File,
+ *     name: string,
+ *     thumbnailUrl: string|null,
+ *     duration: number|null,
+ *     width?: number|null,
+ *     height?: number|null,
+ *     aspectRatio?: number|null,
+ *     orientation?: 'landscape'|'portrait'|'square'|null,
+ *   }>,
  *   drafts: Record<string, {
  *     caption: string,
  *     tags: string,
  *     coverSource: 'auto' | 'custom',
  *     coverFile: File|null,
  *     coverPreviewUrl: string|null,
+ *     videoType: 'home' | 'flash',
+ *     aspectRatio: number|null,
+ *     orientation: 'landscape'|'portrait'|'square'|null,
  *   }>,
  *   activeId: string,
  *   onActiveChange: (id: string) => void,
@@ -32,8 +49,6 @@ import s from '@/styles/pages/UploadV2.module.css';
  *   onBack: () => void,
  *   onPostAll: () => void,
  *   posting?: boolean,
- *   videoType?: 'home' | 'flash',
- *   onVideoTypeChange?: (type: 'home' | 'flash') => void,
  * }} props
  */
 export default function VideoBatchDetails({
@@ -45,10 +60,9 @@ export default function VideoBatchDetails({
   onBack,
   onPostAll,
   posting = false,
-  videoType = 'home',
-  onVideoTypeChange,
 }) {
   const coverInputRef = useRef(null);
+  const probedRef = useRef(new Set());
 
   const active = videos.find((v) => v.id === activeId) || videos[0];
   const draft = active ? drafts[active.id] : null;
@@ -56,9 +70,38 @@ export default function VideoBatchDetails({
   const allHaveCaption = videos.every((v) => (drafts[v.id]?.caption || '').trim().length > 0);
   const captionReadyCount = videos.filter((v) => (drafts[v.id]?.caption || '').trim().length > 0).length;
 
+  // Probe aspect via hidden <video> if not already known for this draft
+  useEffect(() => {
+    if (!active?.file || !draft) return;
+    if (draft.orientation || draft.aspectRatio != null) return;
+    if (probedRef.current.has(active.id)) return;
+    probedRef.current.add(active.id);
+
+    let cancelled = false;
+    readVideoAspect(active.file).then((info) => {
+      if (cancelled) return;
+      const orientation = info.orientation;
+      const videoType = defaultVideoTypeForOrientation(orientation);
+      onDraftChange(active.id, {
+        aspectRatio: info.aspectRatio,
+        orientation,
+        videoType,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [active?.id, active?.file, draft?.orientation, draft?.aspectRatio, onDraftChange]);
+
   if (!active || !draft) return null;
 
   const coverSource = draft.coverSource === 'custom' ? 'custom' : 'auto';
+  const videoType = draft.videoType === 'flash' ? 'flash' : 'home';
+  const orientation = draft.orientation;
+  const homeDisabled = orientation === 'portrait';
+  const flashDisabled = orientation === 'landscape';
+  const isSquare = orientation === 'square' || orientation == null;
 
   const stripThumbFor = (v) => {
     const d = drafts[v.id];
@@ -80,7 +123,6 @@ export default function VideoBatchDetails({
       return;
     }
     onDraftChange(active.id, { coverSource: 'custom' });
-    // Open picker if nothing selected yet
     if (!draft.coverFile) {
       requestAnimationFrame(() => coverInputRef.current?.click());
     }
@@ -114,6 +156,13 @@ export default function VideoBatchDetails({
     if (prevUrl && prevUrl.startsWith('blob:')) {
       URL.revokeObjectURL(prevUrl);
     }
+  };
+
+  const setVideoType = (type) => {
+    if (posting) return;
+    if (type === 'home' && homeDisabled) return;
+    if (type === 'flash' && flashDisabled) return;
+    onDraftChange(active.id, { videoType: type });
   };
 
   return (
@@ -172,6 +221,45 @@ export default function VideoBatchDetails({
 
         {/* Active editor */}
         <div className={s.batchEditor}>
+          <div className={s.formGroup}>
+            <label className={s.label}>Format</label>
+            <div className={s.typeGrid}>
+              <button
+                type="button"
+                className={`${s.typeCard} ${videoType === 'home' ? s.active : ''} ${homeDisabled ? s.typeCardDisabled : ''}`}
+                disabled={posting || homeDisabled}
+                onClick={() => setVideoType('home')}
+                aria-pressed={videoType === 'home'}
+              >
+                <Video size={22} style={{ marginBottom: '0.35rem', opacity: videoType === 'home' ? 1 : 0.3 }} />
+                <div style={{ fontWeight: 800 }}>Home</div>
+              </button>
+              <button
+                type="button"
+                className={`${s.typeCard} ${videoType === 'flash' ? s.active : ''} ${flashDisabled ? s.typeCardDisabled : ''}`}
+                disabled={posting || flashDisabled}
+                onClick={() => setVideoType('flash')}
+                aria-pressed={videoType === 'flash'}
+              >
+                <Zap size={22} style={{ marginBottom: '0.35rem', opacity: videoType === 'flash' ? 1 : 0.3 }} />
+                <div style={{ fontWeight: 800 }}>Flash</div>
+              </button>
+            </div>
+            {flashDisabled && (
+              <p className={s.batchAspectNote}>
+                This video is horizontal — post as Flash requires a vertical video
+              </p>
+            )}
+            {homeDisabled && (
+              <p className={s.batchAspectNote}>
+                This video is vertical — post as Home requires a horizontal video
+              </p>
+            )}
+            {isSquare && orientation === 'square' && (
+              <p className={s.batchHint}>Near-square video — you can choose Home or Flash</p>
+            )}
+          </div>
+
           <div className={s.batchCoverBlock}>
             <label className={s.label}>Cover</label>
             <div className={s.coverToggle} role="tablist" aria-label="Cover source">
@@ -291,27 +379,6 @@ export default function VideoBatchDetails({
         </div>
 
         <div className={s.batchFooter}>
-          {onVideoTypeChange && (
-            <div className={s.formGroup} style={{ marginBottom: 0 }}>
-              <label className={s.label}>Format</label>
-              <div className={s.typeGrid}>
-                <div
-                  className={`${s.typeCard} ${videoType === 'home' ? s.active : ''}`}
-                  onClick={() => !posting && onVideoTypeChange('home')}
-                >
-                  <Video size={22} style={{ marginBottom: '0.35rem', opacity: videoType === 'home' ? 1 : 0.3 }} />
-                  <div style={{ fontWeight: 800 }}>Home</div>
-                </div>
-                <div
-                  className={`${s.typeCard} ${videoType === 'flash' ? s.active : ''}`}
-                  onClick={() => !posting && onVideoTypeChange('flash')}
-                >
-                  <Zap size={22} style={{ marginBottom: '0.35rem', opacity: videoType === 'flash' ? 1 : 0.3 }} />
-                  <div style={{ fontWeight: 800 }}>Flash</div>
-                </div>
-              </div>
-            </div>
-          )}
           {!allHaveCaption && (
             <p className={s.batchFooterHint}>
               Add a caption to every video to enable Post all

@@ -172,11 +172,29 @@
   text-align: center;
   cursor: pointer;
   transition: all var(--transition-fast);
+  color: inherit;
+  font: inherit;
+  width: 100%;
 }
 
 .typeCard.active {
   background: rgba(255, 59, 48, 0.1);
   border-color: var(--accent-primary);
+}
+
+.typeCardDisabled,
+.typeCard:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.batchAspectNote {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fbbf24;
+  line-height: 1.4;
 }
 
 .previewCard {

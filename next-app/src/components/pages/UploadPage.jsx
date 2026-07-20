@@ -31,6 +31,7 @@ import { useNotification } from '@/context/NotificationContext';
 import { useUploadStore } from '@/stores/useUploadStore';
 import {
     buildVideoSelectionItem,
+    defaultVideoTypeForOrientation,
     formatDuration,
     MAX_VIDEO_BYTES,
 } from '@/utils/videoSelect';
@@ -71,7 +72,7 @@ const Upload = () => {
     const [isPickingFiles, setIsPickingFiles] = useState(false);
     /** Valid videos carried into the per-item details step */
     const [batchVideos, setBatchVideos] = useState([]);
-    /** @type {[Record<string, { caption: string, tags: string, coverSource: 'auto'|'custom', coverFile: File|null, coverPreviewUrl: string|null }>, Function]} */
+    /** @type {[Record<string, { caption: string, tags: string, coverSource: 'auto'|'custom', coverFile: File|null, coverPreviewUrl: string|null, videoType: 'home'|'flash', aspectRatio: number|null, orientation: 'landscape'|'portrait'|'square'|null }>, Function]} */
     const [videoDrafts, setVideoDrafts] = useState({});
     const [activeVideoId, setActiveVideoId] = useState(null);
     const [thumbnailFile, setThumbnailFile] = useState(null);
@@ -233,12 +234,16 @@ const Upload = () => {
 
         const drafts = {};
         for (const v of valid) {
+            const orientation = v.orientation ?? null;
             drafts[v.id] = {
                 caption: '',
                 tags: '',
                 coverSource: 'auto',
                 coverFile: null,
                 coverPreviewUrl: null,
+                aspectRatio: v.aspectRatio ?? null,
+                orientation,
+                videoType: defaultVideoTypeForOrientation(orientation),
             };
         }
         setBatchVideos(valid);
@@ -270,6 +275,7 @@ const Upload = () => {
         coverFile = null,
         coverPreviewUrl = null,
         fallbackThumbUrl = null,
+        videoType: itemVideoType = 'home',
     }) => {
         const fileName = videoFile.name || caption || 'Video';
         const source = coverSource === 'custom' && coverFile ? 'custom' : 'auto';
@@ -313,7 +319,7 @@ const Upload = () => {
             initFormData.append('title', caption);
             initFormData.append('description', caption);
             initFormData.append('tags', itemTags || '');
-            initFormData.append('video_type', videoType);
+            initFormData.append('video_type', itemVideoType === 'flash' ? 'flash' : 'home');
             initFormData.append('filename', videoFile.name);
             initFormData.append('cover_source', source);
 
@@ -433,6 +439,7 @@ const Upload = () => {
                 coverFile: coverSource === 'custom' ? d.coverFile : null,
                 coverPreviewUrl: d.coverPreviewUrl || null,
                 fallbackThumbUrl: v.thumbnailUrl,
+                videoType: d.videoType === 'flash' ? 'flash' : 'home',
             };
         });
 
@@ -1063,8 +1070,6 @@ const Upload = () => {
                     onBack={() => setStep('select')}
                     onPostAll={handlePostAll}
                     posting={postingBatch}
-                    videoType={videoType}
-                    onVideoTypeChange={setVideoType}
                 />
             ) : (
                 <div className={s.stepperContainer}>
