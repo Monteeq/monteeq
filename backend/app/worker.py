@@ -30,7 +30,9 @@ celery_app.conf.update(
     task_time_limit=3600,
     broker_pool_limit=20,
     redis_max_connections=20,
-    worker_concurrency=4,
+    # prefork/spawn pools crash on Windows (WinError 6 / Access denied)
+    worker_pool="solo" if sys.platform == "win32" else "prefork",
+    worker_concurrency=1 if sys.platform == "win32" else 4,
     broker_transport_options={
         'visibility_timeout': 3600,
         'max_connections': 20

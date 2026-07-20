@@ -19,7 +19,8 @@ from app.core import config
 from app.utils.push import notify_user_push
 from app.core.storage import storage
 from app.core.config import FLASH_QUOTA_LIMIT, HOME_QUOTA_LIMIT
-from app.models.models import Video, User
+from app.models.models import Video, User, View, WatchLater, Repost, VideoInteraction
+from app.models.library import WatchHistory, LibraryWatchLater, LikedVideo
 from app.services.email_service import send_challenge_exit_email
 from app.core.redis import redis_client
 
@@ -486,13 +487,29 @@ def delete_video(
     delete_video_files(video)
     
     # Handle challenge entry counts and notifications
-    for entry in video.challenge_entries:
+    for entry in list(video.challenge_entries):
         if entry.challenge:
             entry.challenge.entry_count = max(0, entry.challenge.entry_count - 1)
             # Notify the user
             if entry.user and entry.user.email:
-                send_challenge_exit_email(entry.user.email, entry.user.username, entry.challenge.title)
+                try:
+                    send_challenge_exit_email(entry.user.email, entry.user.username, entry.challenge.title)
+                except Exception as e:
+                    logger.warning(f"Challenge exit email failed for video {video.id}: {e}")
     
+    # Clear FK rows that lack ON DELETE CASCADE (blocks delete on watched/saved videos)
+    vid = video.id
+    db.query(User).filter(User.pinned_video_id == vid).update(
+        {User.pinned_video_id: None}, synchronize_session=False
+    )
+    db.query(View).filter(View.video_id == vid).delete(synchronize_session=False)
+    db.query(WatchLater).filter(WatchLater.video_id == vid).delete(synchronize_session=False)
+    db.query(Repost).filter(Repost.video_id == vid).delete(synchronize_session=False)
+    db.query(VideoInteraction).filter(VideoInteraction.video_id == vid).delete(synchronize_session=False)
+    db.query(WatchHistory).filter(WatchHistory.video_id == vid).delete(synchronize_session=False)
+    db.query(LibraryWatchLater).filter(LibraryWatchLater.video_id == vid).delete(synchronize_session=False)
+    db.query(LikedVideo).filter(LikedVideo.video_id == vid).delete(synchronize_session=False)
+
     # Delete from DB
     db.delete(video)
     db.commit()
