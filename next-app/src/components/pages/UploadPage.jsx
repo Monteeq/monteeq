@@ -25,12 +25,11 @@ import {
 } from 'lucide-react';
 
 import { useRouter } from 'next/navigation';
-import { API_BASE_URL, getUploadJob } from '@/lib/browserApi';
+import { API_BASE_URL } from '@/lib/browserApi';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
+import { useUploadStatus } from '@/hooks/useUploadStatus';
 import s from '@/styles/pages/UploadV2.module.css';
-
-const JOB_POLL_MS = 2500;
 
 const Upload = () => {
     const { user, token, refreshUser } = useAuth();
@@ -51,6 +50,7 @@ const Upload = () => {
     const [processingProgress, setProcessingProgress] = useState(0);
     const [currentStatusMessage, setCurrentStatusMessage] = useState('');
     const [processingStatus, setProcessingStatus] = useState(null); // 'uploading' | 'processing' | 'completed' | 'error'
+    const [jobId, setJobId] = useState(null);
 
     // Form Data
     const [title, setTitle] = useState('');
@@ -77,7 +77,14 @@ const Upload = () => {
 
     const uploadIdRef = useRef(null);
     const isPausedRef = useRef(false);
-    const jobPollRef = useRef(null);
+    const handledTerminalJobRef = useRef(null);
+
+    const {
+        status: jobStatus,
+        videoId: jobVideoId,
+        error: jobError,
+        isPolling,
+    } = useUploadStatus(jobId);
 
     // Sync refs
     useEffect(() => {
@@ -88,20 +95,43 @@ const Upload = () => {
         uploadIdRef.current = uploadId;
     }, [uploadId]);
 
-    // Clear job poller on unmount
+    // React to job poll results (queued/processing → UI; completed/failed → terminal)
     useEffect(() => {
-        return () => {
-            if (jobPollRef.current) {
-                clearInterval(jobPollRef.current);
-                jobPollRef.current = null;
-            }
-        };
-    }, []);
+        if (!jobId || !jobStatus) return;
+
+        if (jobStatus === 'queued' || jobStatus === 'processing') {
+            setProcessingStatus('processing');
+            setCurrentStatusMessage('Processing your video…');
+            return;
+        }
+
+        if (jobStatus === 'completed' && handledTerminalJobRef.current !== jobId) {
+            handledTerminalJobRef.current = jobId;
+            if (jobVideoId) setDbVideoId(jobVideoId);
+            setProcessingStatus('completed');
+            setUploading(false);
+            setProgress(100);
+            setProcessingProgress(100);
+            setCurrentStatusMessage('Live');
+            showNotification('success', 'Video is now live!');
+            refreshUser();
+            return;
+        }
+
+        if (jobStatus === 'failed' && handledTerminalJobRef.current !== jobId) {
+            handledTerminalJobRef.current = jobId;
+            setProcessingStatus('error');
+            setUploading(false);
+            setIsUploadError(true);
+            setCurrentStatusMessage(jobError || 'Processing failed');
+            showNotification('error', jobError || 'Processing failed.');
+        }
+    }, [jobId, jobStatus, jobVideoId, jobError, showNotification, refreshUser]);
 
     // Unload prevention
     useEffect(() => {
         const handleBeforeUnload = (e) => {
-            if (uploading && processingStatus !== 'completed') {
+            if ((uploading || isPolling) && processingStatus !== 'completed') {
                 e.preventDefault();
                 e.returnValue = 'Upload is in progress. Are you sure you want to close this page?';
                 return e.returnValue;
@@ -111,7 +141,7 @@ const Upload = () => {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [uploading, processingStatus]);
+    }, [uploading, isPolling, processingStatus]);
 
     const fileInputRef = useRef(null);
     const thumbnailInputRef = useRef(null);
@@ -148,70 +178,27 @@ const Upload = () => {
         setStep('details');
     };
 
-    const stopJobPoll = () => {
-        if (jobPollRef.current) {
-            clearInterval(jobPollRef.current);
-            jobPollRef.current = null;
-        }
-    };
-
-    /** Poll GET /videos/upload/jobs/{job_id} until completed or failed. */
-    const pollUploadJob = (jobId) => {
-        stopJobPoll();
-        setProcessingStatus('processing');
-        setCurrentStatusMessage('Queued for transcoding…');
-        setProcessingProgress(0);
-
-        const tick = async () => {
-            try {
-                const job = await getUploadJob(jobId, token);
-                const status = (job.status || '').toLowerCase();
-
-                if (status === 'queued') {
-                    setProcessingStatus('processing');
-                    setCurrentStatusMessage('Queued — waiting for a worker…');
-                    setProcessingProgress((p) => Math.max(p, 5));
-                    return;
-                }
-
-                if (status === 'processing') {
-                    setProcessingStatus('processing');
-                    setCurrentStatusMessage('Transcoding your video…');
-                    setProcessingProgress((p) => (p < 90 ? p + 5 : p));
-                    return;
-                }
-
-                if (status === 'completed') {
-                    stopJobPoll();
-                    if (job.video_id) setDbVideoId(job.video_id);
-                    setProcessingStatus('completed');
-                    setUploading(false);
-                    setProgress(100);
-                    setProcessingProgress(100);
-                    setCurrentStatusMessage('Live');
-                    showNotification('success', 'Video is now live!');
-                    refreshUser();
-                    return;
-                }
-
-                if (status === 'failed') {
-                    stopJobPoll();
-                    setProcessingStatus('error');
-                    setUploading(false);
-                    setIsUploadError(true);
-                    setCurrentStatusMessage(job.error_message || 'Processing failed');
-                    showNotification('error', job.error_message || 'Processing failed.');
-                }
-            } catch (e) {
-                console.error('Job poll error:', e);
-            }
-        };
-
-        tick();
-        jobPollRef.current = setInterval(tick, JOB_POLL_MS);
-    };
-
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+
+    const resetForRetry = () => {
+        handledTerminalJobRef.current = null;
+        setJobId(null);
+        setUploadId(null);
+        uploadIdRef.current = null;
+        setIsUploadError(false);
+        setIsPaused(false);
+        setProcessingStatus(null);
+        setCurrentStatusMessage('');
+        setProgress(0);
+        setProcessingProgress(0);
+        setDbVideoId(null);
+    };
+
+    const handleRetryAfterFailure = () => {
+        resetForRetry();
+        // Allow React to clear jobId before restarting upload
+        setTimeout(() => startUpload(), 0);
+    };
 
     const uploadLoop = async (currentUploadId, completedSet) => {
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -279,7 +266,7 @@ const Upload = () => {
 
         // Finalize: server saves to S3, enqueues Celery, returns job_id immediately
         setProcessingStatus('processing');
-        setCurrentStatusMessage('Finalizing upload on server…');
+        setCurrentStatusMessage('Processing your video…');
         setProgress(100);
         
         const finalizeFormData = new FormData();
@@ -305,13 +292,15 @@ const Upload = () => {
             if (!data.job_id) {
                 throw new Error('Server did not return a job id');
             }
-            // Do not wait on finalize — poll job status instead
-            pollUploadJob(data.job_id);
+            // Start useUploadStatus polling — do not await transcode here
+            handledTerminalJobRef.current = null;
+            setJobId(data.job_id);
         } catch (err) {
             console.error("Finalization error:", err);
             setIsUploadError(true);
             setUploading(false);
             setProcessingStatus('error');
+            setCurrentStatusMessage(err.message || 'Failed to finalize video upload.');
             showNotification("error", err.message || "Failed to finalize video upload.");
         }
     };
@@ -494,10 +483,45 @@ const Upload = () => {
             );
         }
 
-        if (processingStatus === 'processing') {
+        if (processingStatus === 'processing' || isPolling) {
             return (
-                <div className="btn-loading" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Loader2 className={s.spin} size={20} /> PROCESSING ({processingProgress}%)
+                <div className="btn-loading" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Loader2 className={s.spin} size={20} /> Processing your video…
+                    </span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.75 }}>
+                        {currentStatusMessage || (jobStatus === 'queued' ? 'Queued' : 'Transcoding')}
+                    </span>
+                </div>
+            );
+        }
+
+        if (processingStatus === 'error' || jobStatus === 'failed') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#f87171', textAlign: 'center' }}>
+                        {jobError || currentStatusMessage || 'Processing failed'}
+                    </div>
+                    <button className="btn-primary" style={{ width: '100%' }} onClick={handleRetryAfterFailure}>
+                        RETRY UPLOAD
+                    </button>
+                </div>
+            );
+        }
+
+        if (processingStatus === 'completed') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                    <button
+                        className="btn-primary"
+                        style={{ width: '100%', background: '#4ade80', color: 'black' }}
+                        onClick={() => router.push(jobVideoId || dbVideoId ? `/watch/${jobVideoId || dbVideoId}` : '/manage')}
+                    >
+                        WATCH VIDEO
+                    </button>
+                    <button className="btn-secondary" style={{ width: '100%' }} onClick={() => router.push('/manage')}>
+                        GO TO DASHBOARD
+                    </button>
                 </div>
             );
         }
@@ -751,11 +775,11 @@ const Upload = () => {
                                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}>
                                         <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', borderTop: '4px solid var(--accent-primary)', animation: 'spin 1s linear infinite' }} />
                                         <div style={{ marginTop: '1rem', fontWeight: 900, fontSize: '1.25rem' }}>
-                                            {processingStatus === 'uploading' ? `${progress}%` : 'Processing'}
+                                            {processingStatus === 'uploading' ? `${progress}%` : 'Processing your video…'}
                                         </div>
-                                        {processingStatus === 'processing' && (
-                                            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', padding: '0 1rem' }}>
-                                                {currentStatusMessage}
+                                        {processingStatus === 'processing' && jobStatus && (
+                                            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', padding: '0 1rem', textTransform: 'capitalize' }}>
+                                                {jobStatus}
                                             </div>
                                         )}
                                     </div>
@@ -822,10 +846,10 @@ const Upload = () => {
                             )}
                         </div>
 
-                        {processingStatus === 'completed' && (
-                            <button className="btn-primary" style={{ marginTop: '1rem', background: '#4ade80', color: 'black', width: '100%' }} onClick={() => router.push('/manage')}>
-                                GO TO DASHBOARD
-                            </button>
+                        {(processingStatus === 'completed' || processingStatus === 'error' || processingStatus === 'processing') && (
+                            <div className="mobile-only" style={{ marginTop: '1rem' }}>
+                                {renderActionButtons()}
+                            </div>
                         )}
                     </div>
                 </div>
