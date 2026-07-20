@@ -21,7 +21,7 @@ export default function PartnerPageContent() {
           </h1>
           <p className="ld-v4-subtitle">
             Turn your raw assets into engaging, shareable videos that drive real growth across our
-            global network of elite creators.
+            global network of editors.
           </p>
           <div className="ld-v4-cta-wrap">
             <PartnerHeroCta className="ld-v4-main-btn">
@@ -97,8 +97,7 @@ export default function PartnerPageContent() {
                 <div>
                   <h4>Brand Promotion</h4>
                   <p>
-                    Partner with our top-tier editors for a direct promotional campaign across the
-                    platform.
+                    Partner with editors for a direct promotional campaign across the platform.
                   </p>
                 </div>
               </div>

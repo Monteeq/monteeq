@@ -239,7 +239,7 @@ const Signup = () => {
                             <motion.div variants={itemVariants} className="auth-v4-header">
                                 <img src={logo} alt="Monteeq" className="auth-v4-logo-img" />
                                 <h1 className="auth-v4-title">Create <br /><span className="auth-v4-outline">Account.</span></h1>
-                                <p>Join the elite network of creative editors.</p>
+                                <p>Join a network of creative editors.</p>
                             </motion.div>
 
                             {error && <motion.div variants={itemVariants} className="auth-v4-error">{error}</motion.div>}

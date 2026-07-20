@@ -57,8 +57,8 @@ export default function LandingPage({ stats = null }) {
           <div style={{ position: 'relative', zIndex: 10 }}>
             <h1 className="ld-v4-title">
               The Home <br />
-              for the World&apos;s <br />
-              <span className="ld-v4-outline">Top Editors.</span>
+              for <br />
+              <span className="ld-v4-outline">Editors.</span>
             </h1>
             <p className="ld-v4-subtitle">
               Monteeq is built so editors own their audience. Discovery rewards real

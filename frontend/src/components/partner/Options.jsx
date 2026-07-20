@@ -13,8 +13,8 @@ const Options = () => {
     {
       icon: <Megaphone />,
       title: "Brand Promotion",
-      description: "Partner with our top-tier editors for a more direct promotional campaign across our entire platform.",
-      benefits: ["Top editor access", "Brand awareness", "Consistent styling"]
+      description: "Partner with editors for a more direct promotional campaign across our entire platform.",
+      benefits: ["Editor access", "Brand awareness", "Consistent styling"]
     },
     {
       icon: <MessageSquare />,

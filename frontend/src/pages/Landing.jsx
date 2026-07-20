@@ -79,8 +79,8 @@ const Landing = () => {
                             }}
                         >
                             The Home <br />
-                            for the World&apos;s <br />
-                            <span className="ld-v4-outline">Top Editors.</span>
+                            for <br />
+                            <span className="ld-v4-outline">Editors.</span>
                         </motion.h1>
                         <motion.p className="ld-v4-subtitle" variants={fadeInUp}>
                             Monteeq is built so editors own their audience. Discovery rewards real

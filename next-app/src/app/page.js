@@ -41,7 +41,7 @@ function formatMetaStat(n) {
 /** Marketing SEO for logged-out `/`. Logged-in users hydrate to Home client-side. */
 export async function generateMetadata() {
   const canonical = `${siteOrigin()}/`;
-  const title = 'Home for Top Editors';
+  const title = 'Home for Editors';
   const stats = await getPublicStats().catch(() => null);
   const liveBits = [];
   if (stats?.creators) liveBits.push(`${formatMetaStat(stats.creators)} editors`);
@@ -56,7 +56,7 @@ export async function generateMetadata() {
     description,
     alternates: { canonical },
     openGraph: {
-      title: 'Monteeq | Home for Top Editors',
+      title: 'Monteeq | Home for Editors',
       description,
       url: canonical,
       siteName: 'Monteeq',
@@ -65,7 +65,7 @@ export async function generateMetadata() {
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'Monteeq | Home for Top Editors',
+      title: 'Monteeq | Home for Editors',
       description,
     },
     robots: { index: true, follow: true },

@@ -110,7 +110,7 @@ const ChatList = ({
                                                 <span className="partner-name">{partner.username}</span>
                                                 <span className="last-seen">12:30 PM</span>
                                             </div>
-                                            <p className="last-message">Secure workspace session active</p>
+                                            <p className="last-message">Secure chat session active</p>
                                         </div>
                                         {isActive && (
                                             <motion.div

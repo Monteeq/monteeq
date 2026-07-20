@@ -534,7 +534,7 @@ const Chat = () => {
     }, [selectedConv, fetchMessages, wsConnected]);
 
     const handleNukeKeys = async () => {
-        if (window.confirm("WARNING: This will permanently delete your local workspace keys. If you don't have a backup on Google Drive, all your old messages will become unreadable. Proceed?")) {
+        if (window.confirm("WARNING: This will permanently delete your local encryption keys. If you don't have a backup on Google Drive, all your old messages will become unreadable. Proceed?")) {
             await nukeKeys();
             setIsSetup(false);
             setHasKeyMismatch(false);
@@ -593,7 +593,7 @@ const Chat = () => {
 
         try {
             if (!user.public_key) {
-                throw new Error("Workspace key missing. Please refresh or regenerate keys.");
+                throw new Error("Encryption key missing. Please refresh or regenerate keys.");
             }
 
             let recipientBundles = [];
@@ -618,7 +618,7 @@ const Chat = () => {
             } else {
                 const recipientKeys = await getUserPublicKey(recipient.username, token);
                 if (!recipientKeys || !recipientKeys.public_key) {
-                    throw new Error(`${recipient.username} hasn't initialized their workspace yet.`);
+                    throw new Error(`${recipient.username} hasn't set up secure chat yet.`);
                 }
                 encrypted = await encryptMessage(text, recipientKeys.public_key, user.public_key);
             }
@@ -682,7 +682,7 @@ const Chat = () => {
         } else {
             const recipientKeys = await getUserPublicKey(recipientUsername, token);
             if (!recipientKeys || !recipientKeys.public_key) {
-                throw new Error(`${recipientUsername} hasn't initialized their workspace yet.`);
+                throw new Error(`${recipientUsername} hasn't set up secure chat yet.`);
             }
             return encryptBinary(arrayBuffer, recipientKeys.public_key, user.public_key);
         }
@@ -852,7 +852,7 @@ const Chat = () => {
                         Chat initialization failed
                     </h2>
                     <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', maxWidth: '340px' }}>
-                        Could not set up your secure workspace. This may be caused by a blocked storage permission or network issue.
+                        Could not set up secure chat. This may be caused by a blocked storage permission or network issue.
                     </p>
                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                         <button
@@ -900,7 +900,7 @@ const Chat = () => {
                         animation: 'spin 1s linear infinite'
                     }} />
                     <h2 style={{ fontSize: '1.1rem', fontWeight: 600, opacity: 0.8 }}>
-                        Initializing Elite Workspace...
+                        Setting up secure chat...
                     </h2>
                     <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>
                         Setting up your encrypted keys
@@ -916,10 +916,10 @@ const Chat = () => {
             <div className="chat-setup-container">
                 <div className="glass setup-card">
                     <h2>E2E Encryption Required</h2>
-                    <p>To access the Monteeq workspace, you must generate your unique client-side encryption key.</p>
+                    <p>To use secure chat, you must generate your unique client-side encryption key.</p>
                     <button className="primary-btn" onClick={handleSetupKeys} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                         <Key size={20} />
-                        GENERATE WORKSPACE KEY
+                        GENERATE CHAT KEY
                     </button>
                     {user.google_id && !drive.isAuthenticated && (
                         <p style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>

@@ -12,7 +12,7 @@ function siteOrigin() {
 export async function generateMetadata() {
   const canonical = `${siteOrigin()}/partner`;
   const description =
-    'Turn your raw assets into engaging, shareable videos that drive real growth across our global network of elite creators.';
+    'Turn your raw assets into engaging, shareable videos that drive real growth across our global network of editors.';
 
   return {
     title: 'Partner with Us',

@@ -71,7 +71,7 @@ const PartnerV2 = () => {
             </motion.h1>
             <motion.p className="ld-v4-subtitle" variants={fadeInUp}>
               Turn your raw assets into engaging, shareable videos that drive real growth 
-              across our global network of elite creators.
+              across our global network of editors.
             </motion.p>
             <motion.div className="ld-v4-cta-wrap" variants={fadeInUp}>
               <button className="ld-v4-main-btn" onClick={scrollToContact}>
@@ -147,7 +147,7 @@ const PartnerV2 = () => {
                 <Megaphone className="text-red" size={24} />
                 <div>
                   <h4>Brand Promotion</h4>
-                  <p>Partner with our top-tier editors for a direct promotional campaign across the platform.</p>
+                  <p>Partner with editors for a direct promotional campaign across the platform.</p>
                 </div>
               </div>
             </div>

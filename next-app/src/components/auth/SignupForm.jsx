@@ -256,7 +256,7 @@ export default function SignupForm() {
                   Create <br />
                   <span className="auth-v4-outline">Account.</span>
                 </h1>
-                <p>Join the elite network of creative editors.</p>
+                <p>Join a network of creative editors.</p>
               </motion.div>
 
               {error && (

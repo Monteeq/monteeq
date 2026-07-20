@@ -84,8 +84,8 @@ const ChatWindow = ({
                     <div style={{ marginBottom: '1rem', color: 'var(--neon-red)' }}>
                         <Zap size={48} fill="currentColor" />
                     </div>
-                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Workspace Hub</h2>
-                    <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '3rem' }}>Elite Creator Collaboration Interface</p>
+                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>Messages</h2>
+                    <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '3rem' }}>Private messages between editors</p>
 
                     <div className="hub-home-card">
                         <div className="hub-stat-item">
