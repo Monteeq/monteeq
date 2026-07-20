@@ -28,13 +28,16 @@ import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/browserApi';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
-import { useUploadStatus } from '@/hooks/useUploadStatus';
+import { useUploadStore } from '@/stores/useUploadStore';
 import s from '@/styles/pages/UploadV2.module.css';
 
 const Upload = () => {
     const { user, token, refreshUser } = useAuth();
     const router = useRouter();
     const { showNotification } = useNotification();
+    const addUpload = useUploadStore((s) => s.addUpload);
+    const updateUpload = useUploadStore((s) => s.updateUpload);
+    const removeUpload = useUploadStore((s) => s.removeUpload);
 
     // Wake up the video engine to mitigate cold starts
     useEffect(() => {
@@ -78,13 +81,19 @@ const Upload = () => {
     const uploadIdRef = useRef(null);
     const isPausedRef = useRef(false);
     const handledTerminalJobRef = useRef(null);
+    /** Tracks the toast entry id (local-* until finalize, then server job_id). */
+    const [trackingJobId, setTrackingJobId] = useState(null);
+    const trackingJobIdRef = useRef(null);
 
-    const {
-        status: jobStatus,
-        videoId: jobVideoId,
-        error: jobError,
-        isPolling,
-    } = useUploadStatus(jobId);
+    const storeEntry = useUploadStore((s) => {
+        const id = trackingJobIdRef.current || trackingJobId;
+        return id ? s.activeUploads.find((u) => u.jobId === id) || null : null;
+    });
+    const jobStatus = storeEntry?.status ?? null;
+    const jobVideoId = storeEntry?.videoId ?? null;
+    const jobError = storeEntry?.error ?? null;
+    const isPolling =
+        !!storeEntry && (storeEntry.status === 'queued' || storeEntry.status === 'processing');
 
     // Sync refs
     useEffect(() => {
@@ -95,19 +104,31 @@ const Upload = () => {
         uploadIdRef.current = uploadId;
     }, [uploadId]);
 
-    // React to job poll results (queued/processing → UI; completed/failed → terminal)
     useEffect(() => {
-        if (!jobId || !jobStatus) return;
+        trackingJobIdRef.current = trackingJobId;
+    }, [trackingJobId]);
 
-        if (jobStatus === 'queued' || jobStatus === 'processing') {
-            setProcessingStatus('processing');
-            setCurrentStatusMessage('Processing your video…');
+    // React to global store / poller results
+    useEffect(() => {
+        if (!storeEntry) return;
+        const status = storeEntry.status;
+
+        if (status === 'uploading') {
+            setProcessingStatus('uploading');
+            setProgress(storeEntry.progress || 0);
             return;
         }
 
-        if (jobStatus === 'completed' && handledTerminalJobRef.current !== jobId) {
-            handledTerminalJobRef.current = jobId;
-            if (jobVideoId) setDbVideoId(jobVideoId);
+        if (status === 'queued' || status === 'processing') {
+            setProcessingStatus('processing');
+            setCurrentStatusMessage('Processing your video…');
+            setProgress(100);
+            return;
+        }
+
+        if (status === 'completed' && handledTerminalJobRef.current !== storeEntry.jobId) {
+            handledTerminalJobRef.current = storeEntry.jobId;
+            if (storeEntry.videoId) setDbVideoId(storeEntry.videoId);
             setProcessingStatus('completed');
             setUploading(false);
             setProgress(100);
@@ -118,15 +139,15 @@ const Upload = () => {
             return;
         }
 
-        if (jobStatus === 'failed' && handledTerminalJobRef.current !== jobId) {
-            handledTerminalJobRef.current = jobId;
+        if (status === 'failed' && handledTerminalJobRef.current !== storeEntry.jobId) {
+            handledTerminalJobRef.current = storeEntry.jobId;
             setProcessingStatus('error');
             setUploading(false);
             setIsUploadError(true);
-            setCurrentStatusMessage(jobError || 'Processing failed');
-            showNotification('error', jobError || 'Processing failed.');
+            setCurrentStatusMessage(storeEntry.error || 'Processing failed');
+            showNotification('error', storeEntry.error || 'Processing failed.');
         }
-    }, [jobId, jobStatus, jobVideoId, jobError, showNotification, refreshUser]);
+    }, [storeEntry, showNotification, refreshUser]);
 
     // Unload prevention
     useEffect(() => {
@@ -149,13 +170,21 @@ const Upload = () => {
 
     useEffect(() => {
         return () => {
-            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            if (!previewUrl) return;
+            const stillUsed = useUploadStore
+                .getState()
+                .activeUploads.some((u) => u.thumbnailUrl === previewUrl);
+            if (!stillUsed) URL.revokeObjectURL(previewUrl);
         };
     }, [previewUrl]);
 
     useEffect(() => {
         return () => {
-            if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+            if (!thumbnailPreview) return;
+            const stillUsed = useUploadStore
+                .getState()
+                .activeUploads.some((u) => u.thumbnailUrl === thumbnailPreview);
+            if (!stillUsed) URL.revokeObjectURL(thumbnailPreview);
         };
     }, [thumbnailPreview]);
 
@@ -181,7 +210,10 @@ const Upload = () => {
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 
     const resetForRetry = () => {
+        if (trackingJobId) removeUpload(trackingJobId);
         handledTerminalJobRef.current = null;
+        trackingJobIdRef.current = null;
+        setTrackingJobId(null);
         setJobId(null);
         setUploadId(null);
         uploadIdRef.current = null;
@@ -200,7 +232,7 @@ const Upload = () => {
         setTimeout(() => startUpload(), 0);
     };
 
-    const uploadLoop = async (currentUploadId, completedSet) => {
+    const uploadLoop = async (currentUploadId, completedSet, toastId) => {
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         
         for (let i = 0; i < totalChunks; i++) {
@@ -246,6 +278,9 @@ const Upload = () => {
                     completedSet.add(i);
                     const overallProgress = Math.round((completedSet.size / totalChunks) * 100);
                     setProgress(overallProgress);
+                    if (toastId) {
+                        updateUpload(toastId, { progress: overallProgress, status: 'uploading' });
+                    }
                     chunkSuccess = true;
                 } catch (err) {
                     console.error(`Chunk ${i} upload error, retries left: ${retries - 1}`, err);
@@ -254,6 +289,12 @@ const Upload = () => {
                         setIsUploadError(true);
                         setIsPaused(true);
                         setUploading(false);
+                        if (toastId) {
+                            updateUpload(toastId, {
+                                status: 'failed',
+                                error: 'Network issue detected. Upload paused.',
+                            });
+                        }
                         showNotification("error", "Network issue detected. Upload paused. Click Resume to retry.");
                         return;
                     }
@@ -292,8 +333,28 @@ const Upload = () => {
             if (!data.job_id) {
                 throw new Error('Server did not return a job id');
             }
-            // Start useUploadStatus polling — do not await transcode here
+            // Remap local toast id → server job_id; global poller takes over
             handledTerminalJobRef.current = null;
+            trackingJobIdRef.current = data.job_id;
+            if (toastId) {
+                updateUpload(toastId, {
+                    jobId: data.job_id,
+                    status: 'queued',
+                    progress: 100,
+                    videoId: data.video_id ?? null,
+                    error: null,
+                });
+            } else {
+                addUpload({
+                    jobId: data.job_id,
+                    fileName: file?.name || title || 'Video',
+                    thumbnailUrl: thumbnailPreview || previewUrl,
+                    progress: 100,
+                    status: 'queued',
+                    videoId: data.video_id ?? null,
+                });
+            }
+            setTrackingJobId(data.job_id);
             setJobId(data.job_id);
         } catch (err) {
             console.error("Finalization error:", err);
@@ -301,6 +362,12 @@ const Upload = () => {
             setUploading(false);
             setProcessingStatus('error');
             setCurrentStatusMessage(err.message || 'Failed to finalize video upload.');
+            if (toastId) {
+                updateUpload(toastId, {
+                    status: 'failed',
+                    error: err.message || 'Failed to finalize video upload.',
+                });
+            }
             showNotification("error", err.message || "Failed to finalize video upload.");
         }
     };
@@ -314,6 +381,28 @@ const Upload = () => {
 
         let currentUploadId = uploadIdRef.current;
         let completedSet = new Set();
+
+        // Register toast immediately so it survives navigation during chunk upload
+        let toastId = trackingJobId;
+        if (!toastId) {
+            toastId = `local-${crypto.randomUUID()}`;
+            addUpload({
+                jobId: toastId,
+                fileName: file?.name || title || 'Video',
+                thumbnailUrl: thumbnailPreview || previewUrl,
+                progress: 0,
+                status: 'uploading',
+                error: null,
+            });
+            trackingJobIdRef.current = toastId;
+            setTrackingJobId(toastId);
+        } else {
+            updateUpload(toastId, {
+                status: 'uploading',
+                error: null,
+                progress: progress || 0,
+            });
+        }
 
         if (!currentUploadId) {
             // First time initiating upload
@@ -347,6 +436,7 @@ const Upload = () => {
                 setUploading(false);
                 setIsPaused(true);
                 setIsUploadError(true);
+                updateUpload(toastId, { status: 'failed', error: err.message });
                 showNotification('error', err.message);
                 return;
             }
@@ -371,7 +461,7 @@ const Upload = () => {
         }
 
         // Run chunked upload loop
-        await uploadLoop(currentUploadId, completedSet);
+        await uploadLoop(currentUploadId, completedSet, toastId);
     };
 
     const pauseUpload = () => {

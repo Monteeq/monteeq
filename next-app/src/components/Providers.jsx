@@ -9,6 +9,7 @@ import { ReportProvider } from '@/context/ReportContext';
 import AppShell from '@/components/layout/AppShell';
 import VideoCardMenuRouteListener from '@/components/VideoCardMenuRouteListener';
 import NotificationManager from '@/components/NotificationManager';
+import UploadNotifications from '@/components/UploadNotifications';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import DynamicTitle from '@/components/DynamicTitle';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
@@ -68,6 +69,7 @@ function AppProviders({ children }) {
             <ReportProvider>
               <VideoCardMenuRouteListener />
               <NotificationManager />
+              <UploadNotifications />
               <DynamicTitle />
               <InstallAppPrompt />
               <AppShell>
