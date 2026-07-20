@@ -857,6 +857,141 @@ async def get_upload_job(
     }
 
 
+async def _direct_upload_one(
+    *,
+    db: Session,
+    current_user: User,
+    file: UploadFile,
+    title: str,
+    description: Optional[str],
+    tags: Optional[str],
+    video_type: str,
+    thumbnail: Optional[UploadFile] = None,
+    raise_http: bool = False,
+) -> dict:
+    """
+    Save one file to storage, create upload_jobs + Video, enqueue Celery.
+    When raise_http=False (batch), returns a per-file result dict and never raises
+    for storage/enqueue failures. When raise_http=True (single /upload), raises HTTPException.
+    """
+    import time
+    import re
+    import unicodedata
+    import traceback
+
+    filename = file.filename or "video"
+
+    def _fail(error: str, status_code: int = 500) -> dict:
+        logger.error(f"Direct upload failed for '{filename}': {error}")
+        if raise_http:
+            raise HTTPException(status_code=status_code, detail=error)
+        return {
+            "filename": filename,
+            "job_id": None,
+            "status": "failed",
+            "video_id": None,
+            "error": error,
+        }
+
+    if not current_user.is_premium:
+        if video_type == "flash" and (current_user.flash_uploads or 0) >= FLASH_QUOTA_LIMIT:
+            return _fail(f"Flash quota exceeded ({FLASH_QUOTA_LIMIT} max)", status_code=403)
+        if video_type == "home" and (current_user.home_uploads or 0) >= HOME_QUOTA_LIMIT:
+            return _fail(f"Home quota exceeded ({HOME_QUOTA_LIMIT} max)", status_code=403)
+
+    task_id = str(uuid.uuid4())
+
+    filename_base, filename_ext = os.path.splitext(filename)
+    safe_name = unicodedata.normalize("NFKD", filename_base).encode("ascii", "ignore").decode("ascii")
+    safe_name = re.sub(r"[^\w\s-]", "", safe_name).strip().lower()
+    safe_name = re.sub(r"[-\s]+", "_", safe_name) or "video"
+    safe_filename = f"{safe_name}{filename_ext}"
+
+    source_key = f"uploads/{task_id}/{safe_filename}"
+
+    logger.info(f"Streaming uploaded file to storage (threadpool): {source_key}")
+    try:
+        await storage.async_upload_file_obj(file.file, source_key)
+    except Exception as e:
+        error_detail = f"Storage upload failed: {str(e)}"
+        logger.error(f"{error_detail}\n{traceback.format_exc()}")
+        return _fail(error_detail)
+
+    video_create_data = schemas.VideoCreate(
+        title=title,
+        description=description,
+        tags=tags,
+        video_type=video_type,
+        video_url="",
+        thumbnail_url="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=60",
+        processing_key=task_id,
+    )
+
+    has_custom_thumb = False
+    if thumbnail is not None and getattr(thumbnail, "filename", None):
+        safe_thumb_name = thumbnail.filename.replace(" ", "_")
+        timestamp = int(time.time())
+        thumb_key = f"thumbs/custom_{timestamp}_{safe_thumb_name}"
+        try:
+            video_create_data.thumbnail_url = await storage.async_upload_file_obj(
+                thumbnail.file, thumb_key
+            )
+            has_custom_thumb = True
+        except Exception as e:
+            logger.error(f"Failed to upload thumbnail to storage: {str(e)}")
+
+    if video_type == "flash":
+        current_user.flash_uploads = (current_user.flash_uploads or 0) + 1
+    else:
+        current_user.home_uploads = (current_user.home_uploads or 0) + 1
+
+    db.commit()
+
+    db_video = crud_video.create_video(db, video_create_data, user_id=current_user.id)
+    db_video.status = "pending"
+    logger.info(f"Video record created in DB: id={db_video.id}")
+
+    job = UploadJob(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        status=UploadJobStatus.QUEUED,
+        video_id=db_video.id,
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    try:
+        import app.worker  # noqa: F401 — bind Redis Celery app before delay()
+        from app.tasks.video_tasks import process_video_task
+
+        process_video_task.delay(
+            source_key,
+            video_type,
+            title,
+            db_video.id,
+            has_custom_thumb,
+            db_video.processing_key,
+            str(job.id),
+        )
+        logger.info(f"Celery task enqueued for video_id={db_video.id} job_id={job.id}")
+    except Exception as e:
+        logger.error(f"Failed to enqueue Celery task: {str(e)}")
+        db_video.status = "failed"
+        job.status = UploadJobStatus.FAILED
+        job.error_message = str(e)
+        db.commit()
+        return _fail("Failed to enqueue transcoding job")
+
+    return {
+        "filename": filename,
+        "job_id": str(job.id),
+        "status": UploadJobStatus.QUEUED.value,
+        "video_id": db_video.public_id,
+        "error": None,
+    }
+
+
 @router.post("/upload")
 async def upload_video(
     title: str = Form(...),
@@ -873,105 +1008,101 @@ async def upload_video(
     Transcoding happens in the worker — this handler never waits on Rust.
     """
     logger.info(f"Upload initiated: title='{title}', type='{video_type}', user_id={current_user.id}")
-    
-    if not current_user.is_premium:
-        if video_type == "flash" and current_user.flash_uploads >= FLASH_QUOTA_LIMIT:
-            raise HTTPException(status_code=403, detail=f"Flash quota exceeded ({FLASH_QUOTA_LIMIT} max)")
-        if video_type == "home" and current_user.home_uploads >= HOME_QUOTA_LIMIT:
-            raise HTTPException(status_code=403, detail=f"Home quota exceeded ({HOME_QUOTA_LIMIT} max)")
-
-    import time
-    import re
-    import unicodedata
-    task_id = str(uuid.uuid4())
-    
-    # Aggressively slugify filename
-    filename_base, filename_ext = os.path.splitext(file.filename)
-    safe_name = unicodedata.normalize('NFKD', filename_base).encode('ascii', 'ignore').decode('ascii')
-    safe_name = re.sub(r'[^\w\s-]', '', safe_name).strip().lower()
-    safe_name = re.sub(r'[-\s]+', '_', safe_name)
-    safe_filename = f"{safe_name}{filename_ext}"
-    
-    source_key = f"uploads/{task_id}/{safe_filename}"
-    
-    logger.info(f"Streaming uploaded file to storage (threadpool): {source_key}")
-    try:
-        await storage.async_upload_file_obj(file.file, source_key)
-    except Exception as e:
-        import traceback
-        error_detail = f"Storage upload failed: {str(e)}"
-        logger.error(f"{error_detail}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=error_detail)
-
-    # Initial DB record (placeholder until transcode completes)
-    video_create_data = schemas.VideoCreate(
+    result = await _direct_upload_one(
+        db=db,
+        current_user=current_user,
+        file=file,
         title=title,
         description=description,
         tags=tags,
         video_type=video_type,
-        video_url="", 
-        thumbnail_url="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=60",
-        processing_key=task_id
+        thumbnail=thumbnail,
+        raise_http=True,
     )
-    
-    if thumbnail:
-        safe_thumb_name = thumbnail.filename.replace(" ", "_")
-        timestamp = int(time.time())
-        thumb_key = f"thumbs/custom_{timestamp}_{safe_thumb_name}"
-        
-        try:
-            video_create_data.thumbnail_url = await storage.async_upload_file_obj(
-                thumbnail.file, thumb_key
-            )
-        except Exception as e:
-            logger.error(f"Failed to upload thumbnail to storage: {str(e)}")
+    return {
+        "job_id": result["job_id"],
+        "status": result["status"],
+        "video_id": result["video_id"],
+    }
 
-    # Update quota
-    if video_type == "flash":
-        current_user.flash_uploads = (current_user.flash_uploads or 0) + 1
-    else:
-        current_user.home_uploads = (current_user.home_uploads or 0) + 1
-    
-    db.commit()
-    
-    db_video = crud_video.create_video(db, video_create_data, user_id=current_user.id)
-    db_video.status = "pending"
-    logger.info(f"Video record created in DB: id={db_video.id}")
 
-    job = UploadJob(
-        id=uuid.uuid4(),
-        user_id=current_user.id,
-        status=UploadJobStatus.QUEUED,
-        video_id=db_video.id,
-    )
-    db.add(job)
-    db.commit()
-    db.refresh(job)
+@router.post("/upload/batch")
+async def upload_videos_batch(
+    files: List[UploadFile] = File(..., description="One or more video files"),
+    titles: List[str] = Form(..., description="Caption/title per file (same order as files)"),
+    video_type: str = Form(...),
+    descriptions: Optional[List[str]] = Form(None),
+    tags: Optional[List[str]] = Form(None),
+    thumbnails: Optional[List[UploadFile]] = File(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Multipart batch upload: each file gets its own S3 object, upload_jobs row, and Celery task.
 
-    try:
-        from app.tasks.video_tasks import process_video_task
-        process_video_task.delay(
-            source_key,
-            video_type,
-            title,
-            db_video.id,
-            thumbnail is not None,
-            db_video.processing_key,
-            str(job.id),
+    Returns HTTP 200 with a per-file results array. Individual storage/enqueue failures are
+    reported in that array; remaining files are still processed.
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="At least one file is required")
+
+    if len(titles) != len(files):
+        raise HTTPException(
+            status_code=400,
+            detail=f"titles count ({len(titles)}) must match files count ({len(files)})",
         )
-        logger.info(f"Celery task enqueued for video_id={db_video.id} job_id={job.id}")
-    except Exception as e:
-        logger.error(f"Failed to enqueue Celery task: {str(e)}")
-        db_video.status = "failed"
-        job.status = UploadJobStatus.FAILED
-        job.error_message = str(e)
-        db.commit()
-        raise HTTPException(status_code=500, detail="Failed to enqueue transcoding job")
+
+    desc_list = list(descriptions or [])
+    tags_list = list(tags or [])
+    thumb_list = list(thumbnails or [])
+
+    # Pad optional parallel fields so zip never IndexErrors
+    while len(desc_list) < len(files):
+        desc_list.append(None)
+    while len(tags_list) < len(files):
+        tags_list.append(None)
+    while len(thumb_list) < len(files):
+        thumb_list.append(None)
+
+    logger.info(
+        f"Batch upload initiated: count={len(files)}, type='{video_type}', "
+        f"user_id={current_user.id}"
+    )
+
+    results = []
+    for index, (file, title, description, file_tags, thumbnail) in enumerate(
+        zip(files, titles, desc_list, tags_list, thumb_list)
+    ):
+        # Skip empty thumbnail slots (some clients send blank file parts)
+        thumb = thumbnail
+        if thumb is not None and not getattr(thumb, "filename", None):
+            thumb = None
+
+        caption = (title or "").strip() or (file.filename or f"video-{index + 1}")
+        result = await _direct_upload_one(
+            db=db,
+            current_user=current_user,
+            file=file,
+            title=caption,
+            description=description,
+            tags=file_tags,
+            video_type=video_type,
+            thumbnail=thumb,
+            raise_http=False,
+        )
+        result["index"] = index
+        results.append(result)
+
+        # Keep quota counters accurate for subsequent files in this request
+        db.refresh(current_user)
+
+    succeeded = sum(1 for r in results if r.get("status") != "failed")
+    failed = len(results) - succeeded
 
     return {
-        "job_id": str(job.id),
-        "status": UploadJobStatus.QUEUED.value,
-        "video_id": db_video.public_id,
+        "results": results,
+        "succeeded": succeeded,
+        "failed": failed,
     }
 
 
