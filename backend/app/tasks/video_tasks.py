@@ -88,11 +88,21 @@ def _mark_video_failed(db, video_id: int, title: str, task_id: str, upload_job_i
         logger.warning(f"Storage cleanup failed: {cleanup_err}")
 
 
+def _resolve_cover_url(raw: str | None) -> str | None:
+    """Accept a full URL or storage key from Rust / job row."""
+    if not raw:
+        return None
+    if str(raw).startswith("http://") or str(raw).startswith("https://"):
+        return str(raw)
+    return storage.get_url(str(raw))
+
+
 def _finalize_transcode_success(
     db, *, video_id: int, video_type: str, title: str, task_id: str,
     thumbnail_provided: bool, upload_job_id,
+    status_data: dict | None = None,
 ):
-    """After Rust finishes: wire up CDN URLs, mark upload_job completed, notify."""
+    """After Rust finishes: wire up CDN URLs, cover fields, mark upload_job completed, notify."""
     logger.info(f"Finalizing transcode for video_id={video_id} task_id={task_id}")
     video_url = storage.get_url(f"videos/{task_id}/master.m3u8")
 
@@ -105,7 +115,7 @@ def _finalize_transcode_success(
         url_2k = storage.get_url(f"videos/{task_id}/2k.m3u8")
         url_4k = storage.get_url(f"videos/{task_id}/4k.m3u8")
 
-    thumbnail_url = storage.get_url(f"thumbnails/{task_id}.jpg")
+    generated_thumb_url = storage.get_url(f"thumbnails/{task_id}.jpg")
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         _update_upload_job(
@@ -113,6 +123,38 @@ def _finalize_transcode_success(
             error_message="Video record missing after transcode",
         )
         return {"status": "error", "message": "video missing"}
+
+    # Cover metadata: prefer Rust completion payload, then upload_jobs row
+    status_data = status_data or {}
+    rust_cover_url = status_data.get("cover_url") or status_data.get("coverUrl")
+    rust_cover_source = status_data.get("cover_source") or status_data.get("coverSource")
+
+    job_cover_source = None
+    job_cover_s3_key = None
+    if upload_job_id:
+        try:
+            from uuid import UUID as _UUID
+            job_row = db.query(UploadJob).filter(UploadJob.id == _UUID(str(upload_job_id))).first()
+            if job_row:
+                job_cover_source = getattr(job_row, "cover_source", None)
+                job_cover_s3_key = getattr(job_row, "cover_s3_key", None)
+        except Exception as e:
+            logger.debug(f"upload_job cover lookup in finalize skipped: {e}")
+
+    cover_source = (
+        rust_cover_source
+        or job_cover_source
+        or ("custom" if thumbnail_provided else "auto")
+    )
+    cover_source = str(cover_source).strip().lower()
+    if cover_source not in ("auto", "custom"):
+        cover_source = "custom" if thumbnail_provided else "auto"
+
+    cover_url = _resolve_cover_url(rust_cover_url)
+    if not cover_url and cover_source == "custom" and job_cover_s3_key:
+        cover_url = _resolve_cover_url(job_cover_s3_key)
+    if not cover_url:
+        cover_url = generated_thumb_url
 
     video.video_url = video_url
     video.url_480p = url_480p
@@ -124,8 +166,13 @@ def _finalize_transcode_success(
     video.failed_at = None
     video.status = "approved"
     video.processing_message = "Live"
-    if not thumbnail_provided and thumbnail_url:
-        video.thumbnail_url = thumbnail_url
+    video.cover_source = cover_source
+    video.cover_url = cover_url
+    # Keep thumbnail_url aligned for existing clients / feeds
+    if cover_url:
+        video.thumbnail_url = cover_url
+    elif not thumbnail_provided and generated_thumb_url:
+        video.thumbnail_url = generated_thumb_url
     db.commit()
 
     # 2) completed + fill video_id on the upload_jobs row
@@ -257,6 +304,7 @@ def _final_rust_status_check(
                     task_id=task_id,
                     thumbnail_provided=thumbnail_provided,
                     upload_job_id=upload_job_id,
+                    status_data=final_data,
                 )
             if final_status == "error":
                 err = final_data.get("message") or "Rust processing error"
@@ -336,22 +384,27 @@ def process_video_task(
                 pass
 
         # Call Rust FIRST so DB blips cannot prevent transcode from starting
+        skip_thumbnail = bool(thumbnail_provided) or cover_source == "custom"
+        rust_payload = {
+            "video_id": source_key,
+            "target_format": video_type,
+            "skip_thumbnail": skip_thumbnail,
+            "task_id": task_id,
+            "tier": tier,
+            "coverSource": cover_source,
+        }
+        if cover_source == "custom" and cover_s3_key:
+            rust_payload["coverS3Key"] = cover_s3_key
+            rust_payload["cover_s3_key"] = cover_s3_key  # snake_case alias
+
         logger.info(
             f"POST {config.RUST_SERVICE_URL}/process source={source_key} tier={tier} "
-            f"cover_source={cover_source} cover_s3_key={cover_s3_key}"
+            f"coverSource={cover_source} coverS3Key={cover_s3_key}"
         )
         try:
             rust_response = requests.post(
                 f"{config.RUST_SERVICE_URL}/process",
-                json={
-                    "video_id": source_key,
-                    "target_format": video_type,
-                    "skip_thumbnail": thumbnail_provided or cover_source == "custom",
-                    "task_id": task_id,
-                    "tier": tier,
-                    "cover_source": cover_source,
-                    "cover_s3_key": cover_s3_key,
-                },
+                json=rust_payload,
                 timeout=30.0,
             )
             logger.info(f"Rust responded {rust_response.status_code}")
@@ -472,6 +525,7 @@ def poll_video_transcode(
                     task_id=task_id,
                     thumbnail_provided=thumbnail_provided,
                     upload_job_id=upload_job_id,
+                    status_data=status_data,
                 )
 
             if current_status == "error":

@@ -91,6 +91,8 @@ pub async fn process(
             progress: 5,
             status: "processing".to_string(),
             message: "Analyzing video streams and metadata...".to_string(),
+            cover_url: None,
+            cover_source: None,
         };
         let status_json = serde_json::to_string(&status).unwrap();
         let _: () = sched
@@ -172,6 +174,8 @@ pub async fn process(
                     progress: 90,
                     status: "processing".to_string(),
                     message: "Syncing video segments to edge nodes...".to_string(),
+                    cover_url: None,
+                    cover_source: None,
                 };
                 let status_json = serde_json::to_string(&status).unwrap();
                 let _: () = sched
@@ -442,6 +446,8 @@ async fn transcode_tiered(
             progress: 15,
             status: "processing".to_string(),
             message: format!("Compressing and optimizing video (Tier: {:?})", tier),
+            cover_url: None,
+            cover_source: None,
         };
         let status_json = serde_json::to_string(&status).unwrap();
         let _: () = sched
@@ -573,11 +579,39 @@ async fn get_video_height(input: &str) -> Result<i32> {
 }
 
 async fn generate_thumbnail(video_path: &str) -> Result<()> {
+    // Legacy path (thumbnails next to source). Prefer generate_and_upload_auto_cover.
     let thumb_path = format!("{}.jpg", video_path);
+    extract_cover_frame(video_path, &thumb_path, 0.1).await
+}
+
+/// Seek ~`pct` into the video (default 10%) and write a single JPEG frame.
+/// Uses the system ffmpeg CLI (same stack as the rest of this service; equivalent
+/// to grabbing a decoded frame via ffmpeg-next around that timestamp).
+pub async fn extract_cover_frame(video_path: &str, out_jpg: &str, pct: f64) -> Result<()> {
+    let duration = match get_video_metadata(video_path).await {
+        Ok((_, _, _, d)) if d.is_finite() && d > 0.0 => d,
+        _ => 0.0,
+    };
+    let seek_secs = if duration > 0.5 {
+        (duration * pct).clamp(0.0, (duration - 0.05).max(0.0))
+    } else {
+        0.0
+    };
+    let seek_arg = format!("{:.3}", seek_secs);
+
+    println!(
+        "Extracting cover frame from {} at {}s ({:.0}% of {:.2}s) → {}",
+        video_path,
+        seek_arg,
+        pct * 100.0,
+        duration,
+        out_jpg
+    );
+
     let status = Command::new("ffmpeg")
         .args(&[
             "-ss",
-            "00:00:01",
+            &seek_arg,
             "-i",
             video_path,
             "-frames:v",
@@ -587,12 +621,37 @@ async fn generate_thumbnail(video_path: &str) -> Result<()> {
             "-q:v",
             "2",
             "-y",
-            &thumb_path,
+            out_jpg,
         ])
         .status()
         .await?;
     if !status.success() {
-        return Err(anyhow!("Thumbnail generation failed"));
+        return Err(anyhow!("Cover frame extraction failed"));
+    }
+    if !Path::new(out_jpg).exists() {
+        return Err(anyhow!("Cover JPEG was not written: {}", out_jpg));
     }
     Ok(())
+}
+
+/// Auto cover: frame at ~10% duration → JPEG → S3 `covers/{task_id}.jpg`.
+/// Returns the S3 key for inclusion in the Redis completion payload.
+pub async fn generate_and_upload_auto_cover(
+    video_path: &str,
+    task_id: &str,
+    storage: &StorageManager,
+) -> Result<String> {
+    let cover_local = format!("{}_cover.jpg", video_path);
+    extract_cover_frame(video_path, &cover_local, 0.1).await?;
+
+    let cover_key = format!("covers/{}.jpg", task_id);
+    storage
+        .upload_file(Path::new(&cover_local), &cover_key)
+        .await?;
+
+    // Best-effort cleanup of local JPEG
+    let _ = fs::remove_file(&cover_local).await;
+
+    println!("Auto cover uploaded: {}", cover_key);
+    Ok(cover_key)
 }

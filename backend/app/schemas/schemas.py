@@ -192,6 +192,8 @@ class Video(VideoBase):
     url_2k: Optional[str] = None
     url_4k: Optional[str] = None
     thumbnail_url: str
+    cover_url: Optional[str] = None
+    cover_source: Optional[str] = None
     status: str
     owner_id: int
     owner: Optional[UserPublic] = None
@@ -213,7 +215,11 @@ class Video(VideoBase):
     def ensure_int(cls, v):
         return v if v is not None else 0
 
-    @field_validator('video_url', 'thumbnail_url', 'url_480p', 'url_720p', 'url_1080p', 'url_2k', 'url_4k', mode='before')
+    @field_validator(
+        'video_url', 'thumbnail_url', 'cover_url',
+        'url_480p', 'url_720p', 'url_1080p', 'url_2k', 'url_4k',
+        mode='before',
+    )
     @classmethod
     def resolve_cdn_url(cls, v):
         if not v or not isinstance(v, str):

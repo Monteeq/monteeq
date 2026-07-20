@@ -162,6 +162,9 @@ class Video(Base):
     url_2k = Column(String, nullable=True)
     url_4k = Column(String, nullable=True)
     thumbnail_url = Column(String)
+    # Final cover after transcode (custom upload or Rust-generated). Prefer over thumbnail_url for new clients.
+    cover_url = Column(String, nullable=True)
+    cover_source = Column(String, nullable=True)  # "auto" | "custom"
     video_type = Column(String, index=True) # home or flash
     status = Column(String, default=ApprovalStatus.PENDING, index=True)
     owner_id = Column(Integer, ForeignKey("users.id"), index=True)
@@ -216,6 +219,10 @@ class Video(Base):
     @property
     def dynamic_thumbnail_url(self):
         return self._resolve_url(self.thumbnail_url)
+
+    @property
+    def dynamic_cover_url(self):
+        return self._resolve_url(self.cover_url or self.thumbnail_url)
 
     @property
     def dynamic_url_720p(self):
