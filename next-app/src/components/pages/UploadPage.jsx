@@ -25,10 +25,12 @@ import {
 } from 'lucide-react';
 
 import { useRouter } from 'next/navigation';
-import { API_BASE_URL } from '@/lib/browserApi';
+import { API_BASE_URL, getUploadJob } from '@/lib/browserApi';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import s from '@/styles/pages/UploadV2.module.css';
+
+const JOB_POLL_MS = 2500;
 
 const Upload = () => {
     const { user, token, refreshUser } = useAuth();
@@ -75,6 +77,7 @@ const Upload = () => {
 
     const uploadIdRef = useRef(null);
     const isPausedRef = useRef(false);
+    const jobPollRef = useRef(null);
 
     // Sync refs
     useEffect(() => {
@@ -84,6 +87,16 @@ const Upload = () => {
     useEffect(() => {
         uploadIdRef.current = uploadId;
     }, [uploadId]);
+
+    // Clear job poller on unmount
+    useEffect(() => {
+        return () => {
+            if (jobPollRef.current) {
+                clearInterval(jobPollRef.current);
+                jobPollRef.current = null;
+            }
+        };
+    }, []);
 
     // Unload prevention
     useEffect(() => {
@@ -135,34 +148,67 @@ const Upload = () => {
         setStep('details');
     };
 
-    const pollProcessingStatus = (processingKey) => {
-        setProcessingStatus('processing');
-        const interval = setInterval(async () => {
-            try {
-                const res = await fetch(`${API_BASE_URL}/videos/status/${processingKey}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const statusData = await res.json();
+    const stopJobPoll = () => {
+        if (jobPollRef.current) {
+            clearInterval(jobPollRef.current);
+            jobPollRef.current = null;
+        }
+    };
 
-                if (statusData.status === 'completed') {
-                    clearInterval(interval);
+    /** Poll GET /videos/upload/jobs/{job_id} until completed or failed. */
+    const pollUploadJob = (jobId) => {
+        stopJobPoll();
+        setProcessingStatus('processing');
+        setCurrentStatusMessage('Queued for transcoding…');
+        setProcessingProgress(0);
+
+        const tick = async () => {
+            try {
+                const job = await getUploadJob(jobId, token);
+                const status = (job.status || '').toLowerCase();
+
+                if (status === 'queued') {
+                    setProcessingStatus('processing');
+                    setCurrentStatusMessage('Queued — waiting for a worker…');
+                    setProcessingProgress((p) => Math.max(p, 5));
+                    return;
+                }
+
+                if (status === 'processing') {
+                    setProcessingStatus('processing');
+                    setCurrentStatusMessage('Transcoding your video…');
+                    setProcessingProgress((p) => (p < 90 ? p + 5 : p));
+                    return;
+                }
+
+                if (status === 'completed') {
+                    stopJobPoll();
+                    if (job.video_id) setDbVideoId(job.video_id);
                     setProcessingStatus('completed');
                     setUploading(false);
                     setProgress(100);
                     setProcessingProgress(100);
+                    setCurrentStatusMessage('Live');
                     showNotification('success', 'Video is now live!');
                     refreshUser();
-                } else if (statusData.status === 'error') {
-                    clearInterval(interval);
+                    return;
+                }
+
+                if (status === 'failed') {
+                    stopJobPoll();
                     setProcessingStatus('error');
                     setUploading(false);
-                    showNotification('error', 'Processing failed.');
-                } else {
-                    setProcessingProgress(statusData.progress || 0);
-                    setCurrentStatusMessage(statusData.message || 'Transcoding...');
+                    setIsUploadError(true);
+                    setCurrentStatusMessage(job.error_message || 'Processing failed');
+                    showNotification('error', job.error_message || 'Processing failed.');
                 }
-            } catch (e) { console.error("Poll error:", e); }
-        }, 3000);
+            } catch (e) {
+                console.error('Job poll error:', e);
+            }
+        };
+
+        tick();
+        jobPollRef.current = setInterval(tick, JOB_POLL_MS);
     };
 
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
@@ -231,9 +277,10 @@ const Upload = () => {
             }
         }
 
-        // Finalize upload
+        // Finalize: server saves to S3, enqueues Celery, returns job_id immediately
         setProcessingStatus('processing');
-        setCurrentStatusMessage("Finalizing upload on server...");
+        setCurrentStatusMessage('Finalizing upload on server…');
+        setProgress(100);
         
         const finalizeFormData = new FormData();
         finalizeFormData.append("upload_id", currentUploadId);
@@ -253,12 +300,18 @@ const Upload = () => {
             }
 
             const data = await finalizeRes.json();
-            setDbVideoId(data.video_id);
-            pollProcessingStatus(currentUploadId);
+            if (data.video_id) setDbVideoId(data.video_id);
+
+            if (!data.job_id) {
+                throw new Error('Server did not return a job id');
+            }
+            // Do not wait on finalize — poll job status instead
+            pollUploadJob(data.job_id);
         } catch (err) {
             console.error("Finalization error:", err);
             setIsUploadError(true);
             setUploading(false);
+            setProcessingStatus('error');
             showNotification("error", err.message || "Failed to finalize video upload.");
         }
     };
@@ -694,32 +747,56 @@ const Upload = () => {
                         <div className={s.previewCard}>
                             <div className={`${s.videoWrapper} ${videoType === 'home' ? s.landscape : s.portrait}`}>
                                 {previewUrl && <video src={previewUrl} muted autoPlay loop style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }} />}
-                                {uploading && (
+                                {(uploading || processingStatus === 'processing') && processingStatus !== 'completed' && (
                                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}>
                                         <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', borderTop: '4px solid var(--accent-primary)', animation: 'spin 1s linear infinite' }} />
-                                        <div style={{ marginTop: '1rem', fontWeight: 900, fontSize: '1.25rem' }}>{progress}%</div>
+                                        <div style={{ marginTop: '1rem', fontWeight: 900, fontSize: '1.25rem' }}>
+                                            {processingStatus === 'uploading' ? `${progress}%` : 'Processing'}
+                                        </div>
+                                        {processingStatus === 'processing' && (
+                                            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', padding: '0 1rem' }}>
+                                                {currentStatusMessage}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {processingStatus === 'completed' && (
+                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)' }}>
+                                        <CheckCircle size={48} color="#4ade80" />
+                                        <div style={{ marginTop: '0.75rem', fontWeight: 800 }}>Done</div>
+                                    </div>
+                                )}
+                                {processingStatus === 'error' && (
+                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.65)', padding: '1rem', textAlign: 'center' }}>
+                                        <X size={40} color="#f87171" />
+                                        <div style={{ marginTop: '0.75rem', fontWeight: 700, color: '#f87171' }}>Failed</div>
+                                        <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                                            {currentStatusMessage || 'Something went wrong'}
+                                        </div>
                                     </div>
                                 )}
                             </div>
                             
                             <div className={s.statusList}>
                                 <div className={s.statusItem}>
-                                    <div className={`${s.statusDot} ${progress > 0 ? s.active : ''} ${progress === 100 ? s.completed : ''}`}>
-                                        {progress === 100 ? <CheckCircle size={14} /> : 1}
+                                    <div className={`${s.statusDot} ${progress > 0 || processingStatus === 'uploading' ? s.active : ''} ${progress === 100 || processingStatus === 'processing' || processingStatus === 'completed' ? s.completed : ''}`}>
+                                        {progress === 100 || processingStatus === 'processing' || processingStatus === 'completed' ? <CheckCircle size={14} /> : 1}
                                     </div>
                                     <div className={s.statusText}>
                                         <div className={s.statusTitle}>Upload to Cloud</div>
                                         {processingStatus === 'uploading' && <div className={s.statusSub}>{progress}% uploaded</div>}
+                                        {(processingStatus === 'processing' || processingStatus === 'completed') && <div className={s.statusSub}>Uploaded</div>}
                                     </div>
                                 </div>
 
                                 <div className={s.statusItem}>
-                                    <div className={`${s.statusDot} ${processingStatus === 'processing' ? s.active : ''} ${processingStatus === 'completed' ? s.completed : ''}`}>
-                                        {processingStatus === 'completed' ? <CheckCircle size={14} /> : 2}
+                                    <div className={`${s.statusDot} ${processingStatus === 'processing' ? s.active : ''} ${processingStatus === 'completed' ? s.completed : ''} ${processingStatus === 'error' ? s.active : ''}`}>
+                                        {processingStatus === 'completed' ? <CheckCircle size={14} /> : processingStatus === 'processing' ? <Loader2 className={s.spin} size={14} /> : 2}
                                     </div>
                                     <div className={s.statusText}>
                                         <div className={s.statusTitle}>Edge Transcoding</div>
-                                        {processingStatus === 'processing' && <div className={s.statusSub}>{currentStatusMessage} ({processingProgress}%)</div>}
+                                        {processingStatus === 'processing' && <div className={s.statusSub}>{currentStatusMessage}</div>}
+                                        {processingStatus === 'error' && <div className={s.statusSub}>{currentStatusMessage || 'Failed'}</div>}
                                     </div>
                                 </div>
 
@@ -729,6 +806,7 @@ const Upload = () => {
                                     </div>
                                     <div className={s.statusText}>
                                         <div className={s.statusTitle}>Global Distribution</div>
+                                        {processingStatus === 'completed' && <div className={s.statusSub}>Live</div>}
                                     </div>
                                 </div>
                             </div>

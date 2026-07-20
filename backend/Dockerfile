@@ -28,5 +28,5 @@ RUN chmod +x start.sh
 # Hugging Face Spaces requires port 7860
 EXPOSE 7860
 
-# Start Celery worker in background, then launch uvicorn on port 7860
+# Celery (background) + gunicorn with 2–4 uvicorn workers (see start.sh)
 CMD ["./start.sh"]

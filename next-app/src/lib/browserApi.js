@@ -255,6 +255,13 @@ export const uploadVideo = async (token, videoData) => {
     });
 };
 
+/** Poll async upload/transcode job: { status, video_id?, error_message? } */
+export const getUploadJob = async (jobId, token) => {
+    return apiFetch(`${API_BASE_URL}/videos/upload/jobs/${jobId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+};
+
 export const getPosts = async (token = null, skip = 0, limit = 20) => {
     const headers = {};
     if (token) {

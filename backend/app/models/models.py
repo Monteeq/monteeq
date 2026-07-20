@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Text, DateTime, func, Numeric, Index
 import uuid
 
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, backref
 from app.db.base import Base
 import enum
@@ -18,6 +19,13 @@ class ApprovalStatus(str, enum.Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    FAILED = "failed"
+
+class UploadJobStatus(str, enum.Enum):
+    UPLOADING = "uploading"
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
     FAILED = "failed"
 
 from app.models.library import WatchHistory, LibraryWatchLater, LikedVideo
@@ -176,6 +184,7 @@ class Video(Base):
     comments = relationship("Comment", back_populates="video", cascade="all, delete-orphan")
     likes = relationship("Like", back_populates="video", cascade="all, delete-orphan")
     challenge_entries = relationship("ChallengeEntry", back_populates="video", cascade="all, delete-orphan")
+    upload_jobs = relationship("UploadJob", back_populates="video")
 
     @property
     def owner_username(self):
@@ -215,6 +224,38 @@ class Video(Base):
     @property
     def dynamic_url_1080p(self):
         return self._resolve_url(self.url_1080p)
+
+
+class UploadJob(Base):
+    """Tracks async upload/transcode lifecycle so HTTP handlers can return early."""
+
+    __tablename__ = "upload_jobs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(
+        String,
+        nullable=False,
+        default=UploadJobStatus.UPLOADING,
+        index=True,
+    )
+    video_id = Column(Integer, ForeignKey("videos.id", ondelete="SET NULL"), nullable=True, index=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    user = relationship("User", backref=backref("upload_jobs", cascade="all, delete-orphan"))
+    video = relationship("Video", back_populates="upload_jobs")
+
+    __table_args__ = (
+        Index("ix_upload_jobs_user_status", "user_id", "status"),
+    )
+
 
 class View(Base):
     __tablename__ = "views"

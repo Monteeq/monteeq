@@ -2,6 +2,7 @@ from typing import List, Optional
 import os
 import shutil
 import tempfile
+import uuid
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks, Request
 from fastapi.responses import StreamingResponse
@@ -19,7 +20,9 @@ from app.core import config
 from app.utils.push import notify_user_push
 from app.core.storage import storage
 from app.core.config import FLASH_QUOTA_LIMIT, HOME_QUOTA_LIMIT
-from app.models.models import Video, User, View, WatchLater, Repost, VideoInteraction
+from app.models.models import (
+    Video, User, View, WatchLater, Repost, VideoInteraction, UploadJob, UploadJobStatus,
+)
 from app.models.library import WatchHistory, LibraryWatchLater, LikedVideo
 from app.services.email_service import send_challenge_exit_email
 from app.core.redis import redis_client
@@ -679,6 +682,7 @@ async def finalize_upload(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """Merge chunks → S3 (threadpool) → queue Celery → return job id immediately."""
     logger.info(f"Finalizing chunked upload {upload_id} with {total_chunks} chunks")
     
     backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../"))
@@ -700,25 +704,29 @@ async def finalize_upload(
             detail=f"Missing chunks: {missing_chunks}. Please upload them first."
         )
         
-    # Merge chunks
+    # Merge chunks (CPU/IO — keep off the event loop)
     merged_path = os.path.join(temp_dir, filename)
-    try:
+
+    def _merge_chunks():
         with open(merged_path, "wb") as outfile:
             for i in range(total_chunks):
                 chunk_file = os.path.join(temp_dir, f"chunk_{i}")
                 with open(chunk_file, "rb") as infile:
                     shutil.copyfileobj(infile, outfile)
+
+    try:
+        import asyncio
+        await asyncio.to_thread(_merge_chunks)
     except Exception as e:
         logger.error(f"Failed to merge chunks for upload {upload_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to merge chunks on server")
         
-    # Upload to storage
+    # Upload to storage (sync boto3 via threadpool)
     source_key = f"uploads/{upload_id}/{filename}"
     logger.info(f"Uploading merged video to storage: {source_key}")
     
     try:
-        with open(merged_path, "rb") as f:
-            storage.upload_file_obj(f, source_key)
+        await storage.async_upload_file(merged_path, source_key)
     except Exception as e:
         logger.error(f"Failed to upload merged video to storage: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to upload video to storage")
@@ -733,11 +741,22 @@ async def finalize_upload(
     video = db.query(Video).filter(Video.processing_key == upload_id).first()
     if not video:
         raise HTTPException(status_code=404, detail="Video record not found")
+    if video.owner_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
         
     video.status = "pending"
+
+    job = UploadJob(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        status=UploadJobStatus.QUEUED,
+        video_id=None,
+    )
+    db.add(job)
     db.commit()
+    db.refresh(job)
     
-    # Trigger Celery transcoding task
+    # Trigger Celery — do not wait for Rust/transcode
     try:
         from app.tasks.video_tasks import process_video_task
         process_video_task.delay(
@@ -746,20 +765,65 @@ async def finalize_upload(
             video.title,
             video.id,
             video.thumbnail_url != "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=60",
-            video.processing_key
+            video.processing_key,
+            str(job.id),
         )
-        logger.info(f"Transcoding celery task enqueued for video_id={video.id}")
+        logger.info(f"Transcoding celery task enqueued for video_id={video.id} job_id={job.id}")
     except Exception as e:
         logger.error(f"Failed to enqueue Celery transcoding task: {str(e)}")
         video.status = "failed"
+        job.status = UploadJobStatus.FAILED
+        job.error_message = str(e)
         db.commit()
+        raise HTTPException(status_code=500, detail="Failed to enqueue transcoding job")
         
-    return {"status": "success", "video_id": video.public_id}
+    return {
+        "job_id": str(job.id),
+        "status": UploadJobStatus.QUEUED.value,
+        "video_id": video.public_id,
+    }
 
 
-@router.post("/upload", response_model=schemas.Video)
+@router.get("/upload/jobs/{job_id}")
+async def get_upload_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Poll async upload/transcode job status.
+    Returns status, video_id (when completed), and error_message (when failed).
+    """
+    try:
+        job_uuid = uuid.UUID(job_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job id")
+
+    job = db.query(UploadJob).filter(UploadJob.id == job_uuid).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Upload job not found")
+    if job.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    status = job.status.value if hasattr(job.status, "value") else job.status
+
+    video_public_id = None
+    if job.video_id:
+        video = db.query(Video).filter(Video.id == job.video_id).first()
+        video_public_id = video.public_id if video else None
+
+    return {
+        "job_id": str(job.id),
+        "status": status,
+        "video_id": video_public_id,
+        "error_message": job.error_message,
+        "created_at": job.created_at,
+        "updated_at": job.updated_at,
+    }
+
+
+@router.post("/upload")
 async def upload_video(
-    background_tasks: BackgroundTasks,
     title: str = Form(...),
     description: Optional[str] = Form(None),
     tags: Optional[str] = Form(None),
@@ -767,18 +831,20 @@ async def upload_video(
     file: UploadFile = File(...),
     thumbnail: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Save file to storage, create an upload_jobs row, enqueue Celery, return immediately.
+    Transcoding happens in the worker — this handler never waits on Rust.
+    """
     logger.info(f"Upload initiated: title='{title}', type='{video_type}', user_id={current_user.id}")
     
-    # current_user is now a User model instance, not dict
     if not current_user.is_premium:
         if video_type == "flash" and current_user.flash_uploads >= FLASH_QUOTA_LIMIT:
             raise HTTPException(status_code=403, detail=f"Flash quota exceeded ({FLASH_QUOTA_LIMIT} max)")
         if video_type == "home" and current_user.home_uploads >= HOME_QUOTA_LIMIT:
             raise HTTPException(status_code=403, detail=f"Home quota exceeded ({HOME_QUOTA_LIMIT} max)")
 
-    import uuid
     import time
     import re
     import unicodedata
@@ -793,16 +859,16 @@ async def upload_video(
     
     source_key = f"uploads/{task_id}/{safe_filename}"
     
-    logger.info(f"Streaming uploaded file directly to storage: {source_key}")
+    logger.info(f"Streaming uploaded file to storage (threadpool): {source_key}")
     try:
-        storage.upload_file_obj(file.file, source_key)
+        await storage.async_upload_file_obj(file.file, source_key)
     except Exception as e:
         import traceback
         error_detail = f"Storage upload failed: {str(e)}"
         logger.error(f"{error_detail}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=error_detail)
 
-    # Initial DB record
+    # Initial DB record (placeholder until transcode completes)
     video_create_data = schemas.VideoCreate(
         title=title,
         description=description,
@@ -819,7 +885,9 @@ async def upload_video(
         thumb_key = f"thumbs/custom_{timestamp}_{safe_thumb_name}"
         
         try:
-            video_create_data.thumbnail_url = storage.upload_file_obj(thumbnail.file, thumb_key)
+            video_create_data.thumbnail_url = await storage.async_upload_file_obj(
+                thumbnail.file, thumb_key
+            )
         except Exception as e:
             logger.error(f"Failed to upload thumbnail to storage: {str(e)}")
 
@@ -829,10 +897,21 @@ async def upload_video(
     else:
         current_user.home_uploads = (current_user.home_uploads or 0) + 1
     
-    db.commit() # Save user updates
+    db.commit()
     
     db_video = crud_video.create_video(db, video_create_data, user_id=current_user.id)
+    db_video.status = "pending"
     logger.info(f"Video record created in DB: id={db_video.id}")
+
+    job = UploadJob(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        status=UploadJobStatus.QUEUED,
+        video_id=None,  # filled when transcode completes
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
 
     try:
         from app.tasks.video_tasks import process_video_task
@@ -842,23 +921,28 @@ async def upload_video(
             title,
             db_video.id,
             thumbnail is not None,
-            db_video.processing_key
+            db_video.processing_key,
+            str(job.id),
         )
-        logger.info(f"Celery task enqueued for video_id={db_video.id}")
+        logger.info(f"Celery task enqueued for video_id={db_video.id} job_id={job.id}")
     except Exception as e:
         logger.error(f"Failed to enqueue Celery task: {str(e)}")
-        # We still return the video, but flag it as failed immediately or show a specific message
         db_video.status = "failed"
+        job.status = UploadJobStatus.FAILED
+        job.error_message = str(e)
         db.commit()
-        raise HTTPException(status_code=500, detail="Video enqueued for processing but local queue is unreachable.")
+        raise HTTPException(status_code=500, detail="Failed to enqueue transcoding job")
 
-    return db_video
+    return {
+        "job_id": str(job.id),
+        "status": UploadJobStatus.QUEUED.value,
+        "video_id": db_video.public_id,
+    }
 
 
-@router.post("/{video_id}/reupload", response_model=schemas.Video)
+@router.post("/{video_id}/reupload")
 async def reupload_video(
     video_id: str,
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -874,20 +958,26 @@ async def reupload_video(
         raise HTTPException(status_code=400, detail="Only failed videos can be reuploaded")
 
 
-    import uuid
     task_id = str(uuid.uuid4())
     safe_filename = file.filename.replace(" ", "_")
     source_key = f"uploads/{task_id}/{safe_filename}"
     
     try:
-        storage.upload_file_obj(file.file, source_key)
+        await storage.async_upload_file_obj(file.file, source_key)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to reupload video file to storage")
-        
 
     video.processing_key = task_id
     video.status = "pending"
     video.failed_at = None
+
+    job = UploadJob(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        status=UploadJobStatus.QUEUED,
+        video_id=None,
+    )
+    db.add(job)
     db.commit()
     
     from app.tasks.video_tasks import process_video_task
@@ -897,10 +987,15 @@ async def reupload_video(
         video.title,
         video.id,
         False, # thumbnail_provided = False
-        video.processing_key
+        video.processing_key,
+        str(job.id),
     )
     
-    return video
+    return {
+        "job_id": str(job.id),
+        "status": UploadJobStatus.QUEUED.value,
+        "video_id": video.public_id,
+    }
 
 @router.get("/status/{key}")
 async def get_processing_status(key: str, db: Session = Depends(get_db)):
