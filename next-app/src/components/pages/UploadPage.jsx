@@ -29,6 +29,13 @@ import { API_BASE_URL } from '@/lib/browserApi';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { useUploadStore } from '@/stores/useUploadStore';
+import {
+    buildVideoSelectionItem,
+    formatDuration,
+    MAX_VIDEO_BYTES,
+} from '@/utils/videoSelect';
+import { dataUrlToBlob } from '@/utils/coverFrame';
+import VideoBatchDetails from '@/components/upload/VideoBatchDetails';
 import s from '@/styles/pages/UploadV2.module.css';
 
 const Upload = () => {
@@ -46,10 +53,11 @@ const Upload = () => {
         fetch(`${rustOrigin}/health`, { mode: 'no-cors' }).catch(() => {});
     }, []);
 
-    // Workflow State: 'select' | 'details'
+    // Workflow State: 'select' | 'batch-details' | 'details'
     const [step, setStep] = useState('select');
     /** Local only for in-flight chunk loop / post publish — progress & job status live in the store. */
     const [uploading, setUploading] = useState(false);
+    const [postingBatch, setPostingBatch] = useState(false);
 
     // Form Data
     const [title, setTitle] = useState('');
@@ -57,6 +65,13 @@ const Upload = () => {
     const [tags, setTags] = useState('');
     const [videoType, setVideoType] = useState('home');
     const [file, setFile] = useState(null);
+    const [selectedVideos, setSelectedVideos] = useState([]);
+    const [isPickingFiles, setIsPickingFiles] = useState(false);
+    /** Valid videos carried into the per-item details step */
+    const [batchVideos, setBatchVideos] = useState([]);
+    /** @type {[Record<string, { caption: string, tags: string, coverTime: number, coverUrl: string|null, coverBlob: Blob|null }>, Function]} */
+    const [videoDrafts, setVideoDrafts] = useState({});
+    const [activeVideoId, setActiveVideoId] = useState(null);
     const [thumbnailFile, setThumbnailFile] = useState(null);
     const [thumbnailPreview, setThumbnailPreview] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -156,7 +171,9 @@ const Upload = () => {
             const stillUsed = useUploadStore
                 .getState()
                 .activeUploads.some((u) => u.thumbnailUrl === previewUrl);
-            if (!stillUsed) URL.revokeObjectURL(previewUrl);
+            if (!stillUsed && !String(previewUrl).startsWith('data:')) {
+                URL.revokeObjectURL(previewUrl);
+            }
         };
     }, [previewUrl]);
 
@@ -176,17 +193,220 @@ const Upload = () => {
         };
     }, [postPreview]);
 
-    const handleFileSelect = (selectedFile) => {
-        if (!selectedFile) return;
-        if (!selectedFile.type.startsWith('video/')) {
-            showNotification('error', "Only video files are supported.");
-            return;
+    const validSelectedCount = selectedVideos.filter((v) => v.isValid).length;
+
+    const addFilesToSelection = async (fileList) => {
+        const incoming = Array.from(fileList || []).filter(Boolean);
+        if (!incoming.length) return;
+
+        setIsPickingFiles(true);
+        try {
+            const built = await Promise.all(incoming.map((f) => buildVideoSelectionItem(f)));
+            setSelectedVideos((prev) => {
+                const existingKeys = new Set(
+                    prev.map((v) => `${v.name}:${v.size}`)
+                );
+                const next = [...prev];
+                for (const item of built) {
+                    const key = `${item.name}:${item.size}`;
+                    if (existingKeys.has(key)) continue;
+                    existingKeys.add(key);
+                    next.push(item);
+                }
+                return next;
+            });
+        } finally {
+            setIsPickingFiles(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
-        setFile(selectedFile);
-        const baseName = selectedFile.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, ' ');
-        setTitle(baseName.charAt(0).toUpperCase() + baseName.slice(1));
-        setPreviewUrl(URL.createObjectURL(selectedFile));
-        setStep('details');
+    };
+
+    const removeSelectedVideo = (id) => {
+        setSelectedVideos((prev) => prev.filter((v) => v.id !== id));
+    };
+
+    const handleNextFromSelection = () => {
+        const valid = selectedVideos.filter((v) => v.isValid);
+        if (!valid.length) return;
+
+        const drafts = {};
+        for (const v of valid) {
+            const coverTime = v.duration && v.duration > 2 ? 1 : 0;
+            drafts[v.id] = {
+                caption: '',
+                tags: '',
+                coverTime,
+                coverUrl: v.thumbnailUrl,
+                coverBlob: null,
+            };
+        }
+        setBatchVideos(valid);
+        setVideoDrafts(drafts);
+        setActiveVideoId(valid[0].id);
+        setStep('batch-details');
+    };
+
+    const updateVideoDraft = (id, patch) => {
+        setVideoDrafts((prev) => ({
+            ...prev,
+            [id]: { ...prev[id], ...patch },
+        }));
+    };
+
+    const CHUNK_SIZE_BATCH = 5 * 1024 * 1024;
+
+    /** Upload one prepared video; progress tracked in the global toast store. */
+    const uploadVideoItem = async ({ file: videoFile, caption, tags: itemTags, coverBlob, coverUrl }) => {
+        const toastId = `local-${crypto.randomUUID()}`;
+        addUpload({
+            jobId: toastId,
+            fileName: videoFile.name || caption || 'Video',
+            thumbnailUrl: coverUrl || null,
+            progress: 0,
+            status: 'uploading',
+            error: null,
+        });
+
+        const initFormData = new FormData();
+        initFormData.append('title', caption);
+        initFormData.append('description', caption);
+        initFormData.append('tags', itemTags || '');
+        initFormData.append('video_type', videoType);
+        initFormData.append('filename', videoFile.name);
+        if (coverBlob) {
+            initFormData.append('thumbnail', coverBlob, 'cover.jpg');
+        }
+
+        const initRes = await fetch(`${API_BASE_URL}/videos/upload/initiate`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: initFormData,
+        });
+        if (!initRes.ok) {
+            const errData = await initRes.json().catch(() => ({}));
+            const msg = errData.detail || 'Failed to initiate upload';
+            updateUpload(toastId, { status: 'failed', error: msg });
+            throw new Error(msg);
+        }
+
+        const { upload_id: currentUploadId } = await initRes.json();
+        const totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE_BATCH);
+        const completedSet = new Set();
+
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE_BATCH;
+            const end = Math.min(videoFile.size, start + CHUNK_SIZE_BATCH);
+            const chunkBlob = videoFile.slice(start, end);
+            const formData = new FormData();
+            formData.append('upload_id', currentUploadId);
+            formData.append('chunk_index', i);
+            formData.append('file', chunkBlob, videoFile.name);
+
+            let retries = 3;
+            let ok = false;
+            while (!ok && retries > 0) {
+                try {
+                    const res = await fetch(`${API_BASE_URL}/videos/upload/chunk`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: formData,
+                    });
+                    if (!res.ok) throw new Error(`Chunk ${i} failed`);
+                    completedSet.add(i);
+                    updateUpload(toastId, {
+                        progress: Math.round((completedSet.size / totalChunks) * 100),
+                        status: 'uploading',
+                    });
+                    ok = true;
+                } catch (err) {
+                    retries -= 1;
+                    if (retries === 0) {
+                        updateUpload(toastId, {
+                            status: 'failed',
+                            error: err.message || 'Upload failed',
+                        });
+                        throw err;
+                    }
+                    await new Promise((r) => setTimeout(r, (3 - retries) * 2000));
+                }
+            }
+        }
+
+        updateUpload(toastId, { progress: 100, status: 'queued' });
+
+        const finalizeFormData = new FormData();
+        finalizeFormData.append('upload_id', currentUploadId);
+        finalizeFormData.append('total_chunks', totalChunks);
+        finalizeFormData.append('filename', videoFile.name);
+
+        const finalizeRes = await fetch(`${API_BASE_URL}/videos/upload/finalize`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: finalizeFormData,
+        });
+        if (!finalizeRes.ok) {
+            const errorData = await finalizeRes.json().catch(() => ({}));
+            const msg = errorData.detail || 'Finalization failed';
+            updateUpload(toastId, { status: 'failed', error: msg });
+            throw new Error(msg);
+        }
+
+        const data = await finalizeRes.json();
+        if (!data.job_id) {
+            updateUpload(toastId, { status: 'failed', error: 'No job id returned' });
+            throw new Error('Server did not return a job id');
+        }
+
+        updateUpload(toastId, {
+            jobId: data.job_id,
+            status: 'queued',
+            progress: 100,
+            processingKey: currentUploadId,
+            videoId: null,
+            error: null,
+        });
+    };
+
+    const handlePostAll = async () => {
+        if (postingBatch) return;
+        const ready = batchVideos.every((v) => (videoDrafts[v.id]?.caption || '').trim().length > 0);
+        if (!ready) return;
+
+        setPostingBatch(true);
+        try {
+            for (const v of batchVideos) {
+                const d = videoDrafts[v.id];
+                const caption = d.caption.trim();
+                let coverBlob = d.coverBlob;
+                if (!coverBlob && d.coverUrl) {
+                    coverBlob = dataUrlToBlob(d.coverUrl);
+                }
+                await uploadVideoItem({
+                    file: v.file,
+                    caption,
+                    tags: d.tags || '',
+                    coverBlob,
+                    coverUrl: d.coverUrl || v.thumbnailUrl,
+                });
+            }
+            showNotification('success', `${batchVideos.length} upload${batchVideos.length > 1 ? 's' : ''} started`);
+            // Revoke blob covers we created
+            Object.values(videoDrafts).forEach((d) => {
+                if (d.coverUrl && d.coverUrl.startsWith('blob:')) {
+                    URL.revokeObjectURL(d.coverUrl);
+                }
+            });
+            setSelectedVideos([]);
+            setBatchVideos([]);
+            setVideoDrafts({});
+            setActiveVideoId(null);
+            setStep('select');
+            refreshUser();
+        } catch (err) {
+            showNotification('error', err.message || 'Batch upload failed');
+        } finally {
+            setPostingBatch(false);
+        }
     };
 
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
@@ -621,32 +841,166 @@ const Upload = () => {
 
 
             {uploadType === 'video' && step === 'select' ? (
-                <div className={s.dropzoneContainer} style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
+                <div className={s.selectStage}>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        hidden
+                        multiple
+                        accept="video/*,.mp4,.webm,.mov,.mkv,.m4v"
+                        onChange={(e) => addFilesToSelection(e.target.files)}
+                    />
 
-                    <div 
-                        className={s.dropzone}
-                        onClick={() => fileInputRef.current.click()}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => { e.preventDefault(); handleFileSelect(e.dataTransfer.files[0]); }}
-                    >
-                        <input type="file" ref={fileInputRef} hidden accept="video/*" onChange={(e) => handleFileSelect(e.target.files[0])} />
-                        <div className={s.pulse} style={{ marginBottom: '2rem' }}>
-                            <UploadIcon size={64} color="var(--accent-primary)" />
-                        </div>
-                        <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Upload Video</h2>
-                        <p style={{ color: 'var(--text-muted)' }}>Drag and drop or click to select a file</p>
-                        <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem', justifyContent: 'center' }}>
-                            <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent-primary)' }}>{user?.home_quota_limit - user?.home_uploads}</div>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>HOME CREDITS</div>
+                    {selectedVideos.length === 0 ? (
+                        <div
+                            className={s.dropzone}
+                            onClick={() => !isPickingFiles && fileInputRef.current?.click()}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                addFilesToSelection(e.dataTransfer.files);
+                            }}
+                        >
+                            <div className={s.pulse} style={{ marginBottom: '2rem' }}>
+                                <UploadIcon size={64} color="var(--accent-primary)" />
                             </div>
-                            <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#f59e0b' }}>{user?.flash_quota_limit - user?.flash_uploads}</div>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>FLASH CREDITS</div>
+                            <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Upload Videos</h2>
+                            <p style={{ color: 'var(--text-muted)' }}>
+                                Drag and drop or click to select one or more files
+                            </p>
+                            <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: '0.75rem' }}>
+                                MP4, WebM, MOV up to {Math.round(MAX_VIDEO_BYTES / (1024 * 1024 * 1024))} GB each
+                            </p>
+                            <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem', justifyContent: 'center' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent-primary)' }}>
+                                        {(user?.home_quota_limit ?? 0) - (user?.home_uploads ?? 0)}
+                                    </div>
+                                    <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>HOME CREDITS</div>
+                                </div>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#f59e0b' }}>
+                                        {(user?.flash_quota_limit ?? 0) - (user?.flash_uploads ?? 0)}
+                                    </div>
+                                    <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>FLASH CREDITS</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className={s.selectPanel}>
+                            <div className={s.selectHeader}>
+                                <div>
+                                    <h2 className={s.selectTitle}>Selected videos</h2>
+                                    <p className={s.selectSub}>
+                                        {validSelectedCount} ready
+                                        {selectedVideos.length - validSelectedCount > 0
+                                            ? ` · ${selectedVideos.length - validSelectedCount} with errors`
+                                            : ''}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    className={`btn-primary ${s.selectHeaderNext}`}
+                                    disabled={validSelectedCount < 1 || isPickingFiles}
+                                    onClick={handleNextFromSelection}
+                                >
+                                    Next <ArrowRight size={18} style={{ marginLeft: 6 }} />
+                                </button>
+                            </div>
+
+                            <div className={s.videoPickGrid}>
+                                {selectedVideos.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        className={`${s.videoPickCard} ${item.error ? s.videoPickCardError : ''}`}
+                                    >
+                                        <div className={s.videoPickThumb}>
+                                            {item.thumbnailUrl ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={item.thumbnailUrl} alt="" />
+                                            ) : (
+                                                <div className={s.videoPickFallback}>
+                                                    <FileVideo size={28} />
+                                                </div>
+                                            )}
+                                            {item.isValid && item.duration != null && (
+                                                <span className={s.videoPickDuration}>
+                                                    {formatDuration(item.duration)}
+                                                </span>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className={s.videoPickRemove}
+                                                aria-label={`Remove ${item.name}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeSelectedVideo(item.id);
+                                                }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                        <div className={s.videoPickMeta}>
+                                            <span className={s.videoPickName} title={item.name}>
+                                                {item.name}
+                                            </span>
+                                            {item.error ? (
+                                                <span className={s.videoPickError}>{item.error}</span>
+                                            ) : (
+                                                <span className={s.videoPickOk}>Ready</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <button
+                                    type="button"
+                                    className={s.videoPickAdd}
+                                    disabled={isPickingFiles}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    {isPickingFiles ? (
+                                        <Loader2 className={s.spin} size={28} />
+                                    ) : (
+                                        <Plus size={28} />
+                                    )}
+                                    <span>{isPickingFiles ? 'Adding…' : 'Add more'}</span>
+                                </button>
+                            </div>
+
+                            <div className={s.selectFooter}>
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={() => setSelectedVideos([])}
+                                >
+                                    Clear all
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn-primary ${s.selectFooterNext}`}
+                                    disabled={validSelectedCount < 1 || isPickingFiles}
+                                    onClick={handleNextFromSelection}
+                                >
+                                    Next <ArrowRight size={18} style={{ marginLeft: 6 }} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
+            ) : uploadType === 'video' && step === 'batch-details' ? (
+                <VideoBatchDetails
+                    videos={batchVideos}
+                    drafts={videoDrafts}
+                    activeId={activeVideoId}
+                    onActiveChange={setActiveVideoId}
+                    onDraftChange={updateVideoDraft}
+                    onBack={() => setStep('select')}
+                    onPostAll={handlePostAll}
+                    posting={postingBatch}
+                    videoType={videoType}
+                    onVideoTypeChange={setVideoType}
+                />
             ) : (
                 <div className={s.stepperContainer}>
 
