@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   AlignLeft,
+  AlertCircle,
   ChevronLeft,
   Image as ImageIcon,
   Loader2,
@@ -69,6 +70,18 @@ export default function VideoBatchDetails({
 
   const allHaveCaption = videos.every((v) => (drafts[v.id]?.caption || '').trim().length > 0);
   const captionReadyCount = videos.filter((v) => (drafts[v.id]?.caption || '').trim().length > 0).length;
+
+  const mismatchIds = new Set(
+    videos.filter((v) => {
+      const d = drafts[v.id];
+      if (!d) return false;
+      const o = d.orientation;
+      const t = d.videoType;
+      if (o === 'landscape' && t !== 'home') return true;
+      if (o === 'portrait' && t !== 'flash') return true;
+      return false;
+    }).map((v) => v.id)
+  );
 
   // Probe aspect via hidden <video> if not already known for this draft
   useEffect(() => {
@@ -188,6 +201,7 @@ export default function VideoBatchDetails({
             const hasCaption = (d?.caption || '').trim().length > 0;
             const isActive = v.id === active.id;
             const thumb = stripThumbFor(v);
+            const hasMismatch = mismatchIds.has(v.id);
             return (
               <button
                 key={v.id}
@@ -198,17 +212,22 @@ export default function VideoBatchDetails({
                 onClick={() => onActiveChange(v.id)}
                 disabled={posting}
               >
-                <div className={s.batchStripThumb}>
+                <div className={`${s.batchStripThumb} ${hasMismatch ? s.batchStripThumbError : ''}`}>
                   {thumb ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={thumb} alt="" />
                   ) : (
                     <div className={s.batchStripFallback}>{index + 1}</div>
                   )}
+                  {hasMismatch && (
+                    <span className={s.batchStripErrorBadge} title="Format does not match orientation">
+                      <AlertCircle size={16} />
+                    </span>
+                  )}
                 </div>
                 <span
-                  className={`${s.batchStripDot} ${hasCaption ? s.batchStripDotFilled : ''}`}
-                  title={hasCaption ? 'Caption set' : 'Needs caption'}
+                  className={`${s.batchStripDot} ${hasCaption ? s.batchStripDotFilled : ''} ${hasMismatch ? s.batchStripDotError : ''}`}
+                  title={hasMismatch ? 'Format mismatch' : hasCaption ? 'Caption set' : 'Needs caption'}
                   aria-hidden
                 />
                 <span className={s.batchStripLabel}>
@@ -384,11 +403,16 @@ export default function VideoBatchDetails({
               Add a caption to every video to enable Post all
             </p>
           )}
+          {mismatchIds.size > 0 && (
+            <p className={s.batchFooterHint} style={{ color: '#f87171' }}>
+              {mismatchIds.size} video{mismatchIds.size > 1 ? 's have' : ' has'} a format mismatch — fix the highlighted {mismatchIds.size > 1 ? 'items' : 'item'} in the strip
+            </p>
+          )}
           <button
             type="button"
             className="btn-primary"
             style={{ width: '100%' }}
-            disabled={!allHaveCaption || posting}
+            disabled={!allHaveCaption || mismatchIds.size > 0 || posting}
             onClick={onPostAll}
           >
             {posting ? (
