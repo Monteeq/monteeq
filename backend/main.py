@@ -160,15 +160,25 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
 # ── Initialization ────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
-    # Auto-run pending Alembic migrations so missing columns never crash the app.
+    # Guarantee critical columns exist before any ORM query runs.
+    # ADD COLUMN IF NOT EXISTS is idempotent and safe to re-run.
     try:
-        from alembic.config import Config
-        from alembic import command
-        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Alembic migrations applied successfully")
+        from app.db.session import SessionLocal
+        from sqlalchemy import text
+        db = SessionLocal()
+        try:
+            db.execute(text("ALTER TABLE videos ADD COLUMN IF NOT EXISTS cover_url VARCHAR"))
+            db.execute(text("ALTER TABLE videos ADD COLUMN IF NOT EXISTS cover_source VARCHAR"))
+            db.execute(text("ALTER TABLE upload_jobs ADD COLUMN IF NOT EXISTS video_type VARCHAR"))
+            db.commit()
+            logger.info("Critical columns verified in DB")
+        except Exception as e:
+            db.rollback()
+            logger.warning(f"Column guard failed: {e}")
+        finally:
+            db.close()
     except Exception as e:
-        logger.warning(f"Alembic auto-migration skipped/failed: {e}")
+        logger.warning(f"DB column guard skipped: {e}")
 
     from app.core.config import REDIS_URL
     redis = aioredis.from_url(
