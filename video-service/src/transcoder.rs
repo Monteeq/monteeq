@@ -124,6 +124,38 @@ pub async fn process(
         width, height, has_audio, duration_secs, aspect_ratio
     );
 
+    // ── Orientation validation ────────────────────────────────────────────────
+    // Reject jobs whose declared format (home/flash) does not match actual pixel
+    // dimensions.  Square-ish videos (aspect 0.9–1.1) always pass regardless of
+    // declared type.  This catches client-side bypasses (devtools, direct API).
+    {
+        let ratio = width as f64 / height as f64;
+        let is_squareish = ratio >= 0.9 && ratio <= 1.1;
+        if !is_squareish {
+            let mismatch = match format {
+                "flash" => ratio > 1.1,  // declared flash but video is landscape
+                "home" => ratio < 0.9,   // declared home but video is portrait
+                _ => false,
+            };
+            if mismatch {
+                let msg = format!(
+                    "Video orientation doesn't match the selected format: \
+                     video is {}x{} ({} {}) but format is \"{}\"",
+                    width,
+                    height,
+                    if ratio > 1.1 { "landscape" } else { "portrait" },
+                    ratio,
+                    format,
+                );
+                eprintln!("{}", msg);
+                if let Some(ref sched) = scheduler {
+                    clear_job_progress(sched, &task_id).await;
+                }
+                return Err(anyhow!("{}", msg));
+            }
+        }
+    }
+
     // 2. Prep Output
     let output_dir = format!("{}_hls", video_path);
     if !Path::new(&output_dir).exists() {

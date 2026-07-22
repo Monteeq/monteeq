@@ -35,11 +35,8 @@ import {
     formatDuration,
     MAX_VIDEO_BYTES,
 } from '@/utils/videoSelect';
-import { asyncPool } from '@/utils/asyncPool';
 import VideoBatchDetails from '@/components/upload/VideoBatchDetails';
 import s from '@/styles/pages/UploadV2.module.css';
-
-const BATCH_UPLOAD_CONCURRENCY = 3;
 
 const Upload = () => {
     const { user, token, refreshUser } = useAuth();
@@ -428,23 +425,16 @@ const Upload = () => {
         const ready = batchVideos.every((v) => (videoDrafts[v.id]?.caption || '').trim().length > 0);
         if (!ready) return;
 
-        const payload = batchVideos.map((v) => {
+        const formData = new FormData();
+
+        for (const v of batchVideos) {
             const d = videoDrafts[v.id];
-            const coverSource = d.coverSource === 'custom' && d.coverFile ? 'custom' : 'auto';
-            return {
-                file: v.file,
-                caption: d.caption.trim(),
-                tags: d.tags || '',
-                coverSource,
-                coverFile: coverSource === 'custom' ? d.coverFile : null,
-                coverPreviewUrl: d.coverPreviewUrl || null,
-                fallbackThumbUrl: v.thumbnailUrl,
-                videoType: d.videoType === 'flash' ? 'flash' : 'home',
-            };
-        });
+            formData.append('files', v.file, v.file.name);
+            formData.append('titles', d.caption.trim());
+            formData.append('video_types', d.videoType === 'flash' ? 'flash' : 'home');
+        }
 
         // Clear the form immediately so toasts own progress while uploads run in parallel.
-        // Keep custom cover blob: URLs alive for toast thumbnails.
         setSelectedVideos([]);
         setBatchVideos([]);
         setVideoDrafts({});
@@ -453,14 +443,45 @@ const Upload = () => {
         setPostingBatch(true);
 
         try {
-            const results = await asyncPool(
-                payload,
-                BATCH_UPLOAD_CONCURRENCY,
-                (item) => uploadVideoItem(item)
-            );
+            const res = await fetch(`${API_BASE_URL}/videos/upload/batch`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
 
-            const succeeded = results.filter((r) => r?.ok).length;
-            const failed = results.length - succeeded;
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Batch upload failed');
+            }
+
+            const data = await res.json();
+
+            for (const item of data.results || []) {
+                if (item.status === 'failed') {
+                    addUpload({
+                        jobId: `local-${crypto.randomUUID()}`,
+                        fileName: item.filename || 'Video',
+                        thumbnailUrl: null,
+                        progress: 0,
+                        status: 'failed',
+                        error: item.error || 'Upload failed',
+                    });
+                } else if (item.job_id) {
+                    addUpload({
+                        jobId: item.job_id,
+                        fileName: item.filename || 'Video',
+                        thumbnailUrl: null,
+                        progress: 100,
+                        status: 'queued',
+                        processingKey: null,
+                        videoId: item.video_id || null,
+                        error: null,
+                    });
+                }
+            }
+
+            const succeeded = data.succeeded ?? 0;
+            const failed = data.failed ?? 0;
 
             if (succeeded > 0 && failed === 0) {
                 showNotification(
@@ -476,6 +497,8 @@ const Upload = () => {
                 showNotification('error', 'All uploads failed');
             }
             refreshUser();
+        } catch (err) {
+            showNotification('error', err.message || 'Batch upload failed');
         } finally {
             setPostingBatch(false);
         }

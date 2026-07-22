@@ -757,6 +757,7 @@ async def finalize_upload(
         user_id=current_user.id,
         status=UploadJobStatus.QUEUED,
         video_id=video.id,  # link immediately for progress lookups while processing
+        video_type=video.video_type,
         cover_source=source,
         cover_s3_key=None,
     )
@@ -987,6 +988,7 @@ async def _direct_upload_one(
         user_id=current_user.id,
         status=UploadJobStatus.QUEUED,
         video_id=db_video.id,
+        video_type=video_type,
         cover_source=source,
         cover_s3_key=None,
     )
@@ -1096,7 +1098,8 @@ async def upload_video(
 async def upload_videos_batch(
     files: List[UploadFile] = File(..., description="One or more video files"),
     titles: List[str] = Form(..., description="Caption/title per file (same order as files)"),
-    video_type: str = Form(...),
+    video_types: Optional[List[str]] = Form(None, description="Per-video 'home' or 'flash' (same order as files); falls back to video_type if omitted"),
+    video_type: str = Form("home", description="Fallback video type when video_types is omitted"),
     descriptions: Optional[List[str]] = Form(None),
     tags: Optional[List[str]] = Form(None),
     cover_sources: Optional[List[str]] = Form(None),
@@ -1106,6 +1109,9 @@ async def upload_videos_batch(
 ):
     """
     Multipart batch upload: each file gets its own S3 object, upload_jobs row, and Celery task.
+
+    ``video_types`` is a parallel list of ``"home"`` / ``"flash"`` values, one per file.
+    If omitted, every file uses the scalar ``video_type`` fallback (default ``"home"``).
 
     Returns HTTP 200 with a per-file results array. Individual storage/enqueue failures are
     reported in that array; remaining files are still processed.
@@ -1118,6 +1124,17 @@ async def upload_videos_batch(
             status_code=400,
             detail=f"titles count ({len(titles)}) must match files count ({len(files)})",
         )
+
+    vt_list = list(video_types or [])
+    if len(vt_list) > 0 and len(vt_list) != len(files):
+        raise HTTPException(
+            status_code=400,
+            detail=f"video_types count ({len(vt_list)}) must match files count ({len(files)})",
+        )
+    # Normalise + fallback: pad with scalar video_type for any missing entries
+    while len(vt_list) < len(files):
+        vt_list.append(video_type if video_type in ("home", "flash") else "home")
+    vt_list = [v if v in ("home", "flash") else "home" for v in vt_list]
 
     desc_list = list(descriptions or [])
     tags_list = list(tags or [])
@@ -1135,13 +1152,13 @@ async def upload_videos_batch(
         cover_list.append("auto")
 
     logger.info(
-        f"Batch upload initiated: count={len(files)}, type='{video_type}', "
+        f"Batch upload initiated: count={len(files)}, types={vt_list}, "
         f"user_id={current_user.id}"
     )
 
     results = []
-    for index, (file, title, description, file_tags, thumbnail, cov) in enumerate(
-        zip(files, titles, desc_list, tags_list, thumb_list, cover_list)
+    for index, (file, title, description, file_tags, thumbnail, cov, vt) in enumerate(
+        zip(files, titles, desc_list, tags_list, thumb_list, cover_list, vt_list)
     ):
         # Skip empty thumbnail slots (some clients send blank file parts)
         thumb = thumbnail
@@ -1156,7 +1173,7 @@ async def upload_videos_batch(
             title=caption,
             description=description,
             tags=file_tags,
-            video_type=video_type,
+            video_type=vt,
             thumbnail=thumb,
             cover_source=cov or "auto",
             raise_http=False,

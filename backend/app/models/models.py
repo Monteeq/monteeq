@@ -248,6 +248,8 @@ class UploadJob(Base):
     )
     video_id = Column(Integer, ForeignKey("videos.id", ondelete="SET NULL"), nullable=True, index=True)
     error_message = Column(Text, nullable=True)
+    # "home" or "flash" — mirrors video_type on the linked Video, used for quota refunds
+    video_type = Column(String, nullable=True)
     # "auto" = Rust generates thumbnail; "custom" = cover_s3_key was uploaded by client
     cover_source = Column(String, nullable=False, default="auto", server_default="auto")
     cover_s3_key = Column(String, nullable=True)
