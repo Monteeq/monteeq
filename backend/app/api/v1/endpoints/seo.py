@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.session import get_db
-from app.core import config, storage
+from app.core import config
+from app.core.storage import storage
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
