@@ -1,15 +1,17 @@
 from fastapi import APIRouter, Depends, Response
-from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.session import get_db
 from app.core import config
 from app.core.storage import storage
 import xml.etree.ElementTree as ET
-from datetime import datetime
 
 router = APIRouter()
 
 BASE_URL = config.FRONTEND_URL.rstrip('/')
+
+# Tell ElementTree to use the correct namespace prefixes
+ET.register_namespace('', 'http://www.sitemaps.org/schemas/sitemap/0.9')
+ET.register_namespace('video', 'http://www.google.com/schemas/sitemap-video/1.1')
 
 
 def _resolve_url(url):
@@ -32,12 +34,16 @@ _VIDEOS_SQL = text("""
 """)
 
 
+def _to_xml(root):
+    """Serialize an ElementTree root to bytes with XML declaration."""
+    return ET.tostring(root, encoding='unicode', xml_declaration=True).encode('utf-8')
+
+
 @router.get("/sitemap.xml")
 async def get_sitemap(db: Session = Depends(get_db)):
     """Generates a standard XML sitemap for general pages + video watch pages."""
-    urlset = ET.Element("urlset", xmlns="http://www.sitemaps.org/schemas/sitemap/0.9")
+    urlset = ET.Element("urlset")
 
-    # Static Public Pages
     pages = [
         {"path": "", "priority": "1.0"},
         {"path": "/home", "priority": "0.9"},
@@ -54,7 +60,6 @@ async def get_sitemap(db: Session = Depends(get_db)):
         ET.SubElement(url_el, "changefreq").text = "daily"
         ET.SubElement(url_el, "priority").text = page["priority"]
 
-    # Dynamic Video Pages — raw SQL to avoid ORM column-mismatch crashes
     rows = db.execute(_VIDEOS_SQL, {"status": "approved"}).fetchall()
     for row in rows:
         if not row.created_at:
@@ -65,18 +70,13 @@ async def get_sitemap(db: Session = Depends(get_db)):
         ET.SubElement(url_el, "changefreq").text = "weekly"
         ET.SubElement(url_el, "priority").text = "0.6"
 
-    xml_data = b'<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(urlset, encoding="utf-8", method="xml")
-    return Response(content=xml_data, media_type="application/xml")
+    return Response(content=_to_xml(urlset), media_type="application/xml")
 
 
 @router.get("/video-sitemap.xml")
 async def get_video_sitemap(db: Session = Depends(get_db)):
     """Generates a Google Video Sitemap for video indexing."""
-    urlset = ET.Element("urlset", {
-        "xmlns": "http://www.sitemaps.org/schemas/sitemap/0.9",
-        "xmlns:video": "http://www.google.com/schemas/sitemap-video/1.1",
-    })
-    video_ns = "{http://www.google.com/schemas/sitemap-video/1.1}"
+    urlset = ET.Element("urlset")
 
     rows = db.execute(_VIDEOS_SQL, {"status": "approved"}).fetchall()
 
@@ -91,28 +91,24 @@ async def get_video_sitemap(db: Session = Depends(get_db)):
         url_el = ET.SubElement(urlset, "url")
         ET.SubElement(url_el, "loc").text = f"{BASE_URL}/watch/{row.id}"
 
-        video_el = ET.SubElement(url_el, f"{video_ns}video")
-        ET.SubElement(video_el, f"{video_ns}thumbnail_loc").text = thumbnail
-        ET.SubElement(video_el, f"{video_ns}title").text = row.title or ""
-        ET.SubElement(video_el, f"{video_ns}description").text = (
+        video_el = ET.SubElement(url_el, "video:video")
+        ET.SubElement(video_el, "video:thumbnail_loc").text = thumbnail
+        ET.SubElement(video_el, "video:title").text = row.title or ""
+        ET.SubElement(video_el, "video:description").text = (
             row.description or f"Watch {row.title} on Monteeq."
         )
-        # player_loc: Google crawls this page which embeds the HLS player
-        ET.SubElement(video_el, f"{video_ns}player_loc").text = f"{BASE_URL}/watch/{row.id}"
+        ET.SubElement(video_el, "video:player_loc").text = f"{BASE_URL}/watch/{row.id}"
 
-        # Duration — Google requires HH:MM:SS
         dur = int(row.duration or 0)
         hours, remainder = divmod(dur, 3600)
         minutes, seconds = divmod(remainder, 60)
-        ET.SubElement(video_el, f"{video_ns}duration").text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        ET.SubElement(video_el, "video:duration").text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
         pub_date = row.created_at.strftime("%Y-%m-%d")
-        ET.SubElement(video_el, f"{video_ns}publication_date").text = pub_date
+        ET.SubElement(video_el, "video:publication_date").text = pub_date
 
-        # Tags (comma-separated in DB)
         if row.tags:
             for tag in [t.strip() for t in row.tags.split(",") if t.strip()][:32]:
-                ET.SubElement(video_el, f"{video_ns}tag").text = tag
+                ET.SubElement(video_el, "video:tag").text = tag
 
-    xml_data = b'<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(urlset, encoding="utf-8", method="xml")
-    return Response(content=xml_data, media_type="application/xml")
+    return Response(content=_to_xml(urlset), media_type="application/xml")
