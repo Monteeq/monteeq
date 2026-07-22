@@ -9,9 +9,18 @@ router = APIRouter()
 
 BASE_URL = config.FRONTEND_URL.rstrip('/')
 
-# Tell ElementTree to use the correct namespace prefixes
-ET.register_namespace('', 'http://www.sitemaps.org/schemas/sitemap/0.9')
-ET.register_namespace('video', 'http://www.google.com/schemas/sitemap-video/1.1')
+# Register namespace prefixes so ET serialises them correctly
+_NS_SITEMAP = 'http://www.sitemaps.org/schemas/sitemap/0.9'
+_NS_VIDEO = 'http://www.google.com/schemas/sitemap-video/1.1'
+ET.register_namespace('', _NS_SITEMAP)
+ET.register_namespace('video', _NS_VIDEO)
+
+_VIDEOS_SQL = text("""
+    SELECT id, title, description, video_url, thumbnail_url, tags,
+           duration, created_at, owner_id, status
+    FROM videos
+    WHERE status = :status
+""")
 
 
 def _resolve_url(url):
@@ -26,17 +35,14 @@ def _resolve_url(url):
     return url
 
 
-_VIDEOS_SQL = text("""
-    SELECT id, title, description, video_url, thumbnail_url, tags,
-           duration, created_at, owner_id, status
-    FROM videos
-    WHERE status = :status
-""")
-
-
 def _to_xml(root):
     """Serialize an ElementTree root to bytes with XML declaration."""
     return ET.tostring(root, encoding='unicode', xml_declaration=True).encode('utf-8')
+
+
+def _video_el(tag):
+    """Build a Clark-notation tag name in the video namespace."""
+    return f'{{{_NS_VIDEO}}}{tag}'
 
 
 @router.get("/sitemap.xml")
@@ -91,24 +97,24 @@ async def get_video_sitemap(db: Session = Depends(get_db)):
         url_el = ET.SubElement(urlset, "url")
         ET.SubElement(url_el, "loc").text = f"{BASE_URL}/watch/{row.id}"
 
-        video_el = ET.SubElement(url_el, "video:video")
-        ET.SubElement(video_el, "video:thumbnail_loc").text = thumbnail
-        ET.SubElement(video_el, "video:title").text = row.title or ""
-        ET.SubElement(video_el, "video:description").text = (
+        video_el = ET.SubElement(url_el, _video_el("video"))
+        ET.SubElement(video_el, _video_el("thumbnail_loc")).text = thumbnail
+        ET.SubElement(video_el, _video_el("title")).text = row.title or ""
+        ET.SubElement(video_el, _video_el("description")).text = (
             row.description or f"Watch {row.title} on Monteeq."
         )
-        ET.SubElement(video_el, "video:player_loc").text = f"{BASE_URL}/watch/{row.id}"
+        ET.SubElement(video_el, _video_el("player_loc")).text = f"{BASE_URL}/watch/{row.id}"
 
         dur = int(row.duration or 0)
         hours, remainder = divmod(dur, 3600)
         minutes, seconds = divmod(remainder, 60)
-        ET.SubElement(video_el, "video:duration").text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        ET.SubElement(video_el, _video_el("duration")).text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
         pub_date = row.created_at.strftime("%Y-%m-%d")
-        ET.SubElement(video_el, "video:publication_date").text = pub_date
+        ET.SubElement(video_el, _video_el("publication_date")).text = pub_date
 
         if row.tags:
             for tag in [t.strip() for t in row.tags.split(",") if t.strip()][:32]:
-                ET.SubElement(video_el, "video:tag").text = tag
+                ET.SubElement(video_el, _video_el("tag")).text = tag
 
     return Response(content=_to_xml(urlset), media_type="application/xml")
