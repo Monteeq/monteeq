@@ -29,6 +29,14 @@ struct ProcessRequest {
     tier: UserTier,
     #[serde(default)]
     skip_thumbnail: bool,
+    #[serde(default = "default_cover_source", alias = "coverSource")]
+    cover_source: String,
+    #[serde(default, alias = "coverS3Key")]
+    cover_s3_key: Option<String>,
+}
+
+fn default_cover_source() -> String {
+    "auto".to_string()
 }
 
 struct AppState {
@@ -94,18 +102,28 @@ async fn process_video(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ProcessRequest>
 ) -> Json<serde_json::Value> {
+    let cover_source = if payload.cover_source.trim().is_empty() {
+        if payload.skip_thumbnail { "custom".to_string() } else { "auto".to_string() }
+    } else {
+        payload.cover_source.clone()
+    };
+
     let task = VideoTask {
         video_id: payload.video_id,
         task_id: payload.task_id.clone(),
         target_format: payload.target_format,
         tier: payload.tier,
-        skip_thumbnail: payload.skip_thumbnail,
+        skip_thumbnail: payload.skip_thumbnail || cover_source == "custom",
+        cover_source: cover_source.clone(),
+        cover_s3_key: payload.cover_s3_key.clone(),
     };
 
     let status = TaskStatus {
         progress: 0,
         status: "queued".to_string(),
         message: "Task added to priority queue".to_string(),
+        cover_url: None,
+        cover_source: Some(cover_source),
     };
 
     // Save status to Redis with 24h TTL
@@ -145,6 +163,8 @@ async fn get_status(
                 progress: 0,
                 status: "error".to_string(),
                 message: "Failed to parse status".to_string(),
+                cover_url: None,
+                cover_source: None,
             });
             Json(Some(status))
         },

@@ -28,12 +28,23 @@ import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/browserApi';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
+import { useUploadStore } from '@/stores/useUploadStore';
+import {
+    buildVideoSelectionItem,
+    defaultVideoTypeForOrientation,
+    formatDuration,
+    MAX_VIDEO_BYTES,
+} from '@/utils/videoSelect';
+import VideoBatchDetails from '@/components/upload/VideoBatchDetails';
 import s from '@/styles/pages/UploadV2.module.css';
 
 const Upload = () => {
     const { user, token, refreshUser } = useAuth();
     const router = useRouter();
     const { showNotification } = useNotification();
+    const addUpload = useUploadStore((s) => s.addUpload);
+    const updateUpload = useUploadStore((s) => s.updateUpload);
+    const removeUpload = useUploadStore((s) => s.removeUpload);
 
     // Wake up the video engine to mitigate cold starts
     useEffect(() => {
@@ -42,13 +53,11 @@ const Upload = () => {
         fetch(`${rustOrigin}/health`, { mode: 'no-cors' }).catch(() => {});
     }, []);
 
-    // Workflow State: 'select' | 'details'
+    // Workflow State: 'select' | 'batch-details' | 'details'
     const [step, setStep] = useState('select');
+    /** Local only for in-flight chunk loop / post publish — progress & job status live in the store. */
     const [uploading, setUploading] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [processingProgress, setProcessingProgress] = useState(0);
-    const [currentStatusMessage, setCurrentStatusMessage] = useState('');
-    const [processingStatus, setProcessingStatus] = useState(null); // 'uploading' | 'processing' | 'completed' | 'error'
+    const [postingBatch, setPostingBatch] = useState(false);
 
     // Form Data
     const [title, setTitle] = useState('');
@@ -56,6 +65,13 @@ const Upload = () => {
     const [tags, setTags] = useState('');
     const [videoType, setVideoType] = useState('home');
     const [file, setFile] = useState(null);
+    const [selectedVideos, setSelectedVideos] = useState([]);
+    const [isPickingFiles, setIsPickingFiles] = useState(false);
+    /** Valid videos carried into the per-item details step */
+    const [batchVideos, setBatchVideos] = useState([]);
+    /** @type {[Record<string, { caption: string, tags: string, coverSource: 'auto'|'custom', coverFile: File|null, coverPreviewUrl: string|null, videoType: 'home'|'flash', aspectRatio: number|null, orientation: 'landscape'|'portrait'|'square'|null }>, Function]} */
+    const [videoDrafts, setVideoDrafts] = useState({});
+    const [activeVideoId, setActiveVideoId] = useState(null);
     const [thumbnailFile, setThumbnailFile] = useState(null);
     const [thumbnailPreview, setThumbnailPreview] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
@@ -71,10 +87,31 @@ const Upload = () => {
     // Chunked Upload State
     const [uploadId, setUploadId] = useState(null);
     const [isPaused, setIsPaused] = useState(false);
-    const [isUploadError, setIsUploadError] = useState(false);
 
     const uploadIdRef = useRef(null);
     const isPausedRef = useRef(false);
+    const handledTerminalJobRef = useRef(null);
+    /** Tracks the store entry id (local-* until finalize, then server job_id). */
+    const [trackingJobId, setTrackingJobId] = useState(null);
+    const trackingJobIdRef = useRef(null);
+
+    const storeEntry = useUploadStore((s) => {
+        const id = trackingJobIdRef.current || trackingJobId;
+        return id ? s.activeUploads.find((u) => u.jobId === id) || null : null;
+    });
+
+    const jobStatus = storeEntry?.status ?? null;
+    const jobVideoId = storeEntry?.videoId ?? null;
+    const jobError = storeEntry?.error ?? null;
+    const progress = storeEntry?.progress ?? 0;
+    const isPolling = jobStatus === 'queued' || jobStatus === 'processing';
+    // Map store statuses onto the page's existing UI labels
+    const processingStatus =
+        jobStatus === 'failed'
+            ? 'error'
+            : jobStatus === 'queued' || jobStatus === 'processing'
+              ? 'processing'
+              : jobStatus;
 
     // Sync refs
     useEffect(() => {
@@ -85,10 +122,34 @@ const Upload = () => {
         uploadIdRef.current = uploadId;
     }, [uploadId]);
 
-    // Unload prevention
+    useEffect(() => {
+        trackingJobIdRef.current = trackingJobId;
+    }, [trackingJobId]);
+
+    // One-shot page notifications when the global poller marks terminal
+    useEffect(() => {
+        if (!storeEntry) return;
+        const { jobId: id, status, videoId, error } = storeEntry;
+        if (handledTerminalJobRef.current === id) return;
+
+        if (status === 'completed') {
+            handledTerminalJobRef.current = id;
+            if (videoId) setDbVideoId(videoId);
+            setUploading(false);
+            showNotification('success', 'Video is now live!');
+            refreshUser();
+        } else if (status === 'failed') {
+            handledTerminalJobRef.current = id;
+            setUploading(false);
+            setIsPaused(true);
+            showNotification('error', error || 'Processing failed.');
+        }
+    }, [storeEntry, showNotification, refreshUser]);
+
+    // Warn on tab close while a tracked upload is still active
     useEffect(() => {
         const handleBeforeUnload = (e) => {
-            if (uploading && processingStatus !== 'completed') {
+            if (storeEntry && !['completed', 'failed'].includes(storeEntry.status)) {
                 e.preventDefault();
                 e.returnValue = 'Upload is in progress. Are you sure you want to close this page?';
                 return e.returnValue;
@@ -98,7 +159,7 @@ const Upload = () => {
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
         };
-    }, [uploading, processingStatus]);
+    }, [storeEntry]);
 
     const fileInputRef = useRef(null);
     const thumbnailInputRef = useRef(null);
@@ -106,13 +167,23 @@ const Upload = () => {
 
     useEffect(() => {
         return () => {
-            if (previewUrl) URL.revokeObjectURL(previewUrl);
+            if (!previewUrl) return;
+            const stillUsed = useUploadStore
+                .getState()
+                .activeUploads.some((u) => u.thumbnailUrl === previewUrl);
+            if (!stillUsed && !String(previewUrl).startsWith('data:')) {
+                URL.revokeObjectURL(previewUrl);
+            }
         };
     }, [previewUrl]);
 
     useEffect(() => {
         return () => {
-            if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+            if (!thumbnailPreview) return;
+            const stillUsed = useUploadStore
+                .getState()
+                .activeUploads.some((u) => u.thumbnailUrl === thumbnailPreview);
+            if (!stillUsed) URL.revokeObjectURL(thumbnailPreview);
         };
     }, [thumbnailPreview]);
 
@@ -122,52 +193,337 @@ const Upload = () => {
         };
     }, [postPreview]);
 
-    const handleFileSelect = (selectedFile) => {
-        if (!selectedFile) return;
-        if (!selectedFile.type.startsWith('video/')) {
-            showNotification('error', "Only video files are supported.");
-            return;
+    const validSelectedCount = selectedVideos.filter((v) => v.isValid).length;
+
+    const addFilesToSelection = async (fileList) => {
+        const incoming = Array.from(fileList || []).filter(Boolean);
+        if (!incoming.length) return;
+
+        setIsPickingFiles(true);
+        try {
+            const built = await Promise.all(incoming.map((f) => buildVideoSelectionItem(f)));
+            setSelectedVideos((prev) => {
+                const existingKeys = new Set(
+                    prev.map((v) => `${v.name}:${v.size}`)
+                );
+                const next = [...prev];
+                for (const item of built) {
+                    const key = `${item.name}:${item.size}`;
+                    if (existingKeys.has(key)) continue;
+                    existingKeys.add(key);
+                    next.push(item);
+                }
+                return next;
+            });
+        } finally {
+            setIsPickingFiles(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
-        setFile(selectedFile);
-        const baseName = selectedFile.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, ' ');
-        setTitle(baseName.charAt(0).toUpperCase() + baseName.slice(1));
-        setPreviewUrl(URL.createObjectURL(selectedFile));
-        setStep('details');
     };
 
-    const pollProcessingStatus = (processingKey) => {
-        setProcessingStatus('processing');
-        const interval = setInterval(async () => {
-            try {
-                const res = await fetch(`${API_BASE_URL}/videos/status/${processingKey}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const statusData = await res.json();
+    const removeSelectedVideo = (id) => {
+        setSelectedVideos((prev) => prev.filter((v) => v.id !== id));
+    };
 
-                if (statusData.status === 'completed') {
-                    clearInterval(interval);
-                    setProcessingStatus('completed');
-                    setUploading(false);
-                    setProgress(100);
-                    setProcessingProgress(100);
-                    showNotification('success', 'Video is now live!');
-                    refreshUser();
-                } else if (statusData.status === 'error') {
-                    clearInterval(interval);
-                    setProcessingStatus('error');
-                    setUploading(false);
-                    showNotification('error', 'Processing failed.');
-                } else {
-                    setProcessingProgress(statusData.progress || 0);
-                    setCurrentStatusMessage(statusData.message || 'Transcoding...');
+    const handleNextFromSelection = () => {
+        const valid = selectedVideos.filter((v) => v.isValid);
+        if (!valid.length) return;
+
+        const drafts = {};
+        for (const v of valid) {
+            const orientation = v.orientation ?? null;
+            drafts[v.id] = {
+                caption: '',
+                tags: '',
+                coverSource: 'auto',
+                coverFile: null,
+                coverPreviewUrl: null,
+                aspectRatio: v.aspectRatio ?? null,
+                orientation,
+                videoType: defaultVideoTypeForOrientation(orientation),
+            };
+        }
+        setBatchVideos(valid);
+        setVideoDrafts(drafts);
+        setActiveVideoId(valid[0].id);
+        setStep('batch-details');
+    };
+
+    const updateVideoDraft = (id, patch) => {
+        setVideoDrafts((prev) => ({
+            ...prev,
+            [id]: { ...prev[id], ...patch },
+        }));
+    };
+
+    const CHUNK_SIZE_BATCH = 5 * 1024 * 1024;
+
+    /**
+     * Upload one video → S3 (via finalize) → its own upload_jobs + Celery task.
+     * Cover: auto → cover_source only; custom → cover file uploaded at finalize to covers/{job_id}.jpg.
+     * Never throws to the pool; failures are isolated per file.
+     * @returns {Promise<{ ok: true, jobId: string } | { ok: false, error: string }>}
+     */
+    const uploadVideoItem = async ({
+        file: videoFile,
+        caption,
+        tags: itemTags,
+        coverSource = 'auto',
+        coverFile = null,
+        coverPreviewUrl = null,
+        fallbackThumbUrl = null,
+        videoType: itemVideoType = 'home',
+    }) => {
+        const fileName = videoFile.name || caption || 'Video';
+        const source = coverSource === 'custom' && coverFile ? 'custom' : 'auto';
+        const thumb = source === 'custom' ? coverPreviewUrl || fallbackThumbUrl : fallbackThumbUrl;
+        /** Provisional id for mid-upload progress; replaced by server job_id after S3. */
+        const localId = `local-${crypto.randomUUID()}`;
+        let storeRegistered = false;
+
+        const fail = (error) => {
+            const msg = error?.message || String(error) || 'Upload failed';
+            if (storeRegistered) {
+                updateUpload(localId, { status: 'failed', error: msg });
+            } else {
+                // S3 never completed — still surface an independent failed toast
+                addUpload({
+                    jobId: localId,
+                    fileName,
+                    thumbnailUrl: thumb,
+                    progress: 0,
+                    status: 'failed',
+                    error: msg,
+                });
+            }
+            return { ok: false, error: msg };
+        };
+
+        try {
+            // Show progress for this file as soon as its concurrency slot starts
+            addUpload({
+                jobId: localId,
+                fileName,
+                thumbnailUrl: thumb,
+                progress: 0,
+                status: 'uploading',
+                error: null,
+            });
+            storeRegistered = true;
+
+            // Initiate — no cover upload here (job_id does not exist yet)
+            const initFormData = new FormData();
+            initFormData.append('title', caption);
+            initFormData.append('description', caption);
+            initFormData.append('tags', itemTags || '');
+            initFormData.append('video_type', itemVideoType === 'flash' ? 'flash' : 'home');
+            initFormData.append('filename', videoFile.name);
+            initFormData.append('cover_source', source);
+
+            const initRes = await fetch(`${API_BASE_URL}/videos/upload/initiate`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: initFormData,
+            });
+            if (!initRes.ok) {
+                const errData = await initRes.json().catch(() => ({}));
+                return fail(new Error(errData.detail || 'Failed to initiate upload'));
+            }
+
+            const { upload_id: currentUploadId } = await initRes.json();
+            const totalChunks = Math.ceil(videoFile.size / CHUNK_SIZE_BATCH);
+            const completedSet = new Set();
+
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE_BATCH;
+                const end = Math.min(videoFile.size, start + CHUNK_SIZE_BATCH);
+                const chunkBlob = videoFile.slice(start, end);
+                const formData = new FormData();
+                formData.append('upload_id', currentUploadId);
+                formData.append('chunk_index', i);
+                formData.append('file', chunkBlob, videoFile.name);
+
+                let retries = 3;
+                let chunkOk = false;
+                while (!chunkOk && retries > 0) {
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/videos/upload/chunk`, {
+                            method: 'POST',
+                            headers: { Authorization: `Bearer ${token}` },
+                            body: formData,
+                        });
+                        if (!res.ok) throw new Error(`Chunk ${i} failed`);
+                        completedSet.add(i);
+                        updateUpload(localId, {
+                            progress: Math.round((completedSet.size / totalChunks) * 100),
+                            status: 'uploading',
+                        });
+                        chunkOk = true;
+                    } catch (err) {
+                        retries -= 1;
+                        if (retries === 0) {
+                            return fail(err);
+                        }
+                        await new Promise((r) => setTimeout(r, (3 - retries) * 2000));
+                    }
                 }
-            } catch (e) { console.error("Poll error:", e); }
-        }, 3000);
+            }
+
+            // Finalize: video → S3, create upload_jobs (+ cover_source / cover_s3_key), enqueue Celery
+            const finalizeFormData = new FormData();
+            finalizeFormData.append('upload_id', currentUploadId);
+            finalizeFormData.append('total_chunks', totalChunks);
+            finalizeFormData.append('filename', videoFile.name);
+            finalizeFormData.append('cover_source', source);
+            if (source === 'custom' && coverFile) {
+                const coverName =
+                    coverFile instanceof File && coverFile.name
+                        ? coverFile.name
+                        : 'cover.jpg';
+                finalizeFormData.append('cover', coverFile, coverName);
+            }
+
+            const finalizeRes = await fetch(`${API_BASE_URL}/videos/upload/finalize`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: finalizeFormData,
+            });
+            if (!finalizeRes.ok) {
+                const errorData = await finalizeRes.json().catch(() => ({}));
+                return fail(new Error(errorData.detail || 'Finalization failed'));
+            }
+
+            const data = await finalizeRes.json();
+            if (!data.job_id) {
+                return fail(new Error('Server did not return a job id'));
+            }
+
+            // S3 + separate upload_jobs row + Celery task ready — promote this
+            // file's toast to the server job_id immediately (siblings may still be uploading)
+            updateUpload(localId, {
+                jobId: data.job_id,
+                progress: 100,
+                status: 'queued',
+                processingKey: data.processing_key || currentUploadId,
+                videoId: data.video_id || null,
+                error: null,
+            });
+
+            return {
+                ok: true,
+                jobId: data.job_id,
+                coverSource: data.cover_source || source,
+                coverS3Key: data.cover_s3_key || null,
+            };
+        } catch (err) {
+            return fail(err);
+        }
+    };
+
+    const handlePostAll = async () => {
+        if (postingBatch) return;
+        const ready = batchVideos.every((v) => (videoDrafts[v.id]?.caption || '').trim().length > 0);
+        if (!ready) return;
+
+        const formData = new FormData();
+
+        for (const v of batchVideos) {
+            const d = videoDrafts[v.id];
+            formData.append('files', v.file, v.file.name);
+            formData.append('titles', d.caption.trim());
+            formData.append('video_types', d.videoType === 'flash' ? 'flash' : 'home');
+        }
+
+        // Clear the form immediately so toasts own progress while uploads run in parallel.
+        setSelectedVideos([]);
+        setBatchVideos([]);
+        setVideoDrafts({});
+        setActiveVideoId(null);
+        setStep('select');
+        setPostingBatch(true);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/videos/upload/batch`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || 'Batch upload failed');
+            }
+
+            const data = await res.json();
+
+            for (const item of data.results || []) {
+                if (item.status === 'failed') {
+                    addUpload({
+                        jobId: `local-${crypto.randomUUID()}`,
+                        fileName: item.filename || 'Video',
+                        thumbnailUrl: null,
+                        progress: 0,
+                        status: 'failed',
+                        error: item.error || 'Upload failed',
+                    });
+                } else if (item.job_id) {
+                    addUpload({
+                        jobId: item.job_id,
+                        fileName: item.filename || 'Video',
+                        thumbnailUrl: null,
+                        progress: 100,
+                        status: 'queued',
+                        processingKey: null,
+                        videoId: item.video_id || null,
+                        error: null,
+                    });
+                }
+            }
+
+            const succeeded = data.succeeded ?? 0;
+            const failed = data.failed ?? 0;
+
+            if (succeeded > 0 && failed === 0) {
+                showNotification(
+                    'success',
+                    `${succeeded} upload${succeeded > 1 ? 's' : ''} started`
+                );
+            } else if (succeeded > 0 && failed > 0) {
+                showNotification(
+                    'info',
+                    `${succeeded} started · ${failed} failed`
+                );
+            } else {
+                showNotification('error', 'All uploads failed');
+            }
+            refreshUser();
+        } catch (err) {
+            showNotification('error', err.message || 'Batch upload failed');
+        } finally {
+            setPostingBatch(false);
+        }
     };
 
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
 
-    const uploadLoop = async (currentUploadId, completedSet) => {
+    const resetForRetry = () => {
+        if (trackingJobId) removeUpload(trackingJobId);
+        handledTerminalJobRef.current = null;
+        trackingJobIdRef.current = null;
+        setTrackingJobId(null);
+        setUploadId(null);
+        uploadIdRef.current = null;
+        setIsPaused(false);
+        setUploading(false);
+        setDbVideoId(null);
+    };
+
+    const handleRetryAfterFailure = () => {
+        resetForRetry();
+        setTimeout(() => startUpload(), 0);
+    };
+
+    const uploadLoop = async (currentUploadId, completedSet, toastId) => {
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         
         for (let i = 0; i < totalChunks; i++) {
@@ -212,15 +568,22 @@ const Upload = () => {
 
                     completedSet.add(i);
                     const overallProgress = Math.round((completedSet.size / totalChunks) * 100);
-                    setProgress(overallProgress);
+                    if (toastId) {
+                        updateUpload(toastId, { progress: overallProgress, status: 'uploading' });
+                    }
                     chunkSuccess = true;
                 } catch (err) {
                     console.error(`Chunk ${i} upload error, retries left: ${retries - 1}`, err);
                     retries--;
                     if (retries === 0) {
-                        setIsUploadError(true);
                         setIsPaused(true);
                         setUploading(false);
+                        if (toastId) {
+                            updateUpload(toastId, {
+                                status: 'failed',
+                                error: 'Network issue detected. Upload paused.',
+                            });
+                        }
                         showNotification("error", "Network issue detected. Upload paused. Click Resume to retry.");
                         return;
                     }
@@ -231,10 +594,12 @@ const Upload = () => {
             }
         }
 
-        // Finalize upload
-        setProcessingStatus('processing');
-        setCurrentStatusMessage("Finalizing upload on server...");
-        
+        // Finalize: server saves to S3, enqueues Celery, returns job_id immediately.
+        // Global useUploadStatus (via UploadNotifications) owns polling after this.
+        if (toastId) {
+            updateUpload(toastId, { progress: 100, status: 'queued' });
+        }
+
         const finalizeFormData = new FormData();
         finalizeFormData.append("upload_id", currentUploadId);
         finalizeFormData.append("total_chunks", totalChunks);
@@ -253,12 +618,48 @@ const Upload = () => {
             }
 
             const data = await finalizeRes.json();
-            setDbVideoId(data.video_id);
-            pollProcessingStatus(currentUploadId);
+            if (data.video_id) setDbVideoId(data.video_id);
+
+            if (!data.job_id) {
+                throw new Error('Server did not return a job id');
+            }
+
+            handledTerminalJobRef.current = null;
+            trackingJobIdRef.current = data.job_id;
+            // upload_id === Video.processing_key — used for live Redis/Rust progress polling
+            const processingKey = currentUploadId;
+            if (toastId) {
+                updateUpload(toastId, {
+                    jobId: data.job_id,
+                    status: 'queued',
+                    progress: 100,
+                    videoId: null,
+                    processingKey,
+                    error: null,
+                });
+            } else {
+                addUpload({
+                    jobId: data.job_id,
+                    fileName: file?.name || title || 'Video',
+                    thumbnailUrl: thumbnailPreview || previewUrl,
+                    progress: 100,
+                    status: 'queued',
+                    processingKey,
+                    videoId: null,
+                });
+            }
+            setTrackingJobId(data.job_id);
+            setUploading(false);
         } catch (err) {
             console.error("Finalization error:", err);
-            setIsUploadError(true);
             setUploading(false);
+            setIsPaused(true);
+            if (toastId) {
+                updateUpload(toastId, {
+                    status: 'failed',
+                    error: err.message || 'Failed to finalize video upload.',
+                });
+            }
             showNotification("error", err.message || "Failed to finalize video upload.");
         }
     };
@@ -267,14 +668,33 @@ const Upload = () => {
         if (uploading) return;
         setUploading(true);
         setIsPaused(false);
-        setIsUploadError(false);
-        setProcessingStatus('uploading');
 
         let currentUploadId = uploadIdRef.current;
         let completedSet = new Set();
 
+        // Progress lives in the store from the first byte — toast survives navigation
+        let toastId = trackingJobId;
+        if (!toastId) {
+            toastId = `local-${crypto.randomUUID()}`;
+            addUpload({
+                jobId: toastId,
+                fileName: file?.name || title || 'Video',
+                thumbnailUrl: thumbnailPreview || previewUrl,
+                progress: 0,
+                status: 'uploading',
+                error: null,
+            });
+            trackingJobIdRef.current = toastId;
+            setTrackingJobId(toastId);
+        } else {
+            updateUpload(toastId, {
+                status: 'uploading',
+                error: null,
+                progress: storeEntry?.progress || 0,
+            });
+        }
+
         if (!currentUploadId) {
-            // First time initiating upload
             const initFormData = new FormData();
             initFormData.append('title', title);
             initFormData.append('description', description);
@@ -304,12 +724,11 @@ const Upload = () => {
             } catch (err) {
                 setUploading(false);
                 setIsPaused(true);
-                setIsUploadError(true);
+                updateUpload(toastId, { status: 'failed', error: err.message });
                 showNotification('error', err.message);
                 return;
             }
         } else {
-            // Resume upload - check completed chunks status
             try {
                 const statusRes = await fetch(`${API_BASE_URL}/videos/upload/status/${currentUploadId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -322,14 +741,12 @@ const Upload = () => {
             } catch (err) {
                 setUploading(false);
                 setIsPaused(true);
-                setIsUploadError(true);
                 showNotification('error', 'Failed to resume upload session. Retrying...');
                 return;
             }
         }
 
-        // Run chunked upload loop
-        await uploadLoop(currentUploadId, completedSet);
+        await uploadLoop(currentUploadId, completedSet, toastId);
     };
 
     const pauseUpload = () => {
@@ -391,8 +808,8 @@ const Upload = () => {
             );
         }
 
-        // Video uploads
-        if (!uploadId && !uploading) {
+        // Video uploads — idle only when nothing is tracked in the store
+        if (!storeEntry && !uploading) {
             return (
                 <button
                     className="btn-primary"
@@ -405,7 +822,7 @@ const Upload = () => {
             );
         }
 
-        if (uploading && processingStatus === 'uploading') {
+        if (processingStatus === 'uploading' && !isPaused) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                     <div className="btn-loading" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -422,7 +839,7 @@ const Upload = () => {
             );
         }
 
-        if (isPaused && processingStatus === 'uploading') {
+        if (isPaused && (processingStatus === 'uploading' || processingStatus === 'error') && uploadId && jobStatus !== 'failed') {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                     <button
@@ -432,19 +849,52 @@ const Upload = () => {
                     >
                         RESUME UPLOAD
                     </button>
-                    {uploadId && (
-                        <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            Upload paused at {progress}%
-                        </div>
-                    )}
+                    <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Upload paused at {progress}%
+                    </div>
                 </div>
             );
         }
 
-        if (processingStatus === 'processing') {
+        if (processingStatus === 'processing' || isPolling) {
             return (
-                <div className="btn-loading" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Loader2 className={s.spin} size={20} /> PROCESSING ({processingProgress}%)
+                <div className="btn-loading" style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Loader2 className={s.spin} size={20} /> Processing your video…
+                    </span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.75 }}>
+                        {jobStatus === 'queued' ? 'Queued' : 'Transcoding'}
+                    </span>
+                </div>
+            );
+        }
+
+        if (processingStatus === 'error' || jobStatus === 'failed') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#f87171', textAlign: 'center' }}>
+                        {jobError || 'Processing failed'}
+                    </div>
+                    <button className="btn-primary" style={{ width: '100%' }} onClick={handleRetryAfterFailure}>
+                        RETRY UPLOAD
+                    </button>
+                </div>
+            );
+        }
+
+        if (processingStatus === 'completed') {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%' }}>
+                    <button
+                        className="btn-primary"
+                        style={{ width: '100%', background: '#4ade80', color: 'black' }}
+                        onClick={() => router.push(jobVideoId || dbVideoId ? `/watch/${jobVideoId || dbVideoId}` : '/manage')}
+                    >
+                        WATCH VIDEO
+                    </button>
+                    <button className="btn-secondary" style={{ width: '100%' }} onClick={() => router.push('/manage')}>
+                        GO TO DASHBOARD
+                    </button>
                 </div>
             );
         }
@@ -486,32 +936,164 @@ const Upload = () => {
 
 
             {uploadType === 'video' && step === 'select' ? (
-                <div className={s.dropzoneContainer} style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
+                <div className={s.selectStage}>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        hidden
+                        multiple
+                        accept="video/*,.mp4,.webm,.mov,.mkv,.m4v"
+                        onChange={(e) => addFilesToSelection(e.target.files)}
+                    />
 
-                    <div 
-                        className={s.dropzone}
-                        onClick={() => fileInputRef.current.click()}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => { e.preventDefault(); handleFileSelect(e.dataTransfer.files[0]); }}
-                    >
-                        <input type="file" ref={fileInputRef} hidden accept="video/*" onChange={(e) => handleFileSelect(e.target.files[0])} />
-                        <div className={s.pulse} style={{ marginBottom: '2rem' }}>
-                            <UploadIcon size={64} color="var(--accent-primary)" />
-                        </div>
-                        <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Upload Video</h2>
-                        <p style={{ color: 'var(--text-muted)' }}>Drag and drop or click to select a file</p>
-                        <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem', justifyContent: 'center' }}>
-                            <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent-primary)' }}>{user?.home_quota_limit - user?.home_uploads}</div>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>HOME CREDITS</div>
+                    {selectedVideos.length === 0 ? (
+                        <div
+                            className={s.dropzone}
+                            onClick={() => !isPickingFiles && fileInputRef.current?.click()}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                addFilesToSelection(e.dataTransfer.files);
+                            }}
+                        >
+                            <div className={s.pulse} style={{ marginBottom: '2rem' }}>
+                                <UploadIcon size={64} color="var(--accent-primary)" />
                             </div>
-                            <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#f59e0b' }}>{user?.flash_quota_limit - user?.flash_uploads}</div>
-                                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>FLASH CREDITS</div>
+                            <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Upload Videos</h2>
+                            <p style={{ color: 'var(--text-muted)' }}>
+                                Drag and drop or click to select one or more files
+                            </p>
+                            <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: '0.75rem' }}>
+                                MP4, WebM, MOV up to {Math.round(MAX_VIDEO_BYTES / (1024 * 1024 * 1024))} GB each
+                            </p>
+                            <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem', justifyContent: 'center' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent-primary)' }}>
+                                        {(user?.home_quota_limit ?? 0) - (user?.home_uploads ?? 0)}
+                                    </div>
+                                    <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>HOME CREDITS</div>
+                                </div>
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#f59e0b' }}>
+                                        {(user?.flash_quota_limit ?? 0) - (user?.flash_uploads ?? 0)}
+                                    </div>
+                                    <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>FLASH CREDITS</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className={s.selectPanel}>
+                            <div className={s.selectHeader}>
+                                <div>
+                                    <h2 className={s.selectTitle}>Selected videos</h2>
+                                    <p className={s.selectSub}>
+                                        {validSelectedCount} ready
+                                        {selectedVideos.length - validSelectedCount > 0
+                                            ? ` · ${selectedVideos.length - validSelectedCount} with errors`
+                                            : ''}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    className={`btn-primary ${s.selectHeaderNext}`}
+                                    disabled={validSelectedCount < 1 || isPickingFiles}
+                                    onClick={handleNextFromSelection}
+                                >
+                                    Next <ArrowRight size={18} style={{ marginLeft: 6 }} />
+                                </button>
+                            </div>
+
+                            <div className={s.videoPickGrid}>
+                                {selectedVideos.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        className={`${s.videoPickCard} ${item.error ? s.videoPickCardError : ''}`}
+                                    >
+                                        <div className={s.videoPickThumb}>
+                                            {item.thumbnailUrl ? (
+                                                // eslint-disable-next-line @next/next/no-img-element
+                                                <img src={item.thumbnailUrl} alt="" />
+                                            ) : (
+                                                <div className={s.videoPickFallback}>
+                                                    <FileVideo size={28} />
+                                                </div>
+                                            )}
+                                            {item.isValid && item.duration != null && (
+                                                <span className={s.videoPickDuration}>
+                                                    {formatDuration(item.duration)}
+                                                </span>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className={s.videoPickRemove}
+                                                aria-label={`Remove ${item.name}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeSelectedVideo(item.id);
+                                                }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                        <div className={s.videoPickMeta}>
+                                            <span className={s.videoPickName} title={item.name}>
+                                                {item.name}
+                                            </span>
+                                            {item.error ? (
+                                                <span className={s.videoPickError}>{item.error}</span>
+                                            ) : (
+                                                <span className={s.videoPickOk}>Ready</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <button
+                                    type="button"
+                                    className={s.videoPickAdd}
+                                    disabled={isPickingFiles}
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    {isPickingFiles ? (
+                                        <Loader2 className={s.spin} size={28} />
+                                    ) : (
+                                        <Plus size={28} />
+                                    )}
+                                    <span>{isPickingFiles ? 'Adding…' : 'Add more'}</span>
+                                </button>
+                            </div>
+
+                            <div className={s.selectFooter}>
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={() => setSelectedVideos([])}
+                                >
+                                    Clear all
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`btn-primary ${s.selectFooterNext}`}
+                                    disabled={validSelectedCount < 1 || isPickingFiles}
+                                    onClick={handleNextFromSelection}
+                                >
+                                    Next <ArrowRight size={18} style={{ marginLeft: 6 }} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
+            ) : uploadType === 'video' && step === 'batch-details' ? (
+                <VideoBatchDetails
+                    videos={batchVideos}
+                    drafts={videoDrafts}
+                    activeId={activeVideoId}
+                    onActiveChange={setActiveVideoId}
+                    onDraftChange={updateVideoDraft}
+                    onBack={() => setStep('select')}
+                    onPostAll={handlePostAll}
+                    posting={postingBatch}
+                />
             ) : (
                 <div className={s.stepperContainer}>
 
@@ -694,32 +1276,60 @@ const Upload = () => {
                         <div className={s.previewCard}>
                             <div className={`${s.videoWrapper} ${videoType === 'home' ? s.landscape : s.portrait}`}>
                                 {previewUrl && <video src={previewUrl} muted autoPlay loop style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }} />}
-                                {uploading && (
+                                {(processingStatus === 'uploading' || processingStatus === 'processing') && (
                                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}>
                                         <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', borderTop: '4px solid var(--accent-primary)', animation: 'spin 1s linear infinite' }} />
-                                        <div style={{ marginTop: '1rem', fontWeight: 900, fontSize: '1.25rem' }}>{progress}%</div>
+                                        <div style={{ marginTop: '1rem', fontWeight: 900, fontSize: '1.25rem' }}>
+                                            {processingStatus === 'uploading' ? `${progress}%` : 'Processing your video…'}
+                                        </div>
+                                        {processingStatus === 'processing' && jobStatus && (
+                                            <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', padding: '0 1rem', textTransform: 'capitalize' }}>
+                                                {jobStatus}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {processingStatus === 'completed' && (
+                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)' }}>
+                                        <CheckCircle size={48} color="#4ade80" />
+                                        <div style={{ marginTop: '0.75rem', fontWeight: 800 }}>Done</div>
+                                    </div>
+                                )}
+                                {processingStatus === 'error' && (
+                                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.65)', padding: '1rem', textAlign: 'center' }}>
+                                        <X size={40} color="#f87171" />
+                                        <div style={{ marginTop: '0.75rem', fontWeight: 700, color: '#f87171' }}>Failed</div>
+                                        <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                                            {jobError || 'Something went wrong'}
+                                        </div>
                                     </div>
                                 )}
                             </div>
                             
                             <div className={s.statusList}>
                                 <div className={s.statusItem}>
-                                    <div className={`${s.statusDot} ${progress > 0 ? s.active : ''} ${progress === 100 ? s.completed : ''}`}>
-                                        {progress === 100 ? <CheckCircle size={14} /> : 1}
+                                    <div className={`${s.statusDot} ${progress > 0 || processingStatus === 'uploading' ? s.active : ''} ${progress === 100 || processingStatus === 'processing' || processingStatus === 'completed' ? s.completed : ''}`}>
+                                        {progress === 100 || processingStatus === 'processing' || processingStatus === 'completed' ? <CheckCircle size={14} /> : 1}
                                     </div>
                                     <div className={s.statusText}>
                                         <div className={s.statusTitle}>Upload to Cloud</div>
                                         {processingStatus === 'uploading' && <div className={s.statusSub}>{progress}% uploaded</div>}
+                                        {(processingStatus === 'processing' || processingStatus === 'completed') && <div className={s.statusSub}>Uploaded</div>}
                                     </div>
                                 </div>
 
                                 <div className={s.statusItem}>
-                                    <div className={`${s.statusDot} ${processingStatus === 'processing' ? s.active : ''} ${processingStatus === 'completed' ? s.completed : ''}`}>
-                                        {processingStatus === 'completed' ? <CheckCircle size={14} /> : 2}
+                                    <div className={`${s.statusDot} ${processingStatus === 'processing' ? s.active : ''} ${processingStatus === 'completed' ? s.completed : ''} ${processingStatus === 'error' ? s.active : ''}`}>
+                                        {processingStatus === 'completed' ? <CheckCircle size={14} /> : processingStatus === 'processing' ? <Loader2 className={s.spin} size={14} /> : 2}
                                     </div>
                                     <div className={s.statusText}>
                                         <div className={s.statusTitle}>Edge Transcoding</div>
-                                        {processingStatus === 'processing' && <div className={s.statusSub}>{currentStatusMessage} ({processingProgress}%)</div>}
+                                        {processingStatus === 'processing' && (
+                                            <div className={s.statusSub}>Processing your video…</div>
+                                        )}
+                                        {processingStatus === 'error' && (
+                                            <div className={s.statusSub}>{jobError || 'Failed'}</div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -729,6 +1339,7 @@ const Upload = () => {
                                     </div>
                                     <div className={s.statusText}>
                                         <div className={s.statusTitle}>Global Distribution</div>
+                                        {processingStatus === 'completed' && <div className={s.statusSub}>Live</div>}
                                     </div>
                                 </div>
                             </div>
@@ -744,10 +1355,10 @@ const Upload = () => {
                             )}
                         </div>
 
-                        {processingStatus === 'completed' && (
-                            <button className="btn-primary" style={{ marginTop: '1rem', background: '#4ade80', color: 'black', width: '100%' }} onClick={() => router.push('/manage')}>
-                                GO TO DASHBOARD
-                            </button>
+                        {(processingStatus === 'completed' || processingStatus === 'error' || processingStatus === 'processing') && (
+                            <div className="mobile-only" style={{ marginTop: '1rem' }}>
+                                {renderActionButtons()}
+                            </div>
                         )}
                     </div>
                 </div>

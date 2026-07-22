@@ -172,11 +172,29 @@
   text-align: center;
   cursor: pointer;
   transition: all var(--transition-fast);
+  color: inherit;
+  font: inherit;
+  width: 100%;
 }
 
 .typeCard.active {
   background: rgba(255, 59, 48, 0.1);
   border-color: var(--accent-primary);
+}
+
+.typeCardDisabled,
+.typeCard:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.batchAspectNote {
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fbbf24;
+  line-height: 1.4;
 }
 
 .previewCard {
@@ -247,6 +265,580 @@
   color: var(--accent-primary);
 }
 
+
+.selectStage {
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem 0 4rem;
+  width: 100%;
+}
+
+.selectPanel {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.selectHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.selectTitle {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin: 0;
+}
+
+.selectSub {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.selectFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.selectHeaderNext {
+  display: none;
+}
+
+.selectFooterNext {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .selectHeaderNext {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .selectFooterNext {
+    display: none;
+  }
+
+  .selectFooter {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.videoPickGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .videoPickGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.videoPickCard {
+  border: 1px solid var(--border-glass);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.03);
+  min-width: 0;
+}
+
+.videoPickCardError {
+  border-color: rgba(248, 113, 113, 0.55);
+}
+
+.videoPickThumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: #141416;
+  overflow: hidden;
+}
+
+.videoPickThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.videoPickFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: linear-gradient(145deg, #222 0%, #111 100%);
+}
+
+.videoPickDuration {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.videoPickRemove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.videoPickRemove:hover {
+  background: var(--accent-primary);
+  transform: scale(1.05);
+}
+
+.videoPickMeta {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.videoPickName {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.videoPickError {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f87171;
+}
+
+.videoPickOk {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.videoPickAdd {
+  aspect-ratio: 16 / 10;
+  min-height: 140px;
+  border: 2px dashed var(--border-glass);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.videoPickAdd:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: #fff;
+  background: rgba(255, 59, 48, 0.06);
+}
+
+.videoPickAdd:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* —— Per-video batch details (caption / tags / cover) —— */
+.batchStage {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 0 0 3rem;
+}
+
+.batchPanel {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.batchTopBar {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.batchBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.batchBack:hover:not(:disabled) {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.batchBack:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.batchTopMeta {
+  min-width: 0;
+}
+
+.batchTitle {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.batchSub {
+  margin: 0.2rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.batchStrip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.batchStrip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.batchStrip::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.batchStripItem {
+  flex: 0 0 auto;
+  width: 72px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  scroll-snap-align: start;
+  color: var(--text-muted);
+}
+
+.batchStripItem:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.batchStripThumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: #141416;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.batchStripItemActive .batchStripThumb {
+  border-color: var(--accent-primary);
+  transform: scale(1.04);
+}
+
+.batchStripThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.batchStripFallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.batchStripDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+}
+
+.batchStripDotFilled {
+  border-color: #4ade80;
+  background: #4ade80;
+}
+
+.batchStripDotError {
+  border-color: #f87171;
+  background: #f87171;
+}
+
+.batchStripThumbError {
+  border-color: #f87171 !important;
+  box-shadow: 0 0 8px rgba(248, 113, 113, 0.45);
+  overflow: visible;
+}
+
+.batchStripErrorBadge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1.5px solid #f87171;
+  color: #f87171;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.batchStripLabel {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.batchEditor {
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  padding: 1.25rem 1.25rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.batchCoverBlock {
+  margin-bottom: 0.75rem;
+}
+
+.coverToggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 0.5rem;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+}
+
+.coverToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.coverToggleBtn:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.coverToggleBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.coverToggleBtnActive {
+  background: rgba(255, 59, 48, 0.16);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 59, 48, 0.35);
+}
+
+.coverUploadPanel {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.coverUploadEmpty {
+  width: 100%;
+  min-height: 140px;
+  border: 2px dashed var(--border-glass);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.coverUploadEmpty:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.coverUploadEmpty:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.coverUploadPreview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0e0e10;
+  border: 1px solid var(--border-glass);
+}
+
+.coverUploadPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.coverUploadClear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.coverUploadClear:hover:not(:disabled) {
+  background: var(--accent-primary);
+}
+
+.coverUploadChange {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--accent-primary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.coverUploadChange:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.batchHint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.batchRequired {
+  color: var(--accent-primary);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-left: 6px;
+}
+
+.batchOptional {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.batchFileName {
+  margin: 0.5rem 0 0;
+  font-size: 12px;
+  color: var(--text-dim, var(--text-muted));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.batchFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.batchFooterHint {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
 
 .dropzone {
   width: 100%;

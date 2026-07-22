@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+import asyncio
 from typing import Optional
 import shutil
 import boto3
@@ -167,6 +168,14 @@ class Storage:
             except Exception as e:
                 logger.error(f"S3 Object Upload failed for {s3_key}: {e}", exc_info=True)
                 raise
+
+    async def async_upload_file_obj(self, file_obj, s3_key: str) -> str:
+        """Non-blocking wrapper — runs sync boto3 upload off the event loop."""
+        return await asyncio.to_thread(self.upload_file_obj, file_obj, s3_key)
+
+    async def async_upload_file(self, local_path: str, s3_key: str) -> str:
+        """Non-blocking wrapper for path-based uploads."""
+        return await asyncio.to_thread(self.upload_file, local_path, s3_key)
 
     def get_url(self, s3_key: str, mode: Optional[str] = None) -> str:
         """

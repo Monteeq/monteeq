@@ -255,6 +255,24 @@ export const uploadVideo = async (token, videoData) => {
     });
 };
 
+/** Poll async upload/transcode job: { status, video_id?, error_message?, progress? } */
+export const getUploadJob = async (jobId, token) => {
+    return apiFetch(`${API_BASE_URL}/videos/upload/jobs/${jobId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeoutMs: 10000,
+    });
+};
+
+/** Legacy/live Rust progress via Redis: { status, progress, message } */
+export const getProcessingStatus = async (processingKey, token = null) => {
+    const headers = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return apiFetch(`${API_BASE_URL}/videos/status/${processingKey}`, {
+        headers,
+        timeoutMs: 8000,
+    });
+};
+
 export const getPosts = async (token = null, skip = 0, limit = 20) => {
     const headers = {};
     if (token) {
