@@ -160,6 +160,16 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
 # ── Initialization ────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
+    # Auto-run pending Alembic migrations so missing columns never crash the app.
+    try:
+        from alembic.config import Config
+        from alembic import command
+        alembic_cfg = Config(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations applied successfully")
+    except Exception as e:
+        logger.warning(f"Alembic auto-migration skipped/failed: {e}")
+
     from app.core.config import REDIS_URL
     redis = aioredis.from_url(
         REDIS_URL,
