@@ -38,9 +38,15 @@ export async function GET() {
   try {
     const parts = await Promise.all(
       endpoints.map(async (url) => {
-        const res = await fetch(url, { next: { revalidate: 3600 } });
-        if (!res.ok) throw new Error(`${url} returned ${res.status}`);
-        return res.text();
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
+        try {
+          const res = await fetch(url, { signal: ctrl.signal });
+          if (!res.ok) throw new Error(`${url} returned ${res.status}`);
+          return await res.text();
+        } finally {
+          clearTimeout(timer);
+        }
       }),
     );
 
