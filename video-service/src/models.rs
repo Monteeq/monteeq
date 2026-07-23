@@ -19,7 +19,7 @@ pub struct VideoTask {
     /// "auto" (Rust generates) or "custom" (client already uploaded cover)
     #[serde(default = "default_cover_source", alias = "coverSource")]
     pub cover_source: String,
-    /// S3 key for a custom cover, e.g. covers/{job_id}.jpg
+    /// S3 key for a custom cover, e.g. thumbnails/{job_id}.jpg
     #[serde(default, alias = "coverS3Key")]
     pub cover_s3_key: Option<String>,
 }

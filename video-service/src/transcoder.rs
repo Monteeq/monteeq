@@ -666,7 +666,7 @@ pub async fn extract_cover_frame(video_path: &str, out_jpg: &str, pct: f64) -> R
     Ok(())
 }
 
-/// Auto cover: frame at ~10% duration → JPEG → S3 `covers/{task_id}.jpg`.
+/// Auto cover: frame at ~10% duration → JPEG → S3 `thumbnails/{task_id}.jpg`.
 /// Returns the S3 key for inclusion in the Redis completion payload.
 pub async fn generate_and_upload_auto_cover(
     video_path: &str,
@@ -676,7 +676,7 @@ pub async fn generate_and_upload_auto_cover(
     let cover_local = format!("{}_cover.jpg", video_path);
     extract_cover_frame(video_path, &cover_local, 0.1).await?;
 
-    let cover_key = format!("covers/{}.jpg", task_id);
+    let cover_key = format!("thumbnails/{}.jpg", task_id);
     storage
         .upload_file(Path::new(&cover_local), &cover_key)
         .await?;
