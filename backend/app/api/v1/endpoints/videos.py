@@ -773,7 +773,7 @@ async def finalize_upload(
             video.status = "failed"
             db.commit()
             raise HTTPException(status_code=400, detail="Cover file required when cover_source is custom")
-        cover_s3_key = f"covers/{job.id}.jpg"
+        cover_s3_key = f"thumbnails/{job.id}.jpg"
         try:
             cover_url = await storage.async_upload_file_obj(cover.file, cover_s3_key)
             job.cover_s3_key = cover_s3_key
@@ -1004,7 +1004,7 @@ async def _direct_upload_one(
             job.error_message = "cover_source is custom but no cover file was provided"
             db.commit()
             return _fail("Cover file required when cover_source is custom", status_code=400)
-        cover_s3_key = f"covers/{job.id}.jpg"
+        cover_s3_key = f"thumbnails/{job.id}.jpg"
         try:
             cover_url = await storage.async_upload_file_obj(thumbnail.file, cover_s3_key)
             job.cover_s3_key = cover_s3_key

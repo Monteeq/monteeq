@@ -28,6 +28,7 @@ import { useRouter } from 'next/navigation';
 import { API_BASE_URL } from '@/lib/browserApi';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
+import UploadUpgradeToast from '@/components/UploadUpgradeToast';
 import { useUploadStore } from '@/stores/useUploadStore';
 import {
     buildVideoSelectionItem,
@@ -1363,6 +1364,12 @@ const Upload = () => {
                     </div>
                 </div>
             )}
+
+            <UploadUpgradeToast
+                isUploading={uploading || postingBatch}
+                isPro={!!user?.is_premium}
+                onUpgrade={() => router.push('/pro')}
+            />
         </div>
     );
 };

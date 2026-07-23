@@ -133,12 +133,12 @@ async fn process_video_job(scheduler: WeightedScheduler, task: VideoTask) {
                 let cover_url = if is_custom {
                     // Custom: no generation — pass through already-uploaded S3 key
                     let key = cover_s3_key.clone().unwrap_or_else(|| {
-                        format!("covers/{}.jpg", task_id)
+                        format!("thumbnails/{}.jpg", task_id)
                     });
                     println!("Using custom cover (skip generation): {}", key);
                     key
                 } else {
-                    // Auto (or missing): extract ~10% frame, JPEG, upload covers/{task_id}.jpg
+                    // Auto (or missing): extract ~10% frame, JPEG, upload thumbnails/{task_id}.jpg
                     match transcoder::generate_and_upload_auto_cover(
                         &temp_path,
                         &task_id,
