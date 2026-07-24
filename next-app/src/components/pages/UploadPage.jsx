@@ -435,12 +435,6 @@ const Upload = () => {
             formData.append('video_types', d.videoType === 'flash' ? 'flash' : 'home');
         }
 
-        // Clear the form immediately so toasts own progress while uploads run in parallel.
-        setSelectedVideos([]);
-        setBatchVideos([]);
-        setVideoDrafts({});
-        setActiveVideoId(null);
-        setStep('select');
         setPostingBatch(true);
 
         try {
@@ -501,6 +495,11 @@ const Upload = () => {
         } catch (err) {
             showNotification('error', err.message || 'Batch upload failed');
         } finally {
+            setSelectedVideos([]);
+            setBatchVideos([]);
+            setVideoDrafts({});
+            setActiveVideoId(null);
+            setStep('select');
             setPostingBatch(false);
         }
     };
