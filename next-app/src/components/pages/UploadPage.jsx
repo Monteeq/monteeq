@@ -88,6 +88,7 @@ const Upload = () => {
     // Chunked Upload State
     const [uploadId, setUploadId] = useState(null);
     const [isPaused, setIsPaused] = useState(false);
+    const [preparing, setPreparing] = useState(false);
 
     const uploadIdRef = useRef(null);
     const isPausedRef = useRef(false);
@@ -667,6 +668,7 @@ const Upload = () => {
     const startUpload = async () => {
         if (uploading) return;
         setUploading(true);
+        setPreparing(true);
         setIsPaused(false);
 
         let currentUploadId = uploadIdRef.current;
@@ -723,6 +725,7 @@ const Upload = () => {
                 uploadIdRef.current = currentUploadId;
             } catch (err) {
                 setUploading(false);
+                setPreparing(false);
                 setIsPaused(true);
                 updateUpload(toastId, { status: 'failed', error: err.message });
                 showNotification('error', err.message);
@@ -740,12 +743,14 @@ const Upload = () => {
                 completedSet = new Set(statusData.completed_chunks || []);
             } catch (err) {
                 setUploading(false);
+                setPreparing(false);
                 setIsPaused(true);
                 showNotification('error', 'Failed to resume upload session. Retrying...');
                 return;
             }
         }
 
+        setPreparing(false);
         await uploadLoop(currentUploadId, completedSet, toastId);
     };
 
@@ -819,6 +824,14 @@ const Upload = () => {
                 >
                     PUBLISH NOW
                 </button>
+            );
+        }
+
+        if (preparing) {
+            return (
+                <div className="btn-loading" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Loader2 className={s.spin} size={20} /> PREPARING…
+                </div>
             );
         }
 
@@ -1276,13 +1289,13 @@ const Upload = () => {
                         <div className={s.previewCard}>
                             <div className={`${s.videoWrapper} ${videoType === 'home' ? s.landscape : s.portrait}`}>
                                 {previewUrl && <video src={previewUrl} muted autoPlay loop style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }} />}
-                                {(processingStatus === 'uploading' || processingStatus === 'processing') && (
+                                {(preparing || processingStatus === 'uploading' || processingStatus === 'processing') && (
                                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)' }}>
                                         <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', borderTop: '4px solid var(--accent-primary)', animation: 'spin 1s linear infinite' }} />
                                         <div style={{ marginTop: '1rem', fontWeight: 900, fontSize: '1.25rem' }}>
-                                            {processingStatus === 'uploading' ? `${progress}%` : 'Processing your video…'}
+                                            {preparing ? 'Preparing…' : processingStatus === 'uploading' ? `${progress}%` : 'Processing your video…'}
                                         </div>
-                                        {processingStatus === 'processing' && jobStatus && (
+                                        {!preparing && processingStatus === 'processing' && jobStatus && (
                                             <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center', padding: '0 1rem', textTransform: 'capitalize' }}>
                                                 {jobStatus}
                                             </div>
