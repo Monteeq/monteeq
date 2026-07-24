@@ -162,7 +162,7 @@ pub async fn process(
         fs::create_dir_all(&output_dir).await?;
     }
 
-    // 3. Transcode + Thumbnail Concurrently
+    // 3. Transcode + Thumbnail + Preview Clip Concurrently
     let transcoding_fut = transcode_tiered(
         video_path,
         &output_dir,
@@ -182,9 +182,15 @@ pub async fn process(
             Ok(())
         }
     };
+    let preview_local = format!("{}_preview.mp4", video_path);
+    let preview_local_clone = preview_local.clone();
+    let preview_duration = duration_secs;
+    let preview_fut = async move {
+        generate_preview_clip(&preview_local_clone, video_path, preview_duration).await
+    };
 
-    // Run both. Pro users might benefit from faster total completion time
-    let (trans_res, thumb_res) = tokio::join!(transcoding_fut, thumbnail_fut);
+    // Run all three concurrently
+    let (trans_res, thumb_res, preview_res) = tokio::join!(transcoding_fut, thumbnail_fut, preview_fut);
 
     match (&trans_res, &thumb_res) {
         (Ok(()), Ok(())) => {}
@@ -195,6 +201,10 @@ pub async fn process(
             trans_res?;
             thumb_res?;
         }
+    }
+    // Preview failure is non-fatal — old videos still work without it
+    if let Err(e) = &preview_res {
+        eprintln!("Preview clip generation failed for {}: {} (non-fatal)", task_id, e);
     }
 
     // 4. Upload to Storage
@@ -230,6 +240,17 @@ pub async fn process(
                 let thumb_key = format!("thumbnails/{}.jpg", task_id);
                 storage.upload_file(Path::new(&thumb_path), &thumb_key).await?;
             }
+
+            // Upload preview clip (non-fatal if missing)
+            if Path::new(&preview_local).exists() {
+                let preview_key = format!("previews/{}.mp4", task_id);
+                if let Err(e) = storage.upload_file(Path::new(&preview_local), &preview_key).await {
+                    eprintln!("Preview upload failed for {}: {} (non-fatal)", task_id, e);
+                } else {
+                    println!("Preview clip uploaded: {}", preview_key);
+                }
+                let _ = fs::remove_file(&preview_local).await;
+            }
         }
         Err(e) => {
             eprintln!("Storage Manager initialization failed: {}. Skipping upload.", e);
@@ -245,7 +266,7 @@ pub async fn process(
 /// Probe width/height, audio presence, and total duration (seconds).
 /// Duration comes from format context (`format=duration`), with stream duration as fallback —
 /// equivalent to reading container duration / stream time_base×duration in ffmpeg-next.
-async fn get_video_metadata(video_path: &str) -> Result<(i32, i32, bool, f64)> {
+pub async fn get_video_metadata(video_path: &str) -> Result<(i32, i32, bool, f64)> {
     let output = Command::new("ffprobe")
         .args(&[
             "-v",
@@ -686,4 +707,66 @@ pub async fn generate_and_upload_auto_cover(
 
     println!("Auto cover uploaded: {}", cover_key);
     Ok(cover_key)
+}
+
+/// Generate a short (3 s), muted, 360p MP4 preview clip starting at ~10 % of
+/// the video duration.  Uses H.264 baseline for broad browser compat.
+/// Writes locally only — caller is responsible for uploading to S3.
+pub async fn generate_preview_clip(
+    out_path: &str,
+    video_path: &str,
+    duration_secs: f64,
+) -> Result<()> {
+    let seek_secs = if duration_secs > 1.0 {
+        (duration_secs * 0.1).clamp(0.0, (duration_secs - 3.05).max(0.0))
+    } else {
+        0.0
+    };
+    let seek_arg = format!("{:.3}", seek_secs);
+
+    println!(
+        "Generating preview clip from {} at {}s (3 s clip) → {}",
+        video_path, seek_arg, out_path
+    );
+
+    let status = Command::new("ffmpeg")
+        .args(&[
+            "-ss",
+            &seek_arg,
+            "-i",
+            video_path,
+            "-t",
+            "3",
+            "-vf",
+            "scale=-2:360",
+            "-an",
+            "-c:v",
+            "libx264",
+            "-profile:v",
+            "baseline",
+            "-level",
+            "3.0",
+            "-crf",
+            "28",
+            "-preset",
+            "ultrafast",
+            "-movflags",
+            "+faststart",
+            "-pix_fmt",
+            "yuv420p",
+            "-y",
+            out_path,
+        ])
+        .output()
+        .await?
+        .status;
+
+    if !status.success() {
+        return Err(anyhow!("Preview clip generation failed"));
+    }
+    if !Path::new(out_path).exists() {
+        return Err(anyhow!("Preview MP4 was not written: {}", out_path));
+    }
+
+    Ok(())
 }

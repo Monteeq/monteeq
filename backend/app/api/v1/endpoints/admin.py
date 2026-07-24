@@ -415,3 +415,17 @@ def get_moderation_audit_logs(
         )
     return response_list
 
+
+@router.post("/backfill-previews")
+def trigger_preview_backfill(
+    limit: int = 10,
+    current_user = Depends(admin_only)
+):
+    """
+    Kick off backfill of preview clips for existing approved videos.
+    Processes up to `limit` videos synchronously (call repeatedly until 0 returned).
+    """
+    from app.tasks.video_tasks import backfill_previews_task
+    result = backfill_previews_task(limit=limit)
+    return result
+

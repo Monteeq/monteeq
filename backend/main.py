@@ -169,6 +169,7 @@ async def startup():
         try:
             db.execute(text("ALTER TABLE videos ADD COLUMN IF NOT EXISTS cover_url VARCHAR"))
             db.execute(text("ALTER TABLE videos ADD COLUMN IF NOT EXISTS cover_source VARCHAR"))
+            db.execute(text("ALTER TABLE videos ADD COLUMN IF NOT EXISTS preview_url VARCHAR"))
             db.execute(text("ALTER TABLE upload_jobs ADD COLUMN IF NOT EXISTS video_type VARCHAR"))
             db.execute(text("ALTER TABLE upload_jobs ADD COLUMN IF NOT EXISTS cover_source VARCHAR"))
             db.execute(text("ALTER TABLE upload_jobs ADD COLUMN IF NOT EXISTS cover_s3_key VARCHAR"))

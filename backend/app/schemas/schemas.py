@@ -194,6 +194,7 @@ class Video(VideoBase):
     thumbnail_url: str
     cover_url: Optional[str] = None
     cover_source: Optional[str] = None
+    preview_url: Optional[str] = None
     status: str
     owner_id: int
     owner: Optional[UserPublic] = None
@@ -216,7 +217,7 @@ class Video(VideoBase):
         return v if v is not None else 0
 
     @field_validator(
-        'video_url', 'thumbnail_url', 'cover_url',
+        'video_url', 'thumbnail_url', 'cover_url', 'preview_url',
         'url_480p', 'url_720p', 'url_1080p', 'url_2k', 'url_4k',
         mode='before',
     )

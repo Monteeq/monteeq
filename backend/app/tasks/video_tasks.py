@@ -163,6 +163,14 @@ def _finalize_transcode_success(
     video.url_2k = url_2k
     video.url_4k = url_4k
     video.duration = 0
+
+    # Preview clip — may not exist for old videos or if generation failed
+    preview_key = f"previews/{task_id}.mp4"
+    try:
+        preview_url = storage.get_url(preview_key)
+        video.preview_url = preview_url
+    except Exception:
+        video.preview_url = None
     video.failed_at = None
     video.status = "approved"
     video.processing_message = "Live"
@@ -621,3 +629,66 @@ def update_discovery_score_task(video_id: int = None, post_id: int = None):
         db.commit()
     finally:
         db.close()
+
+
+@shared_task(name="video_tasks.backfill_previews")
+def backfill_previews_task(limit: int = 10):
+    """
+    Generate preview clips for existing videos that lack them.
+    Calls the Rust /preview endpoint for each video's source prefix.
+    Processes `limit` videos per invocation.
+    Returns a summary dict.
+    """
+    import requests as _requests
+
+    db = SessionLocal()
+    results = {"processed": 0, "succeeded": 0, "failed": 0, "skipped": 0, "errors": []}
+
+    try:
+        videos = (
+            db.query(Video)
+            .filter(Video.preview_url.is_(None))
+            .filter(Video.status == "approved")
+            .filter(Video.processing_key.isnot(None))
+            .order_by(Video.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+        for video in videos:
+            task_id = video.processing_key
+            source_prefix = f"uploads/{task_id}"
+            results["processed"] += 1
+
+            try:
+                resp = _requests.post(
+                    f"{config.RUST_SERVICE_URL}/preview",
+                    json={"source_prefix": source_prefix, "task_id": task_id},
+                    timeout=120.0,
+                )
+                data = resp.json()
+                if data.get("status") == "ok" and data.get("preview_key"):
+                    preview_key = data["preview_key"]
+                    video.preview_url = storage.get_url(preview_key)
+                    db.commit()
+                    results["succeeded"] += 1
+                    logger.info(f"Preview backfilled for video {video.id} (task={task_id})")
+                else:
+                    msg = data.get("message", "unknown error")
+                    results["failed"] += 1
+                    results["errors"].append({"video_id": video.id, "error": msg})
+                    logger.warning(f"Preview backfill failed for video {video.id}: {msg}")
+            except Exception as e:
+                results["failed"] += 1
+                results["errors"].append({"video_id": video.id, "error": str(e)})
+                logger.error(f"Preview backfill exception for video {video.id}: {e}")
+                db.rollback()
+
+    finally:
+        db.close()
+
+    logger.info(
+        f"Preview backfill complete: {results['succeeded']} succeeded, "
+        f"{results['failed']} failed out of {results['processed']} processed"
+    )
+    return results

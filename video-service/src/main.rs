@@ -9,6 +9,7 @@ use dotenvy::dotenv;
 use std::env;
 use fred::prelude::*;
 use fred::interfaces::KeysInterface;
+use std::path::Path as StdPath;
 
 mod transcoder;
 mod worker;
@@ -37,6 +38,12 @@ struct ProcessRequest {
 
 fn default_cover_source() -> String {
     "auto".to_string()
+}
+
+#[derive(serde::Deserialize)]
+struct PreviewRequest {
+    source_prefix: String,
+    task_id: String,
 }
 
 struct AppState {
@@ -91,6 +98,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(|| async { "OK" }))
         .route("/process", post(process_video))
+        .route("/preview", post(generate_preview))
         .route("/status/:task_id", get(get_status))
         .layer(CorsLayer::permissive())
         .with_state(state);
@@ -170,4 +178,120 @@ async fn get_status(
         },
         None => Json(None)
     }
+}
+
+async fn generate_preview(
+    Json(payload): Json<PreviewRequest>,
+) -> Json<serde_json::Value> {
+    let storage = match storage::StorageManager::new().await {
+        Ok(s) => s,
+        Err(e) => {
+            return Json(serde_json::json!({
+                "status": "error",
+                "message": format!("Storage init failed: {}", e)
+            }));
+        }
+    };
+
+    // List source files under uploads/{task_id}/
+    let prefix = if payload.source_prefix.ends_with('/') {
+        payload.source_prefix.clone()
+    } else {
+        format!("{}/", payload.source_prefix)
+    };
+
+    let keys = match storage.list_objects(&prefix).await {
+        Ok(k) => k,
+        Err(e) => {
+            return Json(serde_json::json!({
+                "status": "error",
+                "message": format!("List objects failed: {}", e)
+            }));
+        }
+    };
+
+    // Find the source video file (largest non-thumb, non-cover file)
+    let source_key = keys.iter()
+        .filter(|k| {
+            let lower = k.to_lowercase();
+            !lower.ends_with(".jpg") && !lower.ends_with(".jpeg") && !lower.ends_with(".png") && !lower.ends_with(".webp")
+        })
+        .max_by_key(|k| k.len())
+        .cloned();
+
+    let source_key = match source_key {
+        Some(k) => k,
+        None => {
+            return Json(serde_json::json!({
+                "status": "error",
+                "message": format!("No source video found under {}", prefix)
+            }));
+        }
+    };
+
+    // Download source to temp file
+    let temp_file = match tempfile::NamedTempFile::new() {
+        Ok(f) => f,
+        Err(e) => {
+            return Json(serde_json::json!({
+                "status": "error",
+                "message": format!("Temp file failed: {}", e)
+            }));
+        }
+    };
+
+    if let Err(e) = storage.download_file(&source_key, temp_file.path()).await {
+        return Json(serde_json::json!({
+            "status": "error",
+            "message": format!("Download failed: {}", e)
+        }));
+    }
+
+    let source_path = temp_file.path().to_str().unwrap().to_string();
+
+    // Probe duration
+    let (_w, _h, _audio, duration) = match transcoder::get_video_metadata(&source_path).await {
+        Ok(m) => m,
+        Err(e) => {
+            return Json(serde_json::json!({
+                "status": "error",
+                "message": format!("Metadata probe failed: {}", e)
+            }));
+        }
+    };
+
+    // Generate preview clip
+    let preview_local = format!("{}_preview.mp4", source_path);
+    if let Err(e) = transcoder::generate_preview_clip(&preview_local, &source_path, duration).await {
+        return Json(serde_json::json!({
+            "status": "error",
+            "message": format!("Preview generation failed: {}", e)
+        }));
+    }
+
+    let preview_path = StdPath::new(&preview_local);
+    if !preview_path.exists() {
+        return Json(serde_json::json!({
+            "status": "error",
+            "message": "Preview clip file not found after generation".to_string()
+        }));
+    }
+
+    // Upload preview to S3
+    let preview_key = format!("previews/{}.mp4", payload.task_id);
+    if let Err(e) = storage.upload_file(preview_path, &preview_key).await {
+        let _ = tokio::fs::remove_file(&preview_local).await;
+        return Json(serde_json::json!({
+            "status": "error",
+            "message": format!("Preview upload failed: {}", e)
+        }));
+    }
+
+    let _ = tokio::fs::remove_file(&preview_local).await;
+    println!("Preview clip generated and uploaded: {}", preview_key);
+
+    Json(serde_json::json!({
+        "status": "ok",
+        "preview_key": preview_key
+    }))
 }

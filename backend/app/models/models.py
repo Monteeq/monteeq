@@ -165,6 +165,7 @@ class Video(Base):
     # Final cover after transcode (custom upload or Rust-generated). Prefer over thumbnail_url for new clients.
     cover_url = Column(String, nullable=True)
     cover_source = Column(String, nullable=True)  # "auto" | "custom"
+    preview_url = Column(String, nullable=True)  # Short 360p MP4 preview clip
     video_type = Column(String, index=True) # home or flash
     status = Column(String, default=ApprovalStatus.PENDING, index=True)
     owner_id = Column(Integer, ForeignKey("users.id"), index=True)

@@ -102,6 +102,42 @@ impl StorageManager {
         Ok(())
     }
 
+    /// List object keys under a given prefix.
+    pub async fn list_objects(&self, prefix: &str) -> Result<Vec<String>> {
+        let mut keys = Vec::new();
+        let mut continuation_token: Option<String> = None;
+
+        loop {
+            let mut req = self.client
+                .list_objects_v2()
+                .bucket(&self.bucket)
+                .prefix(prefix);
+
+            if let Some(ref token) = continuation_token {
+                req = req.continuation_token(token);
+            }
+
+            let resp = req.send().await
+                .map_err(|e| anyhow!("List objects failed: {}", e))?;
+
+            if let Some(contents) = resp.contents {
+                for obj in contents {
+                    if let Some(key) = obj.key {
+                        keys.push(key);
+                    }
+                }
+            }
+
+            if resp.is_truncated.unwrap_or(false) {
+                continuation_token = resp.next_continuation_token;
+            } else {
+                break;
+            }
+        }
+
+        Ok(keys)
+    }
+
     pub async fn download_file(&self, key: &str, local_path: &Path) -> Result<()> {
         println!("Attempting to download from S3: bucket={}, key={}", self.bucket, key);
         let res = self.client

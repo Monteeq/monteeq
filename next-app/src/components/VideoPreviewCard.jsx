@@ -20,8 +20,6 @@ const HlsPool = {
     }
 };
 
-// Safety: reset the pool count whenever the page regains focus
-// (catches cases where unmount cleanup was skipped during tab switch)
 if (typeof window !== 'undefined') {
     window.addEventListener('focus', () => HlsPool.reset(), { once: false });
 }
@@ -31,7 +29,6 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
     const { token } = useAuth();
     const queryClient = useQueryClient();
 
-    // Cache watch history lookup
     const watchHistoryFromCache = React.useMemo(() => {
         if (!token) return null;
         const historyQueries = queryClient.getQueriesData({ queryKey: ['history'] });
@@ -61,34 +58,52 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
     const [showPreview, setShowPreview] = useState(false);
     const videoRef = useRef(null);
     const hoverTimerRef = useRef(null);
+    const cardRef = useRef(null);
     const [isLoaded, setIsLoaded] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const hlsRef = useRef(null);
 
+    const hasPreviewUrl = !!(video.preview_url && video.preview_url.startsWith('http'));
+
+    // ── Scroll-triggered preview via IntersectionObserver ──
+    useEffect(() => {
+        const el = cardRef.current;
+        if (!el) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    if (!hasPreviewUrl && HlsPool.count >= HlsPool.MAX_CONCURRENT) return;
+                    setShowPreview(true);
+                } else {
+                    setShowPreview(false);
+                    setIsLoaded(false);
+                }
+            },
+            { rootMargin: '200px', threshold: 0 }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [hasPreviewUrl]);
+
+    // ── Hover-triggered preview (kept for deliberate hover) ──
     const handleMouseEnter = useCallback(() => {
-        if (HlsPool.count >= HlsPool.MAX_CONCURRENT) {
-            return;
-        }
-        // Debounce: only load video preview after 300ms of sustained hover
+        if (!hasPreviewUrl && HlsPool.count >= HlsPool.MAX_CONCURRENT) return;
         hoverTimerRef.current = setTimeout(() => {
-            if (HlsPool.count >= HlsPool.MAX_CONCURRENT) {
-                return;
-            }
+            if (!hasPreviewUrl && HlsPool.count >= HlsPool.MAX_CONCURRENT) return;
             setShowPreview(true);
         }, 300);
-    }, []);
+    }, [hasPreviewUrl]);
 
     const handleMouseLeave = useCallback(() => {
         clearTimeout(hoverTimerRef.current);
-        setShowPreview(false);
-        setIsLoaded(false);
     }, []);
 
-    // Cleanup timer on unmount
     useEffect(() => {
         return () => clearTimeout(hoverTimerRef.current);
     }, []);
 
+    // ── Video source effect — MP4 preview or HLS fallback ──
     useEffect(() => {
         let manifestParsed = false;
 
@@ -100,12 +115,26 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
             }
             if (videoRef.current) {
                 videoRef.current.pause();
-                videoRef.current.src = '';
-                videoRef.current.currentTime = 0;
+                videoRef.current.removeAttribute('src');
+                videoRef.current.load();
             }
             return;
         }
 
+        const el = videoRef.current;
+
+        // Fast path: dedicated preview MP4 — no HLS.js needed
+        if (hasPreviewUrl) {
+            el.src = video.preview_url;
+            el.load();
+            return () => {
+                el.pause();
+                el.removeAttribute('src');
+                el.load();
+            };
+        }
+
+        // Fallback: full HLS manifest (old videos without preview asset)
         const streamUrl = getStreamUrl(video.video_url, video.id);
         if (!streamUrl) return;
 
@@ -117,44 +146,41 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                 maxMaxBufferLength: 16,
             });
             hls.loadSource(streamUrl);
-            hls.attachMedia(videoRef.current);
+            hls.attachMedia(el);
             hlsRef.current = hls;
 
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
                 manifestParsed = true;
-                HlsPool.count++;                          // only count after confirmed init
-                videoRef.current?.play().catch(() => {});
+                HlsPool.count++;
+                el.play().catch(() => {});
             });
 
             hls.on(Hls.Events.FRAG_LOADED, () => {
                 hls.stopLoad();
             });
 
-            // If HLS errors before manifest, release cleanly
-            hls.on(Hls.Events.ERROR, (event, data) => {
+            hls.on(Hls.Events.ERROR, (_event, data) => {
                 if (data.fatal) {
                     hls.destroy();
                     hlsRef.current = null;
                 }
             });
         } else {
-            videoRef.current.src = streamUrl;
-            videoRef.current.play().catch(() => {});
+            el.src = streamUrl;
+            el.play().catch(() => {});
         }
 
         return () => {
             if (hlsRef.current) {
                 hlsRef.current.destroy();
                 hlsRef.current = null;
-                if (manifestParsed) HlsPool.release();  // only release if we incremented
+                if (manifestParsed) HlsPool.release();
             }
-            const el = videoRef.current;
-            if (el) {
-                el.pause();
-                el.src = '';
-            }
+            el.pause();
+            el.removeAttribute('src');
+            el.load();
         };
-    }, [showPreview, video.video_url, video.id]);
+    }, [showPreview, hasPreviewUrl, video.preview_url, video.video_url, video.id]);
 
     const formatDuration = (seconds) => {
         if (!seconds) return "";
@@ -197,7 +223,11 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
 
     return (
         <div
-            ref={ref}
+            ref={(node) => {
+                cardRef.current = node;
+                if (typeof ref === 'function') ref(node);
+                else if (ref) ref.current = node;
+            }}
             className={`video-card-v2 ${variant === 'list' ? 'vc-list' : 'vc-grid'}`}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -215,8 +245,6 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
 
-
-                    {/* Video Preview — only mounts after debounced hover */}
                     {showPreview && (
                         <video
                             ref={videoRef}
@@ -228,7 +256,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                             onPlaying={() => setIsBuffering(false)}
                             onCanPlay={() => setIsBuffering(false)}
                             className={`vc-video ${isLoaded ? 'vc-video-visible' : ''}`}
-                            crossOrigin="anonymous"
+                            crossOrigin={hasPreviewUrl ? undefined : 'anonymous'}
                         />
                     )}
 
@@ -238,26 +266,21 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                         </div>
                     )}
 
-                    {/* Duration Badge */}
                     {video.duration > 0 && (
                         <div className="vc-duration">
                             {formatDuration(video.duration)}
                         </div>
                     )}
 
-                    {/* Watch Progress Bar */}
                     {(progressPercentage > 0 || isCompleted) && (
                         <div className="vc-progress-bar-container">
-                            <div 
+                            <div
                                 className="vc-progress-bar-fill"
                                 style={{ width: `${isCompleted ? 100 : progressPercentage}%` }}
                             />
                         </div>
                     )}
 
-
-
-                    {/* Status Overlays */}
                     {video.status === 'pending' && (
                         <div className="vc-status pending">
                             <Loader2 className="vc-spin" size={24} />
@@ -271,7 +294,6 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                         </div>
                     )}
 
-                    {/* Hover indicator */}
                     {showPreview && isLoaded && (
                         <div className="vc-play-indicator">
                             <Play size={12} fill="white" />
@@ -281,7 +303,7 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
                 </div>
             </div>
 
-            {/* Metadata Section — YouTube-style ⋮ beside title */}
+            {/* Metadata Section */}
             <div className="vc-info-area">
                 <div className="vc-info-flex">
                     {variant === 'grid' && (
@@ -316,4 +338,3 @@ const VideoPreviewCard = React.memo(React.forwardRef(({ video, onClick, variant 
 VideoPreviewCard.displayName = 'VideoPreviewCard';
 
 export default VideoPreviewCard;
-
