@@ -46,6 +46,9 @@ const Upload = () => {
     const addUpload = useUploadStore((s) => s.addUpload);
     const updateUpload = useUploadStore((s) => s.updateUpload);
     const removeUpload = useUploadStore((s) => s.removeUpload);
+    const hasActiveStoreUploads = useUploadStore((s) =>
+        s.activeUploads.some((u) => u.status === 'uploading' || u.status === 'queued' || u.status === 'processing')
+    );
 
     // Wake up the video engine to mitigate cold starts
     useEffect(() => {
@@ -1378,7 +1381,7 @@ const Upload = () => {
             )}
 
             <UploadUpgradeToast
-                isUploading={uploading || postingBatch}
+                isUploading={uploading || postingBatch || hasActiveStoreUploads}
                 isPro={!!user?.is_premium}
                 onUpgrade={() => router.push('/pro')}
             />
