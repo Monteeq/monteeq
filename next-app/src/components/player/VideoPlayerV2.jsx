@@ -446,6 +446,17 @@ const VideoPlayerV2 = ({
     };
   }, [videoId, token]);
 
+  // Auto-hide controls 2 seconds after playback starts
+  useEffect(() => {
+    if (isPlaying && !isPreRollActive) {
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+      controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
+    }
+    return () => {
+      if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+    };
+  }, [isPlaying, isPreRollActive]);
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -588,7 +599,7 @@ const VideoPlayerV2 = ({
           const nextVal = !prev;
           if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
           if (nextVal && isPlaying) {
-            controlsTimeout.current = setTimeout(() => setShowControls(false), 3000);
+            controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
           }
           return nextVal;
         });
@@ -615,7 +626,7 @@ const VideoPlayerV2 = ({
     setShowControls(true);
     if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
     if (isPlaying) {
-      controlsTimeout.current = setTimeout(() => setShowControls(false), 3000);
+      controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
     }
   };
 
@@ -651,7 +662,7 @@ const VideoPlayerV2 = ({
             const nextVal = !prev;
             if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
             if (nextVal && isPlaying) {
-              controlsTimeout.current = setTimeout(() => setShowControls(false), 3000);
+              controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
             }
             return nextVal;
           });
