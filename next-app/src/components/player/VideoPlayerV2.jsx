@@ -42,6 +42,8 @@ const VideoPlayerV2 = ({
   url_1080p,
   url_2k,
   url_4k,
+  // Performance: force lowest bitrate start + aggressive buffering for fastest first frame
+  fastStartMode = false,
 }) => {
   const { token, user } = useAuth();
   const videoRef = useRef(null);
@@ -210,11 +212,14 @@ const VideoPlayerV2 = ({
       if (hlsRef.current) hlsRef.current.destroy();
       const hls = new Hls({
         capLevelToPlayerSize: false,
-        startLevel: 0,           // start with lowest quality for fastest first frame
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
+        startLevel: 0,
+        maxBufferLength: fastStartMode ? 5 : 10,
+        maxMaxBufferLength: fastStartMode ? 15 : 30,
+        maxBufferSize: fastStartMode ? 5 * 1024 * 1024 : 10 * 1024 * 1024,
+        abrEwmaDefaultEstimate: 3000000,
+        startFragPrefetch: true,
         lowLatencyMode: false,
-        progressive: true,       // start playing as soon as first segment arrives
+        progressive: true,
         xhrSetup: (xhr, url) => {
           if (token) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
@@ -324,7 +329,7 @@ const VideoPlayerV2 = ({
         }
       };
     }
-  }, [src, autoPlay, videoId, token, isPremium, getResolutionDetails]);
+  }, [src, autoPlay, videoId, token, isPremium, getResolutionDetails, fastStartMode]);
 
   // Handle Hls.js level selection smoothly
   useEffect(() => {
