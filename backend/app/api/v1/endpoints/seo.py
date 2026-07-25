@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Response, Query, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from app.db.session import get_db
 from app.core import config
 from app.core.storage import storage
+import re
+import json
 import xml.etree.ElementTree as ET
 
 router = APIRouter()
@@ -118,3 +121,85 @@ async def get_video_sitemap(db: Session = Depends(get_db)):
                 ET.SubElement(video_el, _video_el("tag")).text = tag
 
     return Response(content=_to_xml(urlset), media_type="application/xml")
+
+
+_VIDEO_BY_ID_SQL = text("""
+    SELECT v.id, v.title, v.description, v.thumbnail_url, v.duration,
+           v.created_at, v.status,
+           u.username, u.profile_pic
+    FROM videos v
+    LEFT JOIN users u ON v.owner_id = u.id
+    WHERE v.id = :vid OR v.public_id = :pub_id
+    LIMIT 1
+""")
+
+
+def _parse_video_id(url: str):
+    """Extract the video ID from a Monteeq watch URL."""
+    patterns = [
+        r'/watch/(\d+)',
+        r'/watch/([a-zA-Z0-9_-]+)',
+        r'/embed/(\d+)',
+        r'/embed/([a-zA-Z0-9_-]+)',
+    ]
+    for pat in patterns:
+        m = re.search(pat, url)
+        if m:
+            return m.group(1)
+    return None
+
+
+@router.get("/oembed")
+def oembed(
+    url: str = Query(..., description="URL of the video"),
+    format: str = Query("json", description="Response format: json or xml"),
+    maxwidth: int = Query(None, description="Maximum width"),
+    maxheight: int = Query(None, description="Maximum height"),
+    db: Session = Depends(get_db),
+):
+    video_id = _parse_video_id(url)
+    if not video_id:
+        raise HTTPException(status_code=400, detail="Invalid video URL")
+
+    vid_int = int(video_id) if video_id.isdigit() else None
+    row = db.execute(_VIDEO_BY_ID_SQL, {"vid": vid_int, "pub_id": video_id}).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    width = maxwidth or 640
+    height = maxheight or 360
+
+    watch_url = f"{BASE_URL}/watch/{row.id}"
+    embed_url = f"{BASE_URL}/embed/{row.id}"
+    thumbnail = _resolve_url(row.thumbnail_url) if row.thumbnail_url else ""
+
+    result = {
+        "type": "video",
+        "version": "1.0",
+        "provider_name": "Monteeq",
+        "provider_url": BASE_URL,
+        "title": row.title or "",
+        "author_name": row.username or "",
+        "author_url": f"{BASE_URL}/profile/{row.username}" if row.username else "",
+        "thumbnail_url": thumbnail,
+        "thumbnail_width": 1280,
+        "thumbnail_height": 720,
+        "width": width,
+        "height": height,
+        "html": f'<iframe src="{embed_url}" width="{width}" height="{height}" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>',
+    }
+
+    if format == "xml":
+        xml_str = '<?xml version="1.0" encoding="utf-8"?>\n<oembed>\n'
+        for k, v in result.items():
+            xml_str += f"  <{k}>{v}</{k}>\n"
+        xml_str += "</oembed>"
+        return Response(content=xml_str.encode("utf-8"), media_type="text/xml")
+
+    return JSONResponse(
+        content=result,
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=3600",
+        },
+    )

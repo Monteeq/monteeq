@@ -95,11 +95,17 @@ export async function generateMetadata({ params }) {
   const description = videoDescription(video);
   const canonical = `${siteOrigin()}/watch/${video.id}`;
   const images = video.thumbnail_url ? [{ url: video.thumbnail_url }] : [];
+  const oembedUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || siteOrigin()}/oembed?url=${encodeURIComponent(canonical)}`;
 
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates: {
+      canonical,
+      types: {
+        'application/json+oembed': oembedUrl,
+      },
+    },
     openGraph: {
       title: `${title} | Monteeq`,
       description,
@@ -107,6 +113,13 @@ export async function generateMetadata({ params }) {
       siteName: 'Monteeq',
       type: 'video.other',
       images,
+      ...(video.video_url ? {
+        video: video.video_url,
+        'video:secure_url': video.video_url,
+        'video:type': 'application/x-mpegURL',
+        'video:width': 1280,
+        'video:height': 720,
+      } : {}),
     },
     twitter: {
       card: 'summary_large_image',
