@@ -595,14 +595,11 @@ const VideoPlayerV2 = ({
     } else {
       lastClickTimeRef.current = currentTimeVal;
       clickTimeoutRef.current = setTimeout(() => {
-        setShowControls(prev => {
-          const nextVal = !prev;
-          if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-          if (nextVal && isPlaying) {
-            controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
-          }
-          return nextVal;
-        });
+        setShowControls(true);
+        if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
+        if (isPlaying) {
+          controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
+        }
         clickTimeoutRef.current = null;
       }, 250);
     }
