@@ -132,9 +132,22 @@ function DownloadModal({ video, onClose, user }) {
 function ShareModal({ video, onClose }) {
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const shareTitle = `Watch ${video.title} on Monteeq!`;
+  const [showEmbed, setShowEmbed] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState(false);
+
+  const embedUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/embed/${video.id}`
+    : '';
+  const embedCode = `<iframe src="${embedUrl}" width="640" height="360" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
+  };
+
+  const handleCopyEmbed = () => {
+    navigator.clipboard.writeText(embedCode);
+    setEmbedCopied(true);
+    setTimeout(() => setEmbedCopied(false), 2000);
   };
 
   const socialPlatforms = [
@@ -244,48 +257,139 @@ function ShareModal({ video, onClose }) {
             </a>
           ))}
         </div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: '1.2rem',
-            padding: '0.4rem 0.4rem 0.4rem 1.2rem',
-            gap: '0.5rem',
-          }}
-        >
-          <input
-            type="text"
-            readOnly
-            value={shareUrl}
+
+        {!showEmbed ? (
+          <div
             style={{
-              flex: 1,
-              background: 'none',
-              border: 'none',
-              color: '#ccc',
-              fontSize: '0.85rem',
-              outline: 'none',
-            }}
-            onClick={(e) => e.target.select()}
-          />
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            style={{
-              background: '#ff3b30',
-              border: 'none',
-              color: '#fff',
-              borderRadius: '0.9rem',
-              padding: '0.6rem 1.4rem',
-              fontWeight: 800,
-              fontSize: '0.8rem',
-              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: '1.2rem',
+              padding: '0.4rem 0.4rem 0.4rem 1.2rem',
+              gap: '0.5rem',
             }}
           >
-            Copy
+            <input
+              type="text"
+              readOnly
+              value={shareUrl}
+              style={{
+                flex: 1,
+                background: 'none',
+                border: 'none',
+                color: '#ccc',
+                fontSize: '0.85rem',
+                outline: 'none',
+              }}
+              onClick={(e) => e.target.select()}
+            />
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              style={{
+                background: '#ff3b30',
+                border: 'none',
+                color: '#fff',
+                borderRadius: '0.9rem',
+                padding: '0.6rem 1.4rem',
+                fontWeight: 800,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+              }}
+            >
+              Copy
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowEmbed(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#666',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  padding: 0,
+                }}
+              >
+                ← Back
+              </button>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>Embed code</span>
+            </div>
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '1rem',
+                padding: '1rem',
+              }}
+            >
+              <pre
+                style={{
+                  margin: 0,
+                  padding: 0,
+                  background: 'none',
+                  color: '#aaa',
+                  fontSize: '0.72rem',
+                  fontFamily: 'monospace',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                  lineHeight: 1.5,
+                }}
+              >
+                {embedCode}
+              </pre>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyEmbed}
+              style={{
+                background: embedCopied ? '#4caf50' : '#ff3b30',
+                border: 'none',
+                color: '#fff',
+                borderRadius: '0.9rem',
+                padding: '0.6rem 1.4rem',
+                fontWeight: 800,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                alignSelf: 'flex-end',
+                transition: 'background 0.2s',
+              }}
+            >
+              {embedCopied ? 'Copied!' : 'Copy embed code'}
+            </button>
+          </div>
+        )}
+
+        {!showEmbed && (
+          <button
+            type="button"
+            onClick={() => setShowEmbed(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              width: '100%',
+              marginTop: '1rem',
+              background: 'none',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '1rem',
+              padding: '0.7rem',
+              color: '#999',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            &lt;/&gt; Embed video
           </button>
-        </div>
+        )}
       </div>
     </div>
   );
