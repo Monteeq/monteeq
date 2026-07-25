@@ -543,6 +543,7 @@
     }
 
     .actionRow {
+        flex-wrap: nowrap;
         gap: 0.4rem;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
