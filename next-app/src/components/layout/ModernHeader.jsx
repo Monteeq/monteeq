@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Zap, Menu, Search, Bell, Plus, User,
     Settings, LogOut, X, ArrowLeft, History, TrendingUp,
@@ -11,6 +11,7 @@ import { useNotification } from '@/context/NotificationContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getSearchSuggestions, getTrendingSuggestions } from '@/lib/clientApi';
+import NotificationDropdown from '@/components/NotificationDropdown';
 import s from '@/styles/components/ModernHeader.module.css';
 
 
@@ -23,9 +24,11 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const [showNotifications, setShowNotifications] = useState(false);
 
     const dropdownRef = useRef(null);
     const profileRef = useRef(null);
+    const notifRef = useRef(null);
     const { token, user, logout, loading } = useAuth();
     const { unreadCount } = useNotification();
     const router = useRouter();
@@ -251,13 +254,21 @@ const ModernHeader = ({ onMenuToggle, isMenuOpen }) => {
                 )}
 
                 <div className={s.actionGroup}>
-                    <button className={s.actionBtn} onClick={() => router.push('/notifications')} onMouseEnter={prefetchNotifications}>
-
-                        <Bell size={28} />
-                        {hasMounted && unreadCount > 0 && (
-                            <span className={s.dashBadge} title={`${unreadCount} unread`} />
-                        )}
-                    </button>
+                    <div className={s.notifWrapper} ref={notifRef}>
+                        <button
+                            className={s.actionBtn}
+                            onClick={() => setShowNotifications((p) => !p)}
+                        >
+                            <Bell size={28} />
+                            {hasMounted && unreadCount > 0 && (
+                                <span className={s.dashBadge} title={`${unreadCount} unread`} />
+                            )}
+                        </button>
+                        <NotificationDropdown
+                            isOpen={showNotifications}
+                            onClose={() => setShowNotifications(false)}
+                        />
+                    </div>
 
                     <div className={s.profileMenu} ref={profileRef}>
                         {showAuthedChrome ? (
