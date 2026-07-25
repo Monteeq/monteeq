@@ -637,7 +637,6 @@
 
   .bottomControls {
     flex-wrap: nowrap;
-    overflow: hidden;
   }
 
   .seekBarContainer {
@@ -647,6 +646,10 @@
 
   .group {
     gap: 0.15rem;
+  }
+
+  .qualityLabel {
+    display: none;
   }
 
   .playControlsGroup {
