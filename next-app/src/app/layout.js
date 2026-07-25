@@ -1,5 +1,3 @@
-import { Suspense } from 'react';
-import Providers from '@/components/Providers';
 import './globals.css';
 
 export const metadata = {
@@ -31,17 +29,12 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* Same non-blocking load as Vite index.html — avoids next/font build-time fetch failures */}
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap"
         />
       </head>
-      <body>
-        <Providers>
-          <Suspense fallback={null}>{children}</Suspense>
-        </Providers>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
