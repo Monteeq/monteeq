@@ -74,8 +74,8 @@ export const NotificationProvider = ({ children }) => {
             return;
         }
         fetchUnreadCount();
-        // Poll every 120s — much lighter on the server
-        unreadPollRef.current = setInterval(fetchUnreadCount, 120000);
+        // Poll every 30s for badge count updates
+        unreadPollRef.current = setInterval(fetchUnreadCount, 30000);
         return () => {
             clearInterval(unreadPollRef.current);
             unreadPollRef.current = null;
