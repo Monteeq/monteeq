@@ -720,8 +720,8 @@
   .qualityMenu {
     right: auto;
     left: 50%;
-    transform: translateX(-50%);
-    min-width: 120px;
+    margin-left: -95px;
+    min-width: 190px;
   }
 }
 
