@@ -142,9 +142,12 @@ export default async function WatchPage({ params }) {
   const { video, comments, relatedVideos, followersCount, isFollowing } = data;
   const canonical = `${siteOrigin()}/watch/${video.id}`;
   const jsonLd = buildVideoJsonLd(video, canonical);
+  const apiOrigin = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
   return (
     <>
+      <link rel="dns-prefetch" href={apiOrigin} />
+      <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

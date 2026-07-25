@@ -37,6 +37,7 @@ export default async function EmbedPage({ params, searchParams }) {
   const { id } = params;
   const autoplay = searchParams?.autoplay === '1';
   const video = await loadVideo(id);
+  const apiOrigin = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
   if (!video) {
     return (
@@ -60,26 +61,30 @@ export default async function EmbedPage({ params, searchParams }) {
   const watchUrl = `${siteOrigin()}/watch/${video.id}`;
 
   return (
-    <div style={{
-      position: 'relative',
-      width: '100vw',
-      height: '100vh',
-      background: '#000',
-      overflow: 'hidden',
-    }}>
-      <VideoPlayerV2
-        src={video.video_url}
-        videoId={video.id}
-        title={video.title}
-        creator={video.owner?.username || ''}
-        poster={video.thumbnail_url}
-        autoPlay={autoplay}
-        url_480p={video.url_480p}
-        url_720p={video.url_720p}
-        url_1080p={video.url_1080p}
-        url_2k={video.url_2k}
-        url_4k={video.url_4k}
-      />
+    <>
+      <link rel="dns-prefetch" href={apiOrigin} />
+      <link rel="preconnect" href={apiOrigin} crossOrigin="anonymous" />
+      <div style={{
+        position: 'relative',
+        width: '100vw',
+        height: '100vh',
+        background: '#000',
+        overflow: 'hidden',
+      }}>
+        <VideoPlayerV2
+          src={video.video_url}
+          videoId={video.id}
+          title={video.title}
+          creator={video.owner?.username || ''}
+          poster={video.thumbnail_url}
+          autoPlay={autoplay}
+          fastStartMode
+          url_480p={video.url_480p}
+          url_720p={video.url_720p}
+          url_1080p={video.url_1080p}
+          url_2k={video.url_2k}
+          url_4k={video.url_4k}
+        />
 
       <Link
         href={watchUrl}
@@ -113,5 +118,6 @@ export default async function EmbedPage({ params, searchParams }) {
         Monteeq
       </Link>
     </div>
+    </>
   );
 }

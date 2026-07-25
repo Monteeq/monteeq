@@ -28,3 +28,4 @@ brotli
 fastapi-cache2[redis]
 tenacity
 stripe
+cryptography
