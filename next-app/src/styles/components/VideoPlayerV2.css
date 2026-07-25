@@ -723,8 +723,24 @@
   .qualityMenu {
     right: auto;
     left: 50%;
-    margin-left: -95px;
-    min-width: 190px;
+    margin-left: -80px;
+    min-width: 160px;
+    border-radius: 12px;
+  }
+  .qualityOption {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  .qualityOptionLabel {
+    font-size: 0.78rem;
+  }
+  .qualityMenuHeader {
+    padding: 0.6rem 0.75rem 0.45rem;
+    font-size: 0.65rem;
+  }
+  .qualityUpgradeBanner {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.65rem;
   }
 }
 
