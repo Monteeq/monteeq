@@ -208,7 +208,7 @@ function ShareModal({ video, onClose }) {
         </button>
         <h2 style={{ margin: '0 0 0.4rem', fontSize: '1.5rem', fontWeight: 900 }}>Share this video</h2>
         <p style={{ margin: '0 0 2rem', fontSize: '0.9rem', color: '#666' }}>Choose a platform to share this content</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.8rem', marginBottom: '2rem' }}>
+        <div className="shareGrid">
           {socialPlatforms.map((platform) => (
             <a
               key={platform.name}
@@ -655,7 +655,7 @@ export default function WatchView({
 
         {renderCreatorCard(true)}
 
-        <div style={{ marginTop: '3rem' }}>
+        <div className="contentSection">
           <div className="descriptionBox">
             <div className="videoMeta" style={{ marginBottom: '0.5rem', color: '#fff' }}>
               {video.views?.toLocaleString()} Views • {new Date(video.created_at).toLocaleDateString()}
@@ -679,8 +679,8 @@ export default function WatchView({
             </div>
           )}
 
-          <div style={{ marginTop: '4rem' }}>
-            <h3 className="commentsHeading" style={{ marginBottom: '2rem' }}>
+          <div className="commentsSection">
+            <h3 className="commentsHeading">
               Comments ({comments.length})
             </h3>
             <form onSubmit={handleCommentSubmit} className="commentForm">
