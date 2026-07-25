@@ -433,8 +433,8 @@ export const markAllNotificationsRead = async (token) => {
     });
 };
 
-export const getAllNotifications = async (token) => {
-    return apiFetch(`${API_BASE_URL}/notifications/`, {
+export const getAllNotifications = async (token, skip = 0, limit = 50) => {
+    return apiFetch(`${API_BASE_URL}/notifications/?skip=${skip}&limit=${limit}`, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
