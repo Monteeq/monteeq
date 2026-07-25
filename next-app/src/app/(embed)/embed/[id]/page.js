@@ -35,7 +35,7 @@ export async function generateMetadata({ params, searchParams }) {
 
 export default async function EmbedPage({ params, searchParams }) {
   const { id } = params;
-  const autoplay = searchParams?.autoplay === '1';
+  const autoplay = true;
   const video = await loadVideo(id);
   const apiOrigin = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
