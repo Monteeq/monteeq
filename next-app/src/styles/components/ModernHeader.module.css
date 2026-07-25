@@ -249,6 +249,10 @@
     margin-left: 4px;
 }
 
+.notifWrapper {
+    position: relative;
+}
+
 .actionBtn {
     background: transparent;
     border: none;
