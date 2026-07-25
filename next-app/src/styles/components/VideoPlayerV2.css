@@ -19,6 +19,17 @@
   object-fit: contain;
 }
 
+.posterOverlay {
+  position: absolute;
+  inset: 0;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #000;
+  z-index: 5;
+  pointer-events: none;
+}
+
 /* Top Overlay (Credits) */
 .topOverlay {
   position: absolute;

@@ -93,6 +93,7 @@ const VideoPlayerV2 = ({
   const feedbackTimeoutRef = useRef(null);
   const clickTimeoutRef = useRef(null);
   const lastClickTimeRef = useRef(0);
+  const [posterVisible, setPosterVisible] = useState(true);
 
   // Reset resolution states and trigger pre-roll ad when video changes
   useEffect(() => {
@@ -100,6 +101,7 @@ const VideoPlayerV2 = ({
     setDetectedResolutions([]);
     setCurrentAutoLabel('');
     setBufferedPercent(0);
+    setPosterVisible(true);
     if (!isPremium) {
       setIsPreRollActive(true);
     } else {
@@ -677,7 +679,7 @@ const VideoPlayerV2 = ({
         className="videoElement"
         poster={poster}
         onTimeUpdate={handleTimeUpdate}
-        onPlay={() => setIsPlaying(true)}
+        onPlay={() => { setIsPlaying(true); setPosterVisible(false); }}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
         onVolumeChange={(e) => {
@@ -691,9 +693,15 @@ const VideoPlayerV2 = ({
         onError={() => setError("Error loading video. Please try again.")}
         onClick={handleVideoClick}
         playsInline
-        crossOrigin="anonymous"
         itemProp="contentUrl"
       />
+
+      {posterVisible && poster && (
+        <div
+          className="posterOverlay"
+          style={{ backgroundImage: `url(${poster})` }}
+        />
+      )}
 
       {doubleTapFeedback && (
         <div className={`doubleTapFeedback ${doubleTapFeedback}`}>
