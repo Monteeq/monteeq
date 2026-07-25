@@ -93,6 +93,7 @@ const VideoPlayerV2 = ({
   const feedbackTimeoutRef = useRef(null);
   const clickTimeoutRef = useRef(null);
   const lastClickTimeRef = useRef(0);
+  const [posterVisible, setPosterVisible] = useState(true);
 
   // Reset resolution states and trigger pre-roll ad when video changes
   useEffect(() => {
@@ -100,6 +101,7 @@ const VideoPlayerV2 = ({
     setDetectedResolutions([]);
     setCurrentAutoLabel('');
     setBufferedPercent(0);
+    setPosterVisible(true);
     if (!isPremium) {
       setIsPreRollActive(true);
     } else {
@@ -448,14 +450,14 @@ const VideoPlayerV2 = ({
 
   // Auto-hide controls 2 seconds after playback starts
   useEffect(() => {
-    if (isPlaying && !isPreRollActive) {
+    if (isPlaying && !isPreRollActive && !showQualityMenu) {
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
       controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
     }
     return () => {
       if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
     };
-  }, [isPlaying, isPreRollActive]);
+  }, [isPlaying, isPreRollActive, showQualityMenu]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -597,7 +599,7 @@ const VideoPlayerV2 = ({
       clickTimeoutRef.current = setTimeout(() => {
         setShowControls(true);
         if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-        if (isPlaying) {
+        if (isPlaying && !showQualityMenu) {
           controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
         }
         clickTimeoutRef.current = null;
@@ -622,7 +624,7 @@ const VideoPlayerV2 = ({
   const handleMouseMove = () => {
     setShowControls(true);
     if (controlsTimeout.current) clearTimeout(controlsTimeout.current);
-    if (isPlaying) {
+    if (isPlaying && !showQualityMenu) {
       controlsTimeout.current = setTimeout(() => setShowControls(false), 2000);
     }
   };
@@ -677,7 +679,7 @@ const VideoPlayerV2 = ({
         className="videoElement"
         poster={poster}
         onTimeUpdate={handleTimeUpdate}
-        onPlay={() => setIsPlaying(true)}
+        onPlay={() => { setIsPlaying(true); setPosterVisible(false); }}
         onPause={() => setIsPlaying(false)}
         onEnded={() => setIsPlaying(false)}
         onVolumeChange={(e) => {
@@ -691,9 +693,15 @@ const VideoPlayerV2 = ({
         onError={() => setError("Error loading video. Please try again.")}
         onClick={handleVideoClick}
         playsInline
-        crossOrigin="anonymous"
         itemProp="contentUrl"
       />
+
+      {posterVisible && poster && (
+        <div
+          className="posterOverlay"
+          style={{ backgroundImage: `url(${poster})` }}
+        />
+      )}
 
       {doubleTapFeedback && (
         <div className={`doubleTapFeedback ${doubleTapFeedback}`}>
