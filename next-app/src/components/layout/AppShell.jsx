@@ -100,7 +100,7 @@ export default function AppShell({ children }) {
 
   const isNotFound = !knownPaths.includes(pathname) && !isDynamicPath;
 
-  const isImmersive = isAuthPage || isFlashPage || isPaymentPage || isNotFound;
+  const isImmersive = isAuthPage || isFlashPage || isPaymentPage || isNotFound || pathname.startsWith('/embed');
   const hideSidebar = isLandingPage || isImmersive || isMarketingPage || pathname === '/chat';
   const hideHeader = isImmersive || isLandingPage || pathname === '/chat';
 
