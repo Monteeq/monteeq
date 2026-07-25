@@ -5,7 +5,7 @@ import Hls from 'hls.js';
 import { Play, Pause, Volume2, VolumeX, Maximize, Square, Monitor, Settings, RotateCcw, RotateCw, AlertCircle, Loader2, Crown, SkipBack, SkipForward } from 'lucide-react';
 import '@/styles/components/VideoPlayerV2.css';
 import { initView, sendHeartbeat } from '@/lib/clientApi';
-import { getStreamUrl, getClientApiBaseUrl } from '@/lib/streamUrl';
+import { getStreamUrl, getClientApiBaseUrl, fetchStreamSignedUrl } from '@/lib/streamUrl';
 import { useAuth } from '@/context/AuthContext';
 import PreRollPlayer from '@/components/ads/PreRollPlayer';
 import PauseOverlayAd from '@/components/ads/PauseOverlayAd';
@@ -177,9 +177,7 @@ const VideoPlayerV2 = ({
       pendingSeekRef.current = savedTime;
     }
 
-    const streamSrc = `${getStreamUrl(src, videoId)}${token ? `?token=${token}` : ''}`;
-    const srcToUse = streamSrc || src;
-    let recoveryAttempts = 0;
+    let destroyed = false;
 
     const playAfterLoad = () => {
       if (!videoRef.current) return;
@@ -208,8 +206,17 @@ const VideoPlayerV2 = ({
       videoEl.addEventListener('resize', handleVideoResize);
     }
 
-    if (Hls.isSupported() && srcToUse.includes('.m3u8')) {
+    /**
+     * Initialize HLS.js with a given source URL.
+     * Handles manifest parsing, resolution detection, ABR capping, and error recovery.
+     * On 403 (expired signed URL), re-fetches and reloads up to 2 times.
+     */
+    const initHls = (sourceUrl, retryCount = 0) => {
+      if (destroyed || !videoRef.current) return;
+
       if (hlsRef.current) hlsRef.current.destroy();
+      let recoveryAttempts = 0;
+
       const hls = new Hls({
         capLevelToPlayerSize: false,
         startLevel: 0,
@@ -220,13 +227,9 @@ const VideoPlayerV2 = ({
         startFragPrefetch: true,
         lowLatencyMode: false,
         progressive: true,
-        xhrSetup: (xhr, url) => {
-          if (token) {
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-          }
-        }
+        // No xhrSetup auth header needed — signed URL carries its own auth
       });
-      hls.loadSource(srcToUse);
+      hls.loadSource(sourceUrl);
       hls.attachMedia(videoRef.current);
       hlsRef.current = hls;
 
@@ -285,6 +288,21 @@ const VideoPlayerV2 = ({
 
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
+          // Signed URL expired (403) — re-fetch and reload
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR &&
+              data.response?.code === 403 &&
+              retryCount < 2) {
+            console.warn('[HLS] Signed URL expired, re-fetching...');
+            fetchStreamSignedUrl(videoId, null, token)
+              .then(({ url }) => {
+                if (!destroyed) initHls(url, retryCount + 1);
+              })
+              .catch(() => {
+                if (!destroyed) setError('Failed to refresh stream URL.');
+              });
+            return;
+          }
+
           if (recoveryAttempts >= 3) {
             setError('Failed to load video stream.');
             return;
@@ -305,16 +323,36 @@ const VideoPlayerV2 = ({
           }
         }
       });
+    };
+
+    if (Hls.isSupported() && src && src.startsWith('http')) {
+      // Fetch signed URL from backend, then initialize HLS
+      fetchStreamSignedUrl(videoId, null, token)
+        .then(({ url }) => {
+          if (!destroyed) initHls(url);
+        })
+        .catch((err) => {
+          console.warn('[HLS] Failed to get signed URL, falling back to proxy:', err);
+          if (!destroyed) {
+            // Fallback: use the legacy backend proxy URL
+            const fallbackUrl = `${getStreamUrl(src, videoId)}${token ? `?token=${token}` : ''}`;
+            initHls(fallbackUrl);
+          }
+        });
 
       return () => {
-        hls.destroy();
-        hlsRef.current = null;
+        destroyed = true;
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+        }
         if (videoEl) {
           videoEl.removeEventListener('resize', handleVideoResize);
         }
       };
     } else {
       // Direct MP4 / non-HLS stream
+      const srcToUse = src;
       videoRef.current.src = srcToUse;
       const onMeta = () => {
         playAfterLoad();
@@ -323,13 +361,14 @@ const VideoPlayerV2 = ({
       videoRef.current.addEventListener('loadedmetadata', onMeta);
       videoRef.current.load();
       return () => {
+        destroyed = true;
         videoEl?.removeEventListener('loadedmetadata', onMeta);
         if (videoEl) {
           videoEl.removeEventListener('resize', handleVideoResize);
         }
       };
     }
-  }, [src, autoPlay, videoId, token, isPremium, getResolutionDetails, fastStartMode]);
+  }, [src, autoPlay, videoId, token, isPremium, getResolutionDetails, fastStartMode, selectedQuality]);
 
   // Handle Hls.js level selection smoothly
   useEffect(() => {

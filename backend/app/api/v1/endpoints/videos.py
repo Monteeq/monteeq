@@ -167,6 +167,61 @@ def check_premium_access(db: Session, request: Request):
         raise HTTPException(status_code=403, detail="1080p and above quality levels are restricted to Premium members")
 
 
+@router.get("/{video_id}/stream-url")
+async def get_stream_url(video_id: str, request: Request, db: Session = Depends(get_db)):
+    """Return a CloudFront signed URL for the video's HLS manifest.
+
+    Client fetches this ONCE, then loads manifest + all segments directly
+    from CloudFront — no backend proxy involved in actual streaming.
+
+    Auth/premium check runs here (same logic as the old proxy endpoint).
+    If CloudFront signing is not configured, falls back to the raw CDN URL.
+    """
+    quality = request.query_params.get("quality", "original")
+    if quality.lower() in ("1080p", "2k", "4k"):
+        check_premium_access(db, request)
+
+    video = get_video_db(db, video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    base_url = video.video_url
+    if not base_url:
+        raise HTTPException(status_code=400, detail="Video has no URL")
+
+    # Resolve to CDN URL if stored as S3/HF path
+    if "amazonaws.com" in base_url or "monteeq.s3" in base_url or "cdn.monteeq.com" in base_url:
+        try:
+            if ".com/" in base_url:
+                parts = base_url.split(".com/")
+                if len(parts) > 1:
+                    base_url = storage.get_url(parts[1])
+        except Exception as e:
+            logger.warning(f"Failed to resolve CDN URL for stream-url: {e}")
+
+    # If CloudFront signing is not configured, return the raw URL
+    # (the old proxy endpoint is still available as fallback)
+    from app.utils.cloudfront_signer import is_cloudfront_configured, generate_signed_url
+
+    if not is_cloudfront_configured():
+        return {
+            "url": base_url,
+            "expires_at": 0,
+            "signed": False,
+        }
+
+    # Video duration + 1 hour buffer, capped at 6 hours
+    duration_buffer = min((video.duration or 3600) + 3600, 21600)
+    signed_url = generate_signed_url(base_url, duration_buffer)
+
+    import time
+    return {
+        "url": signed_url,
+        "expires_at": int(time.time()) + duration_buffer,
+        "signed": True,
+    }
+
+
 @router.get("/{video_id}/stream/{sub_path:path}")
 @router.get("/{video_id}/stream")
 async def stream_video(video_id: str, request: Request, db: Session = Depends(get_db), sub_path: str = None):
@@ -236,6 +291,8 @@ async def stream_video(video_id: str, request: Request, db: Session = Depends(ge
         response_headers = {
             "Accept-Ranges": "bytes",
             "Content-Encoding": "identity",
+            "X-Deprecated": "true",
+            "X-Deprecation-Notice": "Use /stream-url for direct CDN access",
         }
         content_type = resp.headers.get("Content-Type")
         if content_type:
@@ -326,6 +383,8 @@ async def stream_video_resolution(
         response_headers = {
             "Accept-Ranges": "bytes",
             "Content-Encoding": "identity",
+            "X-Deprecated": "true",
+            "X-Deprecation-Notice": "Use /stream-url for direct CDN access",
         }
         content_type = resp.headers.get("Content-Type")
         if content_type:

@@ -51,6 +51,10 @@ _raw_endpoint = os.getenv("S3_ENDPOINT") or ""
 S3_ENDPOINT = _raw_endpoint.strip() or None  # empty string → native AWS
 AWS_S3_USE_ACCELERATE = os.getenv("AWS_S3_USE_ACCELERATE", "false").lower() == "true"
 AWS_CLOUDFRONT_DOMAIN = os.getenv("AWS_CLOUDFRONT_DOMAIN", "")
+CLOUDFRONT_KEY_PAIR_ID = os.getenv("CLOUDFRONT_KEY_PAIR_ID", "")
+# NOTE: For production, consider migrating this to AWS Secrets Manager
+# (fetched at startup, cached in memory) instead of an env var.
+CLOUDFRONT_PRIVATE_KEY = os.getenv("CLOUDFRONT_PRIVATE_KEY", "")
 
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
 # STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
