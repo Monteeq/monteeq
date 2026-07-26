@@ -13,6 +13,7 @@ import UploadNotifications from '@/components/UploadNotifications';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import DynamicTitle from '@/components/DynamicTitle';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
+import PushNotificationPrompt from '@/components/PushNotificationPrompt';
 import { useEffect, useState } from 'react';
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
@@ -72,6 +73,7 @@ function AppProviders({ children }) {
               <UploadNotifications />
               <DynamicTitle />
               <InstallAppPrompt />
+              <PushNotificationPrompt />
               <AppShell>
                 <ErrorBoundary>{children}</ErrorBoundary>
               </AppShell>
