@@ -84,6 +84,34 @@
   position: relative;
 }
 
+/* Thumbnail poster — sits above video, fades out once first frame loads */
+.thumbnailPoster {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.thumbnailHidden {
+  opacity: 0;
+}
+
+/* Cold-start loading indicator — small spinner over thumbnail, no dark background */
+.loadingOverlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Subtle glow behind the video content — desktop only */
 @media (min-width: 1024px) {
   .videoWrapper::after {

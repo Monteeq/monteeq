@@ -19,6 +19,7 @@ import {
   fetchFlashVideosPage,
   fetchRecommendedFlash,
 } from '@/lib/clientApi';
+import { fetchStreamSignedUrl } from '@/lib/streamUrl';
 import { adaptiveEngine } from '@/services/adaptiveEngine';
 import { adaptiveDiscovery } from '@/services/adaptiveDiscovery';
 import { flashFeedManager } from '@/services/flashFeedManager';
@@ -89,6 +90,35 @@ export default function FlashFeed({
   const touchStartX = useRef(null);
   const SWIPE_THRESHOLD = 40;
   const bootstrappedRef = useRef(initialClips.length > 0);
+
+  // ─── Signed URL Cache ──────────────────────────────────────────────
+  const signedUrlCacheRef = useRef(new Map());
+  const prefetchInFlightRef = useRef(new Map());
+
+  const prefetchSignedUrl = useCallback(async (videoId) => {
+    if (!videoId) return;
+    if (signedUrlCacheRef.current.has(videoId)) return;
+    if (prefetchInFlightRef.current.has(videoId)) return;
+
+    const promise = fetchStreamSignedUrl(videoId, null, resolveToken(token))
+      .then((result) => {
+        const ttl = (result.expires_at || 3600) * 1000;
+        signedUrlCacheRef.current.set(videoId, {
+          url: result.url,
+          expiresAt: Date.now() + ttl - 30_000,
+        });
+      })
+      .catch(() => {})
+      .finally(() => prefetchInFlightRef.current.delete(videoId));
+
+    prefetchInFlightRef.current.set(videoId, promise);
+  }, [token]);
+
+  const getCachedStreamUrl = useCallback((videoId) => {
+    const cached = signedUrlCacheRef.current.get(videoId);
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
+    return null;
+  }, []);
 
   const handleFeedTypeChange = (type) => {
     setFeedType(type);
@@ -313,6 +343,22 @@ export default function FlashFeed({
     return unsubscribe;
   }, []);
 
+  // ─── Prefetch signed URLs for warm window (active ±2) ────────────
+  useEffect(() => {
+    if (loading || clips.length === 0) return;
+    const activeIndex = clips.findIndex(
+      (c) => c.id.toString() === activeVideoId?.toString()
+    );
+    if (activeIndex === -1) return;
+
+    for (let offset = -2; offset <= 2; offset++) {
+      const idx = activeIndex + offset;
+      if (idx >= 0 && idx < clips.length) {
+        prefetchSignedUrl(clips[idx].id);
+      }
+    }
+  }, [activeVideoId, clips, loading, prefetchSignedUrl]);
+
   const fetchInitialFeed = useCallback(async () => {
     // Keep SSR clips on first mount for /flash and /flash/[id]
     if (bootstrappedRef.current) {
@@ -422,12 +468,15 @@ export default function FlashFeed({
 
   const visibleClips = useMemo(() => {
     const activeIndex = clips.findIndex((c) => c.id.toString() === activeVideoId?.toString());
-    const buffer = scrollVelocity > 1.5 ? 3 : 2;
+    const buffer = 3;
     return clips.map((clip, index) => ({
       ...clip,
       shouldRender: Math.abs(activeIndex - index) <= buffer,
+      isWarm: Math.abs(activeIndex - index) <= 1,
+      prefetchedStreamUrl: getCachedStreamUrl(clip.id),
+      isFastStart: index === activeIndex,
     }));
-  }, [clips, activeVideoId, scrollVelocity]);
+  }, [clips, activeVideoId, getCachedStreamUrl]);
 
   const activeClip = useMemo(
     () => clips.find((c) => c.id.toString() === activeVideoId?.toString()),
@@ -577,6 +626,9 @@ export default function FlashFeed({
                   muted={muted}
                   toggleMute={() => setMuted((m) => !m)}
                   shouldRender={clip.shouldRender}
+                  isWarm={clip.isWarm}
+                  prefetchedStreamUrl={clip.prefetchedStreamUrl}
+                  isFastStart={clip.isFastStart}
                   onPrefetchComments={prefetchComments}
                 />
               </div>
