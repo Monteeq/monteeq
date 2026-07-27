@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { viewVideo } from '@/lib/clientApi';
 import { getStreamUrl, fetchStreamSignedUrl } from '@/lib/streamUrl';
 import { useTrackHistory } from '@/hooks/useLibrary';
+import { useVideoEvents, generateSessionId } from '@/hooks/useVideoEvents';
 import { useReport } from '@/context/ReportContext';
 
 // Services
@@ -52,6 +53,10 @@ const FlashCard = ({
 
     // Interaction Tracking
     const entryTime = useRef(0);
+
+    // Engagement event tracking
+    const [eventSessionId] = useState(() => generateSessionId());
+    const { fireView, fireSkip, checkThresholds, fireLike, fireShare } = useVideoEvents(video.id, null, eventSessionId);
 
     // Smart Replay Config
     const isSmartMode = video.smart_replay || true;
@@ -213,6 +218,9 @@ const FlashCard = ({
             const vDuration = videoRef.current.duration || video.duration || 0;
             trackingManager.startSession(video.id, vDuration);
 
+            // Engagement view event (replaces legacy viewVideo call)
+            fireView();
+
             viewTimer = setTimeout(async () => {
                 try {
                     await viewVideo(video.id);
@@ -229,6 +237,9 @@ const FlashCard = ({
                 trackingManager.trackWatchTime(video.id, watchMs);
                 adaptiveDiscovery.recordWatch(video.id, watchMs, durTime * 1000, video.mood);
                 trackingManager.endSession(video.id);
+
+                // Fire skip if user leaves before 25%
+                fireSkip(curTime);
 
                 if (curTime > 2) {
                     trackHistory.mutate({
@@ -270,6 +281,9 @@ const FlashCard = ({
                     const startTime = dur * smartStart;
                     videoRef.current.currentTime = startTime;
                 }
+
+                // Engagement thresholds
+                checkThresholds(curTime, dur);
             }
         }
     };
@@ -464,7 +478,7 @@ const FlashCard = ({
 
             {/* Sidebar Actions */}
             <div className={s.sidebar}>
-                <div className={`${s.action} ${video.liked ? s.liked : ''}`} onClick={(e) => { e.stopPropagation(); trackingManager.markLiked(video.id); onLike(video.id); }}>
+                <div className={`${s.action} ${video.liked ? s.liked : ''}`} onClick={(e) => { e.stopPropagation(); trackingManager.markLiked(video.id); fireLike(); onLike(video.id); }}>
                     <div className={s.iconCircle}>
                         <Heart size={26} fill={video.liked ? 'currentColor' : 'none'} />
                     </div>
@@ -481,7 +495,7 @@ const FlashCard = ({
                     <span className={s.label}>{video.comments_count || 0}</span>
                 </div>
 
-                <div className={s.action} onClick={(e) => { e.stopPropagation(); onShare(video.id); }}>
+                <div className={s.action} onClick={(e) => { e.stopPropagation(); fireShare(); onShare(video.id); }}>
                     <div className={s.iconCircle}><Share2 size={24} /></div>
                     <span className={s.label}>{video.shares || 0}</span>
                 </div>
