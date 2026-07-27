@@ -7,6 +7,7 @@
     padding-bottom: 80px;
     color: #fff;
     font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -671,5 +672,119 @@
     .tabBtn {
         font-size: 0.75rem;
         padding: 1.25rem 0.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header {
+        padding: 2rem 0.75rem;
+    }
+
+    .avatarRing {
+        width: 120px;
+        height: 120px;
+    }
+
+    .fullName {
+        font-size: 1.5rem;
+    }
+
+    .statsGrid {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .statItem {
+        flex: 1 1 calc(50% - 0.5rem);
+        padding: 0.75rem;
+    }
+
+    .statValue {
+        font-size: 0.9rem;
+    }
+
+    .videoGrid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
+    .flashGrid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2px;
+    }
+
+    .actions {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .btnPrimary,
+    .btnSecondary {
+        flex: 1 1 100%;
+        justify-content: center;
+    }
+
+    .tabNav {
+        gap: 0.5rem;
+        overflow-x: auto;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .tabNav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tabBtn {
+        font-size: 0.7rem;
+        padding: 1rem 0.5rem;
+        letter-spacing: 1px;
+    }
+
+    .featuredCard {
+        border-radius: 16px;
+    }
+
+    .featuredInfo {
+        padding: 1.5rem;
+    }
+
+    .featuredTitle {
+        font-size: 1.25rem;
+    }
+
+    .featuredStats {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .contentArea {
+        padding: 0 0.75rem;
+    }
+
+    .emptyState {
+        padding: 4rem 1rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .statsGrid {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .statItem {
+        flex: 1 1 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+    }
+
+    .videoGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .flashGrid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }

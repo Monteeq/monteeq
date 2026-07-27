@@ -5,7 +5,7 @@ import Hls from 'hls.js';
 import { Heart, MessageCircle, Share2, Trophy, Volume2, VolumeX, Loader2, Flag } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { viewVideo } from '@/lib/clientApi';
-import { getStreamUrl } from '@/lib/streamUrl';
+import { getStreamUrl, fetchStreamSignedUrl } from '@/lib/streamUrl';
 import { useTrackHistory } from '@/hooks/useLibrary';
 import { useReport } from '@/context/ReportContext';
 
@@ -24,6 +24,9 @@ const FlashCard = ({
     muted,
     toggleMute,
     shouldRender = true,
+    isWarm = false,
+    prefetchedStreamUrl = null,
+    isFastStart = false,
     onPrefetchComments,
 }) => {
     const router = useRouter();
@@ -41,7 +44,11 @@ const FlashCard = ({
     const [isScrubbing, setIsScrubbing] = useState(false);
     const [hearts, setHearts] = useState([]);
     const [videoDimensions, setVideoDimensions] = useState(null);
+    const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
     const hlsRef = useRef(null);
+    const wasRenderedRef = useRef(shouldRender);
+    const wasWarmRef = useRef(isWarm);
+    const hlsUrlRef = useRef(null);
 
     // Interaction Tracking
     const entryTime = useRef(0);
@@ -51,8 +58,9 @@ const FlashCard = ({
     const smartStart = 0.25;
     const smartEnd = 0.85;
 
-    // Stream Proxy URL
-    const streamUrl = useMemo(() => getStreamUrl(video.video_url, video.id), [video.video_url, video.id]);
+    // Stream URL — prefer prefetched signed URL, fall back to legacy proxy
+    const legacyStreamUrl = useMemo(() => getStreamUrl(video.video_url, video.id), [video.video_url, video.id]);
+    const streamUrl = prefetchedStreamUrl || legacyStreamUrl;
 
     useEffect(() => {
         setVideoDimensions(null);
@@ -66,58 +74,120 @@ const FlashCard = ({
         }
     }, []);
 
-    // ─── Effect 1: HLS Initialisation ────────────────────────────────────────
-    // Runs only when the video source or render eligibility changes.
-    // Loads the manifest + starts buffering immediately, even before this card is active.
-    useEffect(() => {
-        if (!videoRef.current || !shouldRender) return;
+    const handleLoadedData = useCallback(() => {
+        setHasLoadedOnce(true);
+    }, []);
 
-        if (Hls.isSupported() && streamUrl?.includes('.m3u8')) {
+    // ─── Effect 1a: HLS Initialisation ──────────────────────────────────────
+    // Creates HLS when shouldRender is true and no instance exists.
+    // Instance is preserved when shouldRender toggles (warm pool).
+    // Destroyed only on unmount (1b) or when leaving warm/render window (1c).
+    useEffect(() => {
+        if (!videoRef.current || !shouldRender || hlsRef.current) return;
+
+        const url = prefetchedStreamUrl || legacyStreamUrl;
+        if (!url) return;
+
+        if (Hls.isSupported() && url?.includes('.m3u8')) {
             const hls = new Hls({
                 capLevelToPlayerSize: false,
                 startLevel: 0,
-                maxBufferLength: 30,
-                maxMaxBufferLength: 60,
+                maxBufferLength: isFastStart ? 5 : 10,
+                maxMaxBufferLength: isFastStart ? 15 : 30,
+                maxBufferSize: isFastStart ? 5 * 1024 * 1024 : 10 * 1024 * 1024,
+                abrEwmaDefaultEstimate: 3000000,
+                startFragPrefetch: true,
                 lowLatencyMode: false,
                 progressive: true,
                 autoStartLoad: true,
             });
-            hls.loadSource(streamUrl);
+            hls.loadSource(url);
             hls.attachMedia(videoRef.current);
             hlsRef.current = hls;
+            hlsUrlRef.current = url;
 
             hls.on(Hls.Events.ERROR, (event, data) => {
-                if (data.fatal) {
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            hls.startLoad();
+                if (!data.fatal) return;
+                switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR: {
+                        // 403 → signed URL expired: refetch and reload
+                        if (data.response?.code === 403) {
+                            fetchStreamSignedUrl(video.id, null, null)
+                                .then((result) => {
+                                    if (hlsRef.current && videoRef.current) {
+                                        hlsRef.current.destroy();
+                                        const fresh = new Hls({
+                                            capLevelToPlayerSize: false,
+                                            startLevel: 0,
+                                            maxBufferLength: isFastStart ? 5 : 10,
+                                            maxMaxBufferLength: isFastStart ? 15 : 30,
+                                            maxBufferSize: isFastStart ? 5 * 1024 * 1024 : 10 * 1024 * 1024,
+                                            abrEwmaDefaultEstimate: 3000000,
+                                            startFragPrefetch: true,
+                                            lowLatencyMode: false,
+                                            progressive: true,
+                                            autoStartLoad: true,
+                                        });
+                                        fresh.loadSource(result.url);
+                                        fresh.attachMedia(videoRef.current);
+                                        hlsRef.current = fresh;
+                                        hlsUrlRef.current = result.url;
+                                    }
+                                })
+                                .catch(() => {});
                             break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            hls.recoverMediaError();
-                            break;
-                        default:
-                            break;
+                        }
+                        hls.startLoad();
+                        break;
                     }
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        hls.recoverMediaError();
+                        break;
+                    default:
+                        break;
                 }
             });
-        } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-            videoRef.current.src = streamUrl;
-            videoRef.current.load();
-        } else {
-            videoRef.current.src = streamUrl;
+        } else if (url) {
+            videoRef.current.src = url;
             videoRef.current.load();
         }
+    }, [legacyStreamUrl, prefetchedStreamUrl, shouldRender, isFastStart, video.id]);
 
+    // ─── Effect 1b: HLS cleanup on unmount only ─────────────────────────────
+    useEffect(() => {
         return () => {
             if (hlsRef.current) {
                 hlsRef.current.destroy();
                 hlsRef.current = null;
             }
         };
-    }, [streamUrl, shouldRender]);
+    }, []);
+
+    // ─── Effect 1c: Destroy HLS when leaving warm or render window ───────────
+    useEffect(() => {
+        const leftRenderWindow = wasRenderedRef.current && !shouldRender;
+        const leftWarmWindow = wasWarmRef.current && !isWarm;
+        wasRenderedRef.current = shouldRender;
+        wasWarmRef.current = isWarm;
+
+        if ((leftRenderWindow || leftWarmWindow) && hlsRef.current) {
+            hlsRef.current.destroy();
+            hlsRef.current = null;
+            hlsUrlRef.current = null;
+            if (videoRef.current) {
+                videoRef.current.pause();
+                videoRef.current.currentTime = 0;
+            }
+            setPlaying(false);
+            setProgress(0);
+            setHasLoadedOnce(false);
+        }
+    }, [shouldRender, isWarm]);
 
     // ─── Effect 2: Play / Pause Control ──────────────────────────────────────
-    // Runs when active state or mute changes. HLS is already loaded; just play or pause.
+    // When active: resume from current position (HLS already loaded).
+    // When inactive AND warm: just pause, preserve position.
+    // When inactive AND not warm: full reset (also handled by Effect 1c).
     useEffect(() => {
         if (!videoRef.current) return;
         let viewTimer = null;
@@ -171,16 +241,20 @@ const FlashCard = ({
             }
 
             videoRef.current.pause();
-            videoRef.current.currentTime = 0;
+            if (!isWarm) {
+                videoRef.current.currentTime = 0;
+            }
             setPlaying(false);
-            setProgress(0);
+            if (!isWarm) {
+                setProgress(0);
+            }
             setIsEngaged(false);
         }
 
         return () => {
             if (viewTimer) clearTimeout(viewTimer);
         };
-    }, [isActive, muted, video.id, video.status]);
+    }, [isActive, muted, video.id, video.status, isWarm]);
 
     const handleTimeUpdate = (e) => {
         const { currentTime: curTime, duration: dur } = e.target;
@@ -306,7 +380,14 @@ const FlashCard = ({
                 className={s.videoWrapper}
                 onClick={handleMainClick}
             >
-                {/* Background Layer (Static fallback if needed) */}
+                {/* Thumbnail poster — always behind video, fades out once first frame loads */}
+                <div
+                    className={`${s.thumbnailPoster} ${hasLoadedOnce ? s.thumbnailHidden : ''}`}
+                    style={video.thumbnail_url
+                        ? { backgroundImage: `url(${video.thumbnail_url})` }
+                        : { backgroundColor: '#1c1c1e' }
+                    }
+                />
 
                 {shouldRender ? (
                     <video
@@ -316,6 +397,7 @@ const FlashCard = ({
                         playsInline
                         muted={muted}
                         onLoadedMetadata={handleMetadata}
+                        onLoadedData={handleLoadedData}
                         onTimeUpdate={handleTimeUpdate}
                         onWaiting={() => setIsBuffering(true)}
                         onPlaying={() => setIsBuffering(false)}
@@ -327,9 +409,10 @@ const FlashCard = ({
                         crossOrigin="anonymous"
                     />
                 ) : (
-                    <div 
-                        style={{ 
-                            backgroundImage: `url(${video.thumbnail_url})`,
+                    <div
+                        style={{
+                            backgroundImage: video.thumbnail_url ? `url(${video.thumbnail_url})` : undefined,
+                            backgroundColor: video.thumbnail_url ? undefined : '#1c1c1e',
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
                             width: '100%',
@@ -338,11 +421,19 @@ const FlashCard = ({
                             top: 0,
                             left: 0,
                             zIndex: 1
-                        }} 
+                        }}
                     />
                 )}
 
-                {isBuffering && (
+                {/* Cold-start loading indicator — small spinner, no dark background */}
+                {isActive && !hasLoadedOnce && shouldRender && (
+                    <div className={s.loadingOverlay}>
+                        <Loader2 className={s.spinner} size={28} />
+                    </div>
+                )}
+
+                {/* Mid-playback buffering — only after first frame has loaded */}
+                {isBuffering && hasLoadedOnce && (
                     <div className={s.bufferingOverlay}>
                         <Loader2 className={s.spinner} size={48} />
                     </div>
