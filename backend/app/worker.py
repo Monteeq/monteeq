@@ -17,6 +17,8 @@ celery_app = Celery(
         "app.tasks.video_tasks",
         "app.tasks.email_tasks",
         "app.tasks.morning_notifications",
+        "app.tasks.event_tasks",
+        "app.tasks.media_tasks",
     ]
 )
 
@@ -78,6 +80,11 @@ celery_app.conf.update(
         "flush-social-activity-batch": {
             "task": "tasks.email.flush_social_batch",
             "schedule": crontab(hour=18, minute=0),
+        },
+        # Video engagement events — flush every 60 seconds
+        "flush-video-events": {
+            "task": "tasks.events.flush_video_events",
+            "schedule": 60.0,
         },
     },
 )

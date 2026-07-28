@@ -1510,3 +1510,20 @@ def delete_comment(
     if result is False:
         raise HTTPException(status_code=403, detail="Not authorized to delete this comment")
     return {"status": "success", "message": "Comment deleted successfully"}
+
+
+# ── Media Analysis ────────────────────────────────────────────────────────────
+
+@router.get("/{video_id}/analysis")
+def get_media_analysis(video_id: str, db: Session = Depends(get_db)):
+    """Return the media_analysis row for a video (frames, scene cuts, beats, embedding)."""
+    from sqlalchemy import text
+    row = db.execute(
+        text("SELECT * FROM media_analysis WHERE video_id = :vid"),
+        {"vid": video_id},
+    ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="No analysis found for this video")
+
+    return dict(row)

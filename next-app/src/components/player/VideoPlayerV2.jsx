@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import PreRollPlayer from '@/components/ads/PreRollPlayer';
 import PauseOverlayAd from '@/components/ads/PauseOverlayAd';
 import { useTrackHistory } from '@/hooks/useLibrary';
+import { useVideoEvents, generateSessionId } from '@/hooks/useVideoEvents';
 
 // Resolution definitions: label, quality key for /stream-res, isPro gating
 // 'src' key means use the master HLS stream (default)
@@ -56,6 +57,11 @@ const VideoPlayerV2 = ({
   const viewTicketRef = useRef(null);
   const sessionIdRef = useRef(null);
   const heartbeatIntervalRef = useRef(null);
+
+  // Engagement event tracking
+  const [eventSessionId] = useState(() => generateSessionId());
+  const { fireView, fireSkip, checkThresholds, fireLike, fireShare } = useVideoEvents(videoId, user?.id, eventSessionId);
+  const viewFiredRef = useRef(false);
 
   // UI State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -435,6 +441,12 @@ const VideoPlayerV2 = ({
       return;
     }
 
+    // Fire engagement view event on first play
+    if (!viewFiredRef.current) {
+      viewFiredRef.current = true;
+      fireView();
+    }
+
     const startSession = async () => {
       if (!viewTicketRef.current) {
         try {
@@ -488,6 +500,8 @@ const VideoPlayerV2 = ({
             is_completed: curTime >= durTime * 0.9 && durTime > 0
           });
         }
+        // Fire skip if user leaves before 25%
+        fireSkip(curTime);
       }
     };
   }, [videoId, token]);
@@ -599,6 +613,9 @@ const VideoPlayerV2 = ({
       const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
       setBufferedPercent((bufferedEnd / dur) * 100);
     }
+
+    // Engagement thresholds
+    checkThresholds(cur, dur);
   };
 
   const jump = (secs) => {

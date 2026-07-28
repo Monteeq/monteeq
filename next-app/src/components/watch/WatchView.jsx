@@ -25,6 +25,7 @@ import VideoPreviewCard from '@/components/VideoPreviewCard';
 import { useAuth } from '@/context/AuthContext';
 import { useReport } from '@/context/ReportContext';
 import { useWatchLaterToggle } from '@/hooks/useWatchLaterToggle';
+import { useVideoEvents, generateSessionId } from '@/hooks/useVideoEvents';
 import {
   likeVideo,
   shareVideo,
@@ -424,6 +425,10 @@ export default function WatchView({
   const [showShareModal, setShowShareModal] = useState(false);
   const [navQueue, setNavQueue] = useState(() => relatedVideos || []);
 
+  // Engagement events — like/share from WatchView (view/watch tracked by VideoPlayerV2)
+  const [eventSessionId] = useState(() => generateSessionId());
+  const { fireLike, fireShare } = useVideoEvents(video?.id, user?.id, eventSessionId);
+
   const {
     isSaved: isSavedToWatchLater,
     isPending: watchLaterPending,
@@ -535,6 +540,7 @@ export default function WatchView({
       router.push('/login');
       return;
     }
+    fireLike();
     const wasLiked = !!video.liked_by_user;
     setVideo((prev) => ({
       ...prev,
@@ -562,6 +568,7 @@ export default function WatchView({
   };
 
   const handleShare = async () => {
+    fireShare();
     setShowShareModal(true);
     try {
       await shareVideo(video.id);
