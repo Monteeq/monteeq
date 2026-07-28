@@ -111,24 +111,81 @@ def follow_user(
 
 @router.get("/search", response_model=schemas.UnifiedSearchResponse)
 def search_unified(
-    q: str = "", 
+    q: str = "",
+    mode: str = "hybrid",
     db: Session = Depends(get_db)
 ):
     if not q:
-        return {"videos": [], "users": []}
-    
-    # Search for users
+        return {"videos": [], "users": [], "posts": []}
+
+    # ── User search (always runs, unaffected by mode) ──
     users = db.query(User).filter(
         or_(
             User.username.ilike(f"%{q}%"),
             User.full_name.ilike(f"%{q}%")
         )
     ).limit(10).all()
-    
+
     from app.crud import video as crud_video
-    videos = crud_video.search_videos(db, query_str=q)
-    posts = crud_video.search_posts(db, query_str=q)
-    
+
+    # ── Keyword search (runs for both 'keyword' and 'hybrid') ──
+    keyword_videos = []
+    keyword_video_ids = []
+    posts = []
+
+    if mode in ("keyword", "hybrid"):
+        keyword_videos = crud_video.search_videos(db, query_str=q)
+        keyword_video_ids = [v.id for v in keyword_videos]
+        posts = crud_video.search_posts(db, query_str=q)
+
+    # ── Semantic search (runs for both 'semantic' and 'hybrid') ──
+    semantic_results = []
+    if mode in ("semantic", "hybrid"):
+        try:
+            from app.services.hybrid_search import semantic_search
+            semantic_results = semantic_search(db, q, limit=30)
+        except Exception as e:
+            # Semantic search is best-effort; keyword results still stand
+            import logging
+            logging.getLogger(__name__).warning("Semantic search failed: %s", e)
+
+    # ── Merge & rank (hybrid mode only — otherwise pass through) ──
+    if mode == "hybrid" and semantic_results:
+        from app.services.hybrid_search import merge_search_results
+        ranked = merge_search_results(keyword_video_ids, semantic_results, limit=50)
+
+        # Build an id→Video lookup from keyword results (already has owner loaded)
+        kw_lookup = {v.id: v for v in keyword_videos}
+
+        # Fetch any semantic-only videos not in keyword results
+        semantic_only_ids = [vid for vid, _ in ranked if vid not in kw_lookup]
+        if semantic_only_ids:
+            from sqlalchemy.orm import joinedload
+            extra_videos = (
+                db.query(Video)
+                .options(joinedload(Video.owner))
+                .filter(Video.id.in_(semantic_only_ids), Video.status == "approved")
+                .all()
+            )
+            for v in extra_videos:
+                kw_lookup[v.id] = v
+
+        # Build final ordered list, preserving rank order
+        videos = [kw_lookup[vid] for vid, _ in ranked if vid in kw_lookup]
+
+    elif mode == "semantic" and semantic_results:
+        # Pure semantic: fetch full Video objects for the ranked IDs
+        from sqlalchemy.orm import joinedload
+        sem_ids = [vid for vid, _ in semantic_results]
+        videos = (
+            db.query(Video)
+            .options(joinedload(Video.owner))
+            .filter(Video.id.in_(sem_ids), Video.status == "approved")
+            .all()
+        )
+    else:
+        videos = keyword_videos
+
     return {"videos": videos, "users": users, "posts": posts}
 
 @router.post("/upload-avatar")
