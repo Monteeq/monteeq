@@ -197,6 +197,13 @@ def _finalize_transcode_success(
     except Exception as e:
         logger.warning(f"Failed to delete source directory uploads/{task_id}/: {e}")
 
+    # Fire-and-forget: run media analysis pipeline asynchronously
+    try:
+        from app.tasks.media_tasks import analyze_media
+        analyze_media.delay(video_id)
+    except Exception as e:
+        logger.warning(f"Failed to enqueue media analysis for video {video_id}: {e}")
+
     return {"status": "success", "video_id": video_id}
 
 

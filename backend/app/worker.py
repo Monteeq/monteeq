@@ -18,6 +18,7 @@ celery_app = Celery(
         "app.tasks.email_tasks",
         "app.tasks.morning_notifications",
         "app.tasks.event_tasks",
+        "app.tasks.media_tasks",
     ]
 )
 
