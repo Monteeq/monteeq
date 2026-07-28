@@ -29,7 +29,7 @@ fastapi-cache2[redis]
 tenacity
 stripe
 cryptography
-pyscenedetect[opencv]
+scenedetect[opencv]
 librosa
 sentence-transformers
 pgvector
