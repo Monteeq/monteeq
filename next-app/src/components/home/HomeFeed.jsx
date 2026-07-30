@@ -13,7 +13,11 @@ import {
 } from '@/lib/clientApi';
 import VirtualizedFeed from '@/components/VirtualizedFeed';
 import { VideoSkeleton } from '@/components/Skeleton';
+import RecommendedForYou from '@/components/home/RecommendedForYou';
 import useWindowWidth from '@/hooks/useWindowWidth';
+
+/** Section ordering — change this array to reorder or remove sections. */
+const SECTION_ORDER = ['recommendations', 'feed', 'flash'];
 
 function formatViews(num) {
   if (!num) return '0';
@@ -32,7 +36,7 @@ export default function HomeFeed({
   initialCategories = ['All'],
 }) {
   const router = useRouter();
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const width = useWindowWidth();
   const [activeCategory, setActiveCategory] = useState('All');
   const [categories, setCategories] = useState(
@@ -144,113 +148,171 @@ export default function HomeFeed({
         </div>
       ) : (
         <>
-          <div className="feed-section">
-            {firstRowVideos.length > 0 ? (
-              <VirtualizedFeed videos={firstRowVideos} onVideoClick={handleVideoClick} />
-            ) : (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '6rem 2rem',
-                  color: 'var(--text-muted)',
-                  background: 'var(--bg-raised)',
-                  borderRadius: 32,
-                  margin: '2rem 0',
-                  border: '1px solid var(--border-glass)',
-                }}
-              >
-                <Play size={48} style={{ marginBottom: '1.5rem', opacity: 0.3 }} />
-                <h2 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-                  No videos found
-                </h2>
-                <p>
-                  We couldn&apos;t find any videos in the &quot;{activeCategory}&quot; category. Try
-                  another one!
-                </p>
-              </div>
-            )}
-          </div>
+          {SECTION_ORDER.map((section) => {
+            switch (section) {
+              case 'recommendations':
+                return (
+                  <RecommendedForYou
+                    key="recs"
+                    userId={user?.id}
+                    columnCount={columnCount}
+                  />
+                );
 
-          {flash.length > 0 && (
-            <div
-              className="flash-shelf-container"
-              style={{
-                margin: '1rem 0',
-                padding: '1.5rem 0',
-                borderTop: '1px solid var(--border-glass)',
-                borderBottom: '1px solid var(--border-glass)',
-              }}
-            >
-              <div className="section-title" style={{ justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                  <div
-                    style={{
-                      color: 'var(--accent-primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Zap size={24} fill="currentColor" />
-                  </div>
-                  <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Flash</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => router.push('/flash')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--accent-primary)',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  VIEW ALL
-                </button>
-              </div>
+              case 'feed': {
+                const showEmpty = firstRowVideos.length === 0;
 
-              <div className="flash-shelf-grid">
-                {flash.slice(0, flashLimit).map((item) => (
-                  <div
-                    key={item.id}
-                    className="flash-shelf-item hover-scale"
-                    onClick={() => router.push(`/flash/${item.id}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        router.push(`/flash/${item.id}`);
-                      }
-                    }}
-                    role="link"
-                    tabIndex={0}
-                  >
-                    <div className="flash-thumbnail-container">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={item.thumbnail_url}
-                        alt=""
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        loading="lazy"
-                      />
-                      <div className="flash-overlay-info">
-                        <div className="flash-item-title">{item.title}</div>
-                        <div className="flash-item-views">
-                          {formatViews(item.views)} views
+                return (
+                  <React.Fragment key="feed">
+                    <div className="feed-section">
+                      {firstRowVideos.length > 0 ? (
+                        <VirtualizedFeed
+                          videos={firstRowVideos}
+                          onVideoClick={handleVideoClick}
+                        />
+                      ) : showEmpty ? (
+                        <div
+                          style={{
+                            textAlign: 'center',
+                            padding: '6rem 2rem',
+                            color: 'var(--text-muted)',
+                            background: 'var(--bg-raised)',
+                            borderRadius: 32,
+                            margin: '2rem 0',
+                            border: '1px solid var(--border-glass)',
+                          }}
+                        >
+                          <Play
+                            size={48}
+                            style={{ marginBottom: '1.5rem', opacity: 0.3 }}
+                          />
+                          <h2
+                            style={{
+                              color: 'var(--text-primary)',
+                              marginBottom: '0.5rem',
+                            }}
+                          >
+                            No videos found
+                          </h2>
+                          <p>
+                            We couldn&apos;t find any videos in the &quot;
+                            {activeCategory}&quot; category. Try another one!
+                          </p>
                         </div>
+                      ) : null}
+                    </div>
+
+                    {remainingVideos.length > 0 && (
+                      <div
+                        className="feed-section"
+                        style={{ marginTop: '1rem' }}
+                      >
+                        <VirtualizedFeed
+                          videos={remainingVideos}
+                          onVideoClick={handleVideoClick}
+                        />
                       </div>
+                    )}
+                  </React.Fragment>
+                );
+              }
+
+              case 'flash':
+                return flash.length > 0 ? (
+                  <div
+                    key="flash"
+                    className="flash-shelf-container"
+                    style={{
+                      margin: '1rem 0',
+                      padding: '1.5rem 0',
+                      borderTop: '1px solid var(--border-glass)',
+                      borderBottom: '1px solid var(--border-glass)',
+                    }}
+                  >
+                    <div
+                      className="section-title"
+                      style={{ justifyContent: 'space-between' }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.8rem',
+                        }}
+                      >
+                        <div
+                          style={{
+                            color: 'var(--accent-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <Zap size={24} fill="currentColor" />
+                        </div>
+                        <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Flash</h2>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => router.push('/flash')}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--accent-primary)',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          fontSize: '0.9rem',
+                        }}
+                      >
+                        VIEW ALL
+                      </button>
+                    </div>
+
+                    <div className="flash-shelf-grid">
+                      {flash.slice(0, flashLimit).map((item) => (
+                        <div
+                          key={item.id}
+                          className="flash-shelf-item hover-scale"
+                          onClick={() => router.push(`/flash/${item.id}`)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              router.push(`/flash/${item.id}`);
+                            }
+                          }}
+                          role="link"
+                          tabIndex={0}
+                        >
+                          <div className="flash-thumbnail-container">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={item.thumbnail_url}
+                              alt=""
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                              }}
+                              loading="lazy"
+                            />
+                            <div className="flash-overlay-info">
+                              <div className="flash-item-title">
+                                {item.title}
+                              </div>
+                              <div className="flash-item-views">
+                                {formatViews(item.views)} views
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                ) : null;
 
-          {remainingVideos.length > 0 && (
-            <div className="feed-section" style={{ marginTop: '1rem' }}>
-              <VirtualizedFeed videos={remainingVideos} onVideoClick={handleVideoClick} />
-            </div>
-          )}
+              default:
+                return null;
+            }
+          })}
         </>
       )}
 

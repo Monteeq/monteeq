@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, BackgroundTasks
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import List, Optional
@@ -867,6 +868,57 @@ def link_google_account(
         raise HTTPException(status_code=400, detail="Invalid Google token")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class RecommendationItem(BaseModel):
+    video_id: int
+    title: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    cover_url: Optional[str] = None
+    creator_username: str = "Unknown"
+    similarity_score: float = 0.0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.get("/{user_id}/recommendations", response_model=List[RecommendationItem])
+def get_user_recommendations(
+    user_id: int,
+    limit: int = 20,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    """Content-based video recommendations for a user.
+
+    Uses pgvector caption embeddings to find visually/semantically similar
+    videos to the user's liked history. Falls back to trending (most-liked
+    videos from the past 7 days) for new users or when no embeddings are
+    available yet.
+
+    Results are cached in Redis for 15 minutes per user.
+    """
+    if limit < 1 or limit > 50:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 50")
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be >= 0")
+
+    cache_key = f"recs:{user_id}:{limit}:{offset}"
+    try:
+        cached = redis_client.get(cache_key)
+        if cached:
+            return json.loads(cached)
+    except Exception:
+        pass
+
+    from app.services.recommendations import get_user_recommendations as _get_recs
+    results = _get_recs(db, user_id=user_id, limit=limit, offset=offset)
+
+    try:
+        redis_client.setex(cache_key, 900, json.dumps(results))
+    except Exception:
+        pass
+
+    return results
 
 
 @router.get("/{username}/followers", response_model=List[schemas.User])

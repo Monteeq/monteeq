@@ -13,6 +13,7 @@ from app.services.media_analysis import (
     detect_scene_cuts,
     detect_beats,
     generate_caption_embedding,
+    generate_visual_embedding,
     download_video_from_s3,
 )
 
@@ -22,7 +23,11 @@ logger = logging.getLogger(__name__)
 @shared_task(name="tasks.media.analyze_media", max_retries=2, default_retry_delay=120)
 def analyze_media(video_id: int):
     """Download transcoded video, run frame extraction, scene detection,
-    beat tracking, and caption embedding, then write results to media_analysis."""
+    beat tracking, and caption embedding, then write results to media_analysis.
+
+    After completion, fires ``generate_visual_embedding`` as a follow-up task
+    so the heavier CLIP work is retryable independently.
+    """
 
     db = SessionLocal()
     video = None
@@ -117,6 +122,9 @@ def analyze_media(video_id: int):
         db.commit()
         logger.info("Media analysis completed for video %s", video_id)
 
+        # Fire follow-up CLIP visual embedding task (independent retry)
+        generate_visual_embedding.delay(video_id)
+
     except Exception as e:
         logger.exception("Media analysis failed for video %s: %s", video_id, e)
         status = "failed"
@@ -138,4 +146,68 @@ def analyze_media(video_id: int):
                 os.unlink(local_video_path)
             except OSError:
                 pass
+        db.close()
+
+
+@shared_task(
+    name="tasks.media.generate_visual_embedding",
+    max_retries=3,
+    default_retry_delay=60,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=300,
+    retry_jitter=True,
+)
+def generate_visual_embedding(video_id: int):
+    """Download representative frames from S3, encode with CLIP ViT-B/32,
+    and write the averaged L2-normalized vector to visual_embedding.
+
+    This task is decoupled from ``analyze_media`` so transient S3 or model
+    failures can retry without re-running the full analysis pipeline.
+    """
+    db = SessionLocal()
+    try:
+        from sqlalchemy import text as sa_text
+
+        row = db.execute(
+            sa_text(
+                "SELECT frame_sample_paths FROM media_analysis "
+                "WHERE video_id = :vid AND status = 'done'"
+            ),
+            {"vid": video_id},
+        ).fetchone()
+
+        if not row or not row[0]:
+            logger.warning(
+                "generate_visual_embedding: no frame_sample_paths for video %s", video_id
+            )
+            return
+
+        frame_s3_keys = row[0]
+        from app.services.media_analysis import generate_visual_embedding as _gen
+        visual_vec = _gen(frame_s3_keys)
+
+        if visual_vec is None:
+            logger.warning(
+                "generate_visual_embedding: could not produce embedding for video %s",
+                video_id,
+            )
+            return
+
+        from app.services.pgvector_utils import vector_to_str
+
+        db.execute(
+            sa_text(
+                "UPDATE media_analysis SET visual_embedding = :vec, updated_at = now() "
+                "WHERE video_id = :vid"
+            ),
+            {"vec": vector_to_str(visual_vec), "vid": video_id},
+        )
+        db.commit()
+        logger.info("Visual embedding written for video %s", video_id)
+
+    except Exception as e:
+        logger.exception("generate_visual_embedding failed for video %s: %s", video_id, e)
+        raise  # let autoretry handle it
+    finally:
         db.close()

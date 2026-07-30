@@ -234,7 +234,8 @@ const Upload = () => {
         for (const v of valid) {
             const orientation = v.orientation ?? null;
             drafts[v.id] = {
-                caption: '',
+                title: '',
+                description: '',
                 tags: '',
                 coverSource: 'auto',
                 coverFile: null,
@@ -423,7 +424,7 @@ const Upload = () => {
 
     const handlePostAll = async () => {
         if (postingBatch) return;
-        const ready = batchVideos.every((v) => (videoDrafts[v.id]?.caption || '').trim().length > 0);
+        const ready = batchVideos.every((v) => (videoDrafts[v.id]?.title || '').trim().length > 0);
         if (!ready) return;
 
         const formData = new FormData();
@@ -431,7 +432,8 @@ const Upload = () => {
         for (const v of batchVideos) {
             const d = videoDrafts[v.id];
             formData.append('files', v.file, v.file.name);
-            formData.append('titles', d.caption.trim());
+            formData.append('titles', d.title.trim());
+            formData.append('descriptions', d.description?.trim() || '');
             formData.append('video_types', d.videoType === 'flash' ? 'flash' : 'home');
         }
 

@@ -33,3 +33,9 @@ scenedetect[opencv]
 librosa
 sentence-transformers
 pgvector
+# ── CLIP visual embeddings (ViT-B/32, 512-dim) ──────────────────────────
+# transformers is already installed via sentence-transformers above.
+# The CLIP model (~350 MB) is downloaded lazily on first use by clip_utils.py.
+# WARNING: This adds ~1.5 GB VRAM/RAM to the Celery worker and API server
+# when the CLIP model is loaded.  Monitor worker memory on deployment.
+# transformers  # already pulled in by sentence-transformers

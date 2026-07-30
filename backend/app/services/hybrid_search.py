@@ -3,33 +3,57 @@ Hybrid search — merges keyword (ILIKE) and semantic (pgvector) search results.
 
 The keyword path lives in app.crud.video.search_videos / search_posts (untouched).
 This module adds the semantic path and the merge/ranking logic.
+
+Semantic search now blends two embedding types:
+  - **caption_embedding** (384-dim, sentence-transformers all-MiniLM-L6-v2)
+  - **visual_embedding** (512-dim, CLIP ViT-B/32)
 """
 import logging
 from typing import List, Optional, Tuple
 
-import numpy as np
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+
+from app.services.pgvector_utils import (
+    blended_cosine_similarity_query,
+    cosine_similarity_query,
+    vector_to_str,
+)
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Model singleton — loaded once, reused across requests
+# Tuning constants — adjust these to shift ranking between text and visual
 # ---------------------------------------------------------------------------
-_encoder = None
+CAPTION_WEIGHT = 0.5  # weight for sentence-transformers text similarity
+VISUAL_WEIGHT = 0.5   # weight for CLIP visual similarity
+
+# ---------------------------------------------------------------------------
+# Model singletons — loaded once, reused across requests
+# ---------------------------------------------------------------------------
+_caption_encoder = None
+_visual_encoder_loaded = False
 
 
-def _get_encoder():
-    global _encoder
-    if _encoder is None:
+def _get_caption_encoder():
+    global _caption_encoder
+    if _caption_encoder is None:
         from sentence_transformers import SentenceTransformer
-        _encoder = SentenceTransformer("all-MiniLM-L6-v2")
+        _caption_encoder = SentenceTransformer("all-MiniLM-L6-v2")
         logger.info("Loaded sentence-transformers model all-MiniLM-L6-v2")
-    return _encoder
+    return _caption_encoder
+
+
+def _ensure_visual_encoder():
+    """Eagerly load the CLIP text encoder (module-level singleton via clip_utils)."""
+    global _visual_encoder_loaded
+    if not _visual_encoder_loaded:
+        from app.services.clip_utils import _load
+        _load()
+        _visual_encoder_loaded = True
 
 
 # ---------------------------------------------------------------------------
-# Semantic search via pgvector
+# Semantic search via pgvector (blended caption + visual)
 # ---------------------------------------------------------------------------
 
 def semantic_search(
@@ -38,38 +62,46 @@ def semantic_search(
     limit: int = 20,
     status: str = "approved",
 ) -> List[Tuple[int, float]]:
-    """Return [(video_id, similarity_score), ...] ranked by cosine distance.
+    """Return [(video_id, blended_score), ...] ranked by combined similarity.
 
-    Uses the <=> (cosine distance) operator from pgvector.
-    similarity = 1 - cosine_distance, so higher is better.
+    Encodes the query with both sentence-transformers (caption) and CLIP
+    (visual), then runs a single blended pgvector query.  If CLIP is
+    unavailable or the visual column is NULL for a video, that side
+    contributes 0 via COALESCE — no errors, no zeroing of the whole score.
     """
     if not query or not query.strip():
         return []
 
-    encoder = _get_encoder()
-    embedding = encoder.encode(query.strip(), normalize_embeddings=True)
-    # pgvector expects a literal string like '[0.1, 0.2, ...]'
-    embedding_str = "[" + ",".join(str(float(v)) for v in embedding) + "]"
+    # Caption embedding (sentence-transformers)
+    caption_encoder = _get_caption_encoder()
+    caption_emb = caption_encoder.encode(query.strip(), normalize_embeddings=True)
+    caption_str = vector_to_str(caption_emb)
 
-    # cosine_distance <=> returns 0 for identical vectors, 2 for opposite
-    # similarity = 1 - distance, so range is [-1, 1]
-    rows = db.execute(
-        text(
-            """
-            SELECT ma.video_id, (1 - (ma.caption_embedding <=> :embedding::vector)) AS similarity
-            FROM media_analysis ma
-            JOIN videos v ON v.id = ma.video_id
-            WHERE ma.caption_embedding IS NOT NULL
-              AND v.status = :status
-              AND ma.status = 'done'
-            ORDER BY ma.caption_embedding <=> :embedding::vector
-            LIMIT :limit
-            """
-        ),
-        {"embedding": embedding_str, "status": status, "limit": limit},
-    ).fetchall()
+    # Visual embedding (CLIP text encoder)
+    visual_str = None
+    try:
+        _ensure_visual_encoder()
+        from app.services.clip_utils import encode_text
+        visual_emb = encode_text(query.strip())
+        visual_str = vector_to_str(visual_emb)
+    except Exception as exc:
+        logger.warning("CLIP text encoding failed — falling back to caption-only: %s", exc)
 
-    return [(row[0], float(row[1])) for row in rows]
+    if visual_str is not None:
+        return blended_cosine_similarity_query(
+            db,
+            caption_str,
+            visual_str,
+            caption_weight=CAPTION_WEIGHT,
+            visual_weight=VISUAL_WEIGHT,
+            limit=limit,
+            status=status,
+        )
+
+    # Fallback: caption-only (CLIP unavailable)
+    return cosine_similarity_query(
+        db, caption_str, limit=limit, status=status,
+    )
 
 
 # ---------------------------------------------------------------------------
