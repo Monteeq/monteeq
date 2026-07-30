@@ -1527,3 +1527,93 @@ def get_media_analysis(video_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No analysis found for this video")
 
     return dict(row)
+
+
+# ── Editing Feedback ──────────────────────────────────────────────────────────
+
+RATE_LIMIT_KEY_PREFIX = "rate_limit:feedback:"
+RATE_LIMIT_MAX = 10  # requests per window
+RATE_LIMIT_WINDOW = 3600  # 1 hour in seconds
+
+
+def _check_feedback_rate_limit(user_id: int) -> None:
+    """Raise 429 if the user has exceeded the feedback request limit."""
+    key = f"{RATE_LIMIT_KEY_PREFIX}{user_id}"
+    try:
+        current = redis_client.get(key)
+        if current is not None and int(current) >= RATE_LIMIT_MAX:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. You can request feedback up to 10 times per hour.",
+            )
+        redis_client.incr(key)
+        redis_client.expire(key, RATE_LIMIT_WINDOW, nx=True)
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # Redis down — allow request rather than blocking users
+
+
+@router.post("/{video_id}/feedback")
+def post_edit_feedback(
+    video_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_user),
+):
+    """Generate AI editing feedback for a video based on its scene_cuts and beat_timestamps.
+
+    Returns the feedback text plus the raw metrics dict.  Rate-limited to 10
+    requests per hour per user.
+    """
+    _check_feedback_rate_limit(current_user.id)
+
+    from sqlalchemy import text as sql_text
+
+    # 1. Fetch media_analysis row
+    row = db.execute(
+        sql_text("SELECT * FROM media_analysis WHERE video_id = :vid"),
+        {"vid": video_id},
+    ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="No media analysis found for this video")
+
+    if not row.get("scene_cuts") or not row.get("beat_timestamps"):
+        raise HTTPException(
+            status_code=409,
+            detail="Editing feedback is not available yet — scene cut or beat detection has not finished. "
+            "Wait for media analysis to complete and try again.",
+        )
+
+    # 2. Compute metrics
+    from app.services.editing_feedback import compute_edit_metrics, generate_feedback
+
+    metrics = compute_edit_metrics(
+        scene_cuts=list(row["scene_cuts"]),
+        beat_timestamps=list(row["beat_timestamps"]),
+    )
+
+    # 3. Get video title
+    video = db.query(Video).filter(Video.id == video_id).first()
+    video_title = video.title if video else "Untitled"
+
+    # 4. Generate AI feedback
+    feedback_text = generate_feedback(metrics, video_title)
+
+    # 5. Persist to edit_feedback table
+    from app.models.edit_feedback import EditFeedback
+
+    feedback_record = EditFeedback(
+        video_id=video_id,
+        feedback_text=feedback_text,
+        metrics_snapshot=metrics,
+    )
+    db.add(feedback_record)
+    db.commit()
+
+    return {
+        "feedback_id": feedback_record.id,
+        "feedback_text": feedback_text,
+        "metrics": metrics,
+        "created_at": feedback_record.created_at.isoformat() if feedback_record.created_at else None,
+    }
