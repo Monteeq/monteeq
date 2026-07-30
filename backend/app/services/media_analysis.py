@@ -131,3 +131,75 @@ def download_video_from_s3(video_s3_key: str) -> str:
     except Exception:
         os.unlink(tmp.name)
         raise
+
+
+# ---------------------------------------------------------------------------
+# CLIP visual embedding
+# ---------------------------------------------------------------------------
+
+# Number of evenly-spaced frames to sample for visual embedding
+_VISUAL_SAMPLE_COUNT = 8
+
+
+def generate_visual_embedding(frame_s3_keys: List[str]) -> Optional[List[float]]:
+    """Compute a single 512-dim visual embedding from a subset of extracted frames.
+
+    Selects ``_VISUAL_SAMPLE_COUNT`` evenly-spaced frames from the full list,
+    downloads them from S3, runs them through CLIP ViT-B/32, averages the
+    per-frame embeddings, and L2-normalizes the result.
+
+    Returns ``None`` when no frames are available or all downloads fail.
+    """
+    if not frame_s3_keys:
+        return None
+
+    # Pick evenly-spaced frames across the video's duration
+    n = len(frame_s3_keys)
+    if n <= _VISUAL_SAMPLE_COUNT:
+        selected = frame_s3_keys
+    else:
+        indices = np.linspace(0, n - 1, _VISUAL_SAMPLE_COUNT, dtype=int)
+        selected = [frame_s3_keys[i] for i in indices]
+
+    # Download selected frames from S3 to local temp files
+    from app.core.storage import storage
+    from app.core import config
+
+    local_paths: List[str] = []
+    for s3_key in selected:
+        tmp = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+        tmp.close()
+        try:
+            storage.s3_client.download_file(
+                config.AWS_STORAGE_BUCKET_NAME, s3_key, tmp.name
+            )
+            local_paths.append(tmp.name)
+        except Exception:
+            logger.warning("Failed to download frame %s from S3 — skipping", s3_key)
+            try:
+                os.unlink(tmp.name)
+            except OSError:
+                pass
+
+    if not local_paths:
+        return None
+
+    try:
+        from app.services.clip_utils import encode_images
+
+        frame_embeddings = encode_images(local_paths)
+        if frame_embeddings.shape[0] == 0:
+            return None
+
+        # Average + L2-normalize
+        avg = frame_embeddings.mean(axis=0)
+        norm = np.linalg.norm(avg)
+        if norm > 0:
+            avg = avg / norm
+        return avg.tolist()
+    finally:
+        for p in local_paths:
+            try:
+                os.unlink(p)
+            except OSError:
+                pass

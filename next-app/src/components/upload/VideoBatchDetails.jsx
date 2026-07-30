@@ -20,7 +20,7 @@ import {
 import s from '@/styles/pages/UploadV2.module.css';
 
 /**
- * Per-video caption / tags / cover / format step after multi-select.
+ * Per-video title / description / tags / cover / format step after multi-select.
  *
  * @param {{
  *   videos: Array<{
@@ -35,7 +35,8 @@ import s from '@/styles/pages/UploadV2.module.css';
  *     orientation?: 'landscape'|'portrait'|'square'|null,
  *   }>,
  *   drafts: Record<string, {
- *     caption: string,
+ *     title: string,
+ *     description: string,
  *     tags: string,
  *     coverSource: 'auto' | 'custom',
  *     coverFile: File|null,
@@ -68,8 +69,8 @@ export default function VideoBatchDetails({
   const active = videos.find((v) => v.id === activeId) || videos[0];
   const draft = active ? drafts[active.id] : null;
 
-  const allHaveCaption = videos.every((v) => (drafts[v.id]?.caption || '').trim().length > 0);
-  const captionReadyCount = videos.filter((v) => (drafts[v.id]?.caption || '').trim().length > 0).length;
+  const allHaveTitle = videos.every((v) => (drafts[v.id]?.title || '').trim().length > 0);
+  const titleReadyCount = videos.filter((v) => (drafts[v.id]?.title || '').trim().length > 0).length;
 
   const mismatchIds = new Set(
     videos.filter((v) => {
@@ -189,7 +190,7 @@ export default function VideoBatchDetails({
           <div className={s.batchTopMeta}>
             <h2 className={s.batchTitle}>Edit each video</h2>
             <p className={s.batchSub}>
-              {captionReadyCount}/{videos.length} with captions
+              {titleReadyCount}/{videos.length} with titles
             </p>
           </div>
         </div>
@@ -198,7 +199,7 @@ export default function VideoBatchDetails({
         <div className={s.batchStrip} role="tablist" aria-label="Selected videos">
           {videos.map((v, index) => {
             const d = drafts[v.id];
-            const hasCaption = (d?.caption || '').trim().length > 0;
+            const hasTitle = (d?.title || '').trim().length > 0;
             const isActive = v.id === active.id;
             const thumb = stripThumbFor(v);
             const hasMismatch = mismatchIds.has(v.id);
@@ -226,8 +227,8 @@ export default function VideoBatchDetails({
                   )}
                 </div>
                 <span
-                  className={`${s.batchStripDot} ${hasCaption ? s.batchStripDotFilled : ''} ${hasMismatch ? s.batchStripDotError : ''}`}
-                  title={hasMismatch ? 'Format mismatch' : hasCaption ? 'Caption set' : 'Needs caption'}
+                  className={`${s.batchStripDot} ${hasTitle ? s.batchStripDotFilled : ''} ${hasMismatch ? s.batchStripDotError : ''}`}
+                  title={hasMismatch ? 'Format mismatch' : hasTitle ? 'Title set' : 'Needs title'}
                   aria-hidden
                 />
                 <span className={s.batchStripLabel}>
@@ -358,18 +359,34 @@ export default function VideoBatchDetails({
           </div>
 
           <div className={s.formGroup}>
-            <label className={s.label} htmlFor={`caption-${active.id}`}>
-              Caption <span className={s.batchRequired}>required</span>
+            <label className={s.label} htmlFor={`title-${active.id}`}>
+              Title <span className={s.batchRequired}>required</span>
+            </label>
+            <div className={s.inputWrapper}>
+              <input
+                id={`title-${active.id}`}
+                className={s.input}
+                value={draft.title}
+                disabled={posting}
+                onChange={(e) => onDraftChange(active.id, { title: e.target.value })}
+                placeholder="A name for this video"
+              />
+            </div>
+          </div>
+
+          <div className={s.formGroup}>
+            <label className={s.label} htmlFor={`description-${active.id}`}>
+              Description <span className={s.batchOptional}>optional</span>
             </label>
             <div className={s.inputWrapper}>
               <AlignLeft className={s.inputIcon} style={{ top: '1.5rem' }} size={18} />
               <textarea
-                id={`caption-${active.id}`}
+                id={`description-${active.id}`}
                 className={`${s.input} ${s.textarea}`}
-                value={draft.caption}
+                value={draft.description}
                 disabled={posting}
-                onChange={(e) => onDraftChange(active.id, { caption: e.target.value })}
-                placeholder="Write a caption for this video…"
+                onChange={(e) => onDraftChange(active.id, { description: e.target.value })}
+                placeholder="What's this video about?"
                 rows={4}
               />
             </div>
@@ -398,9 +415,9 @@ export default function VideoBatchDetails({
         </div>
 
         <div className={s.batchFooter}>
-          {!allHaveCaption && (
+          {!allHaveTitle && (
             <p className={s.batchFooterHint}>
-              Add a caption to every video to enable Post all
+              Add a title to every video to enable Post all
             </p>
           )}
           {mismatchIds.size > 0 && (
@@ -412,7 +429,7 @@ export default function VideoBatchDetails({
             type="button"
             className="btn-primary"
             style={{ width: '100%' }}
-            disabled={!allHaveCaption || mismatchIds.size > 0 || posting}
+            disabled={!allHaveTitle || mismatchIds.size > 0 || posting}
             onClick={onPostAll}
           >
             {posting ? (
