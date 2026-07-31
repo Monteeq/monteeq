@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import tempfile
@@ -112,9 +113,9 @@ def analyze_media(video_id: int):
                 "WHERE video_id = :vid"
             ),
             {
-                "frames": frame_paths,
-                "scenes": scene_cuts,
-                "beats": beat_timestamps,
+                "frames": json.dumps(frame_paths),
+                "scenes": json.dumps(scene_cuts),
+                "beats": json.dumps(beat_timestamps),
                 "embedding": str(caption_embedding) if caption_embedding else None,
                 "vid": video_id,
             },

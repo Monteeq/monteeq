@@ -799,3 +799,11 @@ export const getRecommendedCreators = async (token = null) => {
     return apiFetch('/following/recommendations', { headers });
 };
 
+export const requestEditFeedback = async (videoId, token = null) => {
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+    return apiFetch(`/videos/${videoId}/feedback`, {
+        method: 'POST',
+        headers,
+    });
+};
+

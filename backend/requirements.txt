@@ -33,6 +33,8 @@ scenedetect[opencv]
 librosa
 sentence-transformers
 pgvector
+openai
+google-genai
 # ── CLIP visual embeddings (ViT-B/32, 512-dim) ──────────────────────────
 # transformers is already installed via sentence-transformers above.
 # The CLIP model (~350 MB) is downloaded lazily on first use by clip_utils.py.

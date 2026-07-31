@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
 import { getUserProfile, deleteVideo, deletePost, API_BASE_URL } from '@/lib/browserApi';
 import { ManageSkeleton } from '@/components/Skeleton';
+import EditFeedbackPanel from '@/components/watch/EditFeedbackPanel';
 
 const ManageContent = () => {
     const { user, token } = useAuth();
@@ -610,6 +611,8 @@ const ManageContent = () => {
                                                 <Trash2 size={24} strokeWidth={2.5} />
                                             </button>
                                         </div>
+
+                                        <EditFeedbackPanel video={video} />
                                     </div>
                                 </div>
                             ))}

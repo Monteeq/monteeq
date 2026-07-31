@@ -33,6 +33,16 @@ export default function RecommendedForYou({ userId, columnCount = 3 }) {
     [router],
   );
 
+  const flashItems = data.filter((v) => v.video_type === 'flash');
+  const homeItems = data.filter((v) => v.video_type !== 'flash');
+
+  const formatViews = (num) => {
+    if (!num) return '0';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return String(num);
+  };
+
   if (!ENABLED || !userId) return null;
 
   if (isLoading && data.length === 0) {

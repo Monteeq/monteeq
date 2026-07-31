@@ -29,6 +29,7 @@ class UploadJobStatus(str, enum.Enum):
     FAILED = "failed"
 
 from app.models.library import WatchHistory, LibraryWatchLater, LikedVideo
+from app.models.edit_feedback import EditFeedback
 
 class User(Base):
 

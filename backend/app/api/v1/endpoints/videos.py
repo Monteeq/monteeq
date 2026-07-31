@@ -1527,3 +1527,140 @@ def get_media_analysis(video_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No analysis found for this video")
 
     return dict(row)
+
+
+# ── Editing Feedback ──────────────────────────────────────────────────────────
+
+RATE_LIMIT_KEY_PREFIX = "rate_limit:feedback:"
+RATE_LIMIT_MAX = 10  # requests per window
+RATE_LIMIT_WINDOW = 3600  # 1 hour in seconds
+
+
+def _check_feedback_rate_limit(user_id: int) -> None:
+    """Raise 429 if the user has exceeded the feedback request limit."""
+    key = f"{RATE_LIMIT_KEY_PREFIX}{user_id}"
+    try:
+        current = redis_client.get(key)
+        if current is not None and int(current) >= RATE_LIMIT_MAX:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded. You can request feedback up to 10 times per hour.",
+            )
+        redis_client.incr(key)
+        redis_client.expire(key, RATE_LIMIT_WINDOW, nx=True)
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # Redis down — allow request rather than blocking users
+
+
+@router.post("/{video_id}/feedback")
+def post_edit_feedback(
+    video_id: str,
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(get_current_user),
+):
+    """Generate AI editing feedback for a video based on its scene_cuts and beat_timestamps.
+
+    Returns the feedback text plus the raw metrics dict.  Rate-limited to 10
+    requests per hour per user.
+    """
+    video = get_video_db(db, video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    _check_feedback_rate_limit(current_user.id)
+
+    from sqlalchemy import text as sql_text
+
+    # 1. Fetch media_analysis row
+    row = db.execute(
+        sql_text("SELECT * FROM media_analysis WHERE video_id = :vid"),
+        {"vid": video.id},
+    ).mappings().first()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="No media analysis found for this video")
+
+    if not row.get("scene_cuts") or not row.get("beat_timestamps"):
+        raise HTTPException(
+            status_code=409,
+            detail="Editing feedback is not available yet — scene cut or beat detection has not finished. "
+            "Wait for media analysis to complete and try again.",
+        )
+
+    # 2. Compute metrics
+    from app.services.editing_feedback import compute_edit_metrics, generate_feedback
+
+    metrics = compute_edit_metrics(
+        scene_cuts=list(row["scene_cuts"]),
+        beat_timestamps=list(row["beat_timestamps"]),
+    )
+
+    # 3. Generate AI feedback
+    feedback_text = generate_feedback(metrics, video.title or "Untitled")
+
+    # 4. Persist to edit_feedback table
+    from app.models.edit_feedback import EditFeedback
+
+    feedback_record = EditFeedback(
+        video_id=video.id,
+        feedback_text=feedback_text,
+        metrics_snapshot=metrics,
+    )
+    db.add(feedback_record)
+    db.commit()
+
+    return {
+        "feedback_id": feedback_record.id,
+        "feedback_text": feedback_text,
+        "metrics": metrics,
+        "created_at": feedback_record.created_at.isoformat() if feedback_record.created_at else None,
+    }
+
+
+@router.get("/{video_id}/feedback")
+def get_edit_feedback(
+    video_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the most recent editing feedback entry for this video.
+
+    The caller must own the video (or be an admin).  Returns a 200 with
+    ``feedback_text`` / ``metrics`` / ``created_at`` all set to ``null``
+    when no previous feedback exists — the frontend treats this as a
+    normal empty state, not an error.
+    """
+    video = get_video_db(db, video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    if video.owner_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to view feedback for this video")
+
+    from sqlalchemy import text as sql_text
+
+    row = db.execute(
+        sql_text(
+            "SELECT feedback_text, metrics_snapshot, created_at "
+            "FROM edit_feedback "
+            "WHERE video_id = :vid "
+            "ORDER BY created_at DESC "
+            "LIMIT 1"
+        ),
+        {"vid": video.id},
+    ).mappings().first()
+
+    if not row:
+        return {
+            "feedback_text": None,
+            "metrics": None,
+            "created_at": None,
+        }
+
+    return {
+        "feedback_text": row["feedback_text"],
+        "metrics": row["metrics_snapshot"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
