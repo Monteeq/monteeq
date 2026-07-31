@@ -151,7 +151,11 @@ def _enrich_results(
             "title": v.title,
             "thumbnail_url": v.thumbnail_url,
             "cover_url": v.cover_url or v.thumbnail_url,
+            "video_type": v.video_type,
             "creator_username": v.owner.username if v.owner else "Unknown",
+            "creator_profile_pic": v.owner.profile_pic if v.owner else None,
+            "views": v.views,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
             "similarity_score": round(score_map[vid], 6),
         })
 

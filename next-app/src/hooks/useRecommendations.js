@@ -11,7 +11,13 @@ function mapRecommendation(item) {
     title: item.title,
     thumbnail_url: item.thumbnail_url,
     cover_url: item.cover_url,
-    owner: { username: item.creator_username },
+    video_type: item.video_type,
+    views: item.views,
+    created_at: item.created_at,
+    owner: {
+      username: item.creator_username,
+      profile_pic: item.creator_profile_pic,
+    },
     similarity_score: item.similarity_score,
   };
 }

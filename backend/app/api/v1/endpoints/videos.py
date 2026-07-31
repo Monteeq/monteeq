@@ -1556,7 +1556,7 @@ def _check_feedback_rate_limit(user_id: int) -> None:
 
 @router.post("/{video_id}/feedback")
 def post_edit_feedback(
-    video_id: int,
+    video_id: str,
     db: Session = Depends(get_db),
     current_user: schemas.User = Depends(get_current_user),
 ):
@@ -1565,6 +1565,10 @@ def post_edit_feedback(
     Returns the feedback text plus the raw metrics dict.  Rate-limited to 10
     requests per hour per user.
     """
+    video = get_video_db(db, video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
     _check_feedback_rate_limit(current_user.id)
 
     from sqlalchemy import text as sql_text
@@ -1572,7 +1576,7 @@ def post_edit_feedback(
     # 1. Fetch media_analysis row
     row = db.execute(
         sql_text("SELECT * FROM media_analysis WHERE video_id = :vid"),
-        {"vid": video_id},
+        {"vid": video.id},
     ).mappings().first()
 
     if not row:
@@ -1593,18 +1597,14 @@ def post_edit_feedback(
         beat_timestamps=list(row["beat_timestamps"]),
     )
 
-    # 3. Get video title
-    video = db.query(Video).filter(Video.id == video_id).first()
-    video_title = video.title if video else "Untitled"
+    # 3. Generate AI feedback
+    feedback_text = generate_feedback(metrics, video.title or "Untitled")
 
-    # 4. Generate AI feedback
-    feedback_text = generate_feedback(metrics, video_title)
-
-    # 5. Persist to edit_feedback table
+    # 4. Persist to edit_feedback table
     from app.models.edit_feedback import EditFeedback
 
     feedback_record = EditFeedback(
-        video_id=video_id,
+        video_id=video.id,
         feedback_text=feedback_text,
         metrics_snapshot=metrics,
     )
@@ -1616,4 +1616,51 @@ def post_edit_feedback(
         "feedback_text": feedback_text,
         "metrics": metrics,
         "created_at": feedback_record.created_at.isoformat() if feedback_record.created_at else None,
+    }
+
+
+@router.get("/{video_id}/feedback")
+def get_edit_feedback(
+    video_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the most recent editing feedback entry for this video.
+
+    The caller must own the video (or be an admin).  Returns a 200 with
+    ``feedback_text`` / ``metrics`` / ``created_at`` all set to ``null``
+    when no previous feedback exists — the frontend treats this as a
+    normal empty state, not an error.
+    """
+    video = get_video_db(db, video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    if video.owner_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to view feedback for this video")
+
+    from sqlalchemy import text as sql_text
+
+    row = db.execute(
+        sql_text(
+            "SELECT feedback_text, metrics_snapshot, created_at "
+            "FROM edit_feedback "
+            "WHERE video_id = :vid "
+            "ORDER BY created_at DESC "
+            "LIMIT 1"
+        ),
+        {"vid": video.id},
+    ).mappings().first()
+
+    if not row:
+        return {
+            "feedback_text": None,
+            "metrics": None,
+            "created_at": None,
+        }
+
+    return {
+        "feedback_text": row["feedback_text"],
+        "metrics": row["metrics_snapshot"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }
