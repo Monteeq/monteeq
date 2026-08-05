@@ -58,6 +58,7 @@ video-service/target/
 .vscode/
 .idea/
 .vs/
+.kiro/
 
 # Static Assets
 backend/static/*
