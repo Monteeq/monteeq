@@ -51,8 +51,8 @@ const Insights = () => {
     const remainingViews = Math.max(0, nextMilestone - totalViews);
 
     return (
-        <div className="insights-page page-container" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
-            <div className="insights-header" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '3rem' }}>
+        <div className="insights-page page-container" style={{ padding: 'clamp(1rem, 3vw, 2rem)', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
+            <div className="insights-header" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(1rem, 3vw, 1.5rem)', flexWrap: 'wrap', marginBottom: 'clamp(1.5rem, 5vw, 3rem)' }}>
                 <button
                     onClick={() => router.back()}
                     className="glass"
@@ -64,7 +64,7 @@ const Insights = () => {
                     <ArrowLeft size={20} />
                 </button>
                 <div style={{ flex: 1 }}>
-                    <h1 style={{ fontSize: '2.5rem', fontWeight: 800 }}>Editor Insights</h1>
+                    <h1 style={{ fontSize: 'clamp(1.6rem, 4.5vw, 2.5rem)', fontWeight: 800 }}>Editor Insights</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Track your growth and celebrate your milestones on Monteeq</p>
                 </div>
 
@@ -72,7 +72,7 @@ const Insights = () => {
                     onClick={() => router.push('/manage')}
                     className="glass hover-scale"
                     style={{
-                        padding: '1rem 2rem',
+                        padding: 'clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 2rem)',
                         borderRadius: '16px',
                         display: 'flex',
                         alignItems: 'center',
@@ -91,9 +91,9 @@ const Insights = () => {
 
             <div className="stats-grid" style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '1.5rem',
-                marginBottom: '3rem'
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
+                gap: 'clamp(1rem, 3vw, 1.5rem)',
+                marginBottom: 'clamp(1.5rem, 5vw, 3rem)'
             }}>
                 {statCards.map((stat, idx) => (
                     <div
@@ -115,7 +115,7 @@ const Insights = () => {
                         </div>
                         <div>
                             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{stat.label}</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{stat.value}</div>
+                            <div style={{ fontSize: 'clamp(1.6rem, 5vw, 2rem)', fontWeight: 800 }}>{stat.value}</div>
                         </div>
                         <div style={{
                             position: 'absolute',
@@ -166,11 +166,11 @@ const Insights = () => {
                 </div>
             </div>
 
-            <div className="content-breakdown" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+            <div className="content-breakdown" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(400px, 100%), 1fr))', gap: 'clamp(1rem, 3vw, 2rem)' }}>
                 <div className="glass" style={{ padding: '2rem', borderRadius: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                         <BarChart3 size={24} color="var(--accent-primary)" />
-                        <h2 style={{ fontSize: '1.5rem' }}>Content Distribution</h2>
+                        <h2 style={{ fontSize: 'clamp(1.2rem, 4vw, 1.5rem)' }}>Content Distribution</h2>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div className="distribution-item">
@@ -214,7 +214,7 @@ const Insights = () => {
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <Trophy size={24} color="#f59e0b" />
-                        <h2 style={{ fontSize: '1.5rem' }}>Road to Milestone</h2>
+                        <h2 style={{ fontSize: 'clamp(1.2rem, 4vw, 1.5rem)' }}>Road to Milestone</h2>
                     </div>
 
                     <div>
@@ -288,13 +288,15 @@ const Insights = () => {
                     backdropFilter: 'blur(10px)'
                 }}>
                     <div className="glass hover-scale" style={{
-                        width: '450px',
-                        padding: '4rem 3rem',
+                        width: 'min(450px, 92vw)',
+                        padding: 'clamp(2rem, 6vw, 4rem) clamp(1.25rem, 5vw, 3rem)',
                         borderRadius: '32px',
                         textAlign: 'center',
                         position: 'relative',
                         border: '1px solid rgba(245, 158, 11, 0.3)',
-                        boxShadow: '0 0 50px rgba(245, 158, 11, 0.2)'
+                        boxShadow: '0 0 50px rgba(245, 158, 11, 0.2)',
+                        maxHeight: '90dvh',
+                        overflowY: 'auto'
                     }}>
                         <button
                             onClick={() => setShowMilestonePopup(false)}
@@ -304,8 +306,8 @@ const Insights = () => {
                         </button>
 
                         <div style={{
-                            width: '100px',
-                            height: '100px',
+                            width: 'clamp(72px, 22vw, 100px)',
+                            height: 'clamp(72px, 22vw, 100px)',
                             borderRadius: '50%',
                             background: 'rgba(245, 158, 11, 0.1)',
                             display: 'flex',
@@ -315,11 +317,11 @@ const Insights = () => {
                             color: '#f59e0b',
                             boxShadow: '0 0 30px rgba(245, 158, 11, 0.4)'
                         }}>
-                            <Trophy size={50} />
+                            <Trophy size={44} />
                         </div>
 
-                        <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1rem' }}>CONGRATULATIONS!</h2>
-                        <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        <h2 style={{ fontSize: 'clamp(1.7rem, 6vw, 2.5rem)', fontWeight: 800, marginBottom: '1rem' }}>CONGRATULATIONS!</h2>
+                        <p style={{ fontSize: 'clamp(1rem, 3.5vw, 1.2rem)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                             You've officially reached the <strong>{stats.new_milestone_reached.replace('_', ' ')}</strong> milestone!
                             Your content is making a huge impact on Monteeq.
                         </p>
