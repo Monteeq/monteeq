@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { getVideoById, getComments, getRecommendedFeed, getVideos, getUserProfile, ApiError } from '@/lib/api';
 import WatchView from '@/components/watch/WatchView';
@@ -56,30 +57,55 @@ async function loadWatchData(id) {
     throw err;
   }
 
-  const [commentsResult, profileResult, feedResult] = await Promise.all([
+  const [commentsResult, profileResult] = await Promise.all([
     getComments({ videoId: id, token: null }).catch(() => []),
     video.owner?.username
       ? getUserProfile(video.owner.username, null).catch(() => null)
       : Promise.resolve(null),
-    (async () => {
-      const videoType = video.video_type || 'home';
-      const recommended = await getRecommendedFeed(videoType, { token: null, limit: 16 });
-      if (Array.isArray(recommended) && recommended.length > 0) return recommended;
-      try {
-        return (await getVideos(videoType, { token: null, skip: 0, limit: 16 })) || [];
-      } catch {
-        return [];
-      }
-    })(),
   ]);
 
   return {
     video,
     comments: Array.isArray(commentsResult) ? commentsResult : [],
-    relatedVideos: Array.isArray(feedResult) ? feedResult : [],
     followersCount: profileResult?.followers_count ?? video.owner?.followers_count ?? 0,
     isFollowing: profileResult?.is_following ?? false,
   };
+}
+
+function WatchViewSkeleton({ video, comments, followersCount, isFollowing }) {
+  return (
+    <WatchView
+      video={video}
+      comments={comments}
+      relatedVideos={[]}
+      initialFollowersCount={followersCount}
+      initialIsFollowing={isFollowing}
+    />
+  );
+}
+
+async function RelatedVideosFetcher({ videoType, video, comments, followersCount, isFollowing }) {
+  const type = videoType || 'home';
+  let relatedVideos = [];
+  try {
+    const recommended = await getRecommendedFeed(type, { token: null, limit: 16 });
+    if (Array.isArray(recommended) && recommended.length > 0) {
+      relatedVideos = recommended;
+    } else {
+      relatedVideos = (await getVideos(type, { token: null, skip: 0, limit: 16 }).catch(() => [])) || [];
+    }
+  } catch {
+    relatedVideos = [];
+  }
+  return (
+    <WatchView
+      video={video}
+      comments={comments}
+      relatedVideos={relatedVideos}
+      initialFollowersCount={followersCount}
+      initialIsFollowing={isFollowing}
+    />
+  );
 }
 
 export async function generateMetadata({ params }) {
@@ -139,7 +165,7 @@ export default async function WatchPage({ params }) {
     notFound();
   }
 
-  const { video, comments, relatedVideos, followersCount, isFollowing } = data;
+  const { video, comments, followersCount, isFollowing } = data;
   const canonical = `${siteOrigin()}/watch/${video.id}`;
   const jsonLd = buildVideoJsonLd(video, canonical);
   const apiOrigin = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
@@ -152,13 +178,22 @@ export default async function WatchPage({ params }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <WatchView
+      <Suspense fallback={
+        <WatchViewSkeleton
           video={video}
           comments={comments}
-          relatedVideos={relatedVideos}
-          initialFollowersCount={followersCount}
-          initialIsFollowing={isFollowing}
+          followersCount={followersCount}
+          isFollowing={isFollowing}
         />
+      }>
+        <RelatedVideosFetcher
+          videoType={video.video_type}
+          video={video}
+          comments={comments}
+          followersCount={followersCount}
+          isFollowing={isFollowing}
+        />
+      </Suspense>
     </>
   );
 }

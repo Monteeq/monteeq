@@ -107,14 +107,21 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function PostDetailPage({ params }) {
-  const post = await loadPost(params.id);
-  if (!post) {
-    notFound();
-  }
+  const [post, commentsRaw] = await Promise.all([
+    loadPost(params.id),
+    getComments({ postId: params.id, token: null }).catch(() => []),
+  ]);
+
+  if (!post) notFound();
 
   const display = resolveDisplayPost(post);
   const canonical = `${siteOrigin()}/post/${display.id}`;
-  const comments = await getComments({ postId: display.id, token: null }).catch(() => []);
+
+  // For reposts: display.id differs from params.id — re-fetch with correct id.
+  const comments = String(display.id) !== String(params.id)
+    ? await getComments({ postId: display.id, token: null }).catch(() => [])
+    : commentsRaw;
+
   const jsonLd = buildSocialMediaPostingJsonLd(post, canonical);
 
   return (

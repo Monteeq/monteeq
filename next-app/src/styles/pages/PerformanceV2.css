@@ -111,6 +111,14 @@
   gap: 2rem;
 }
 
+/* Let Recharts ResponsiveContainer shrink inside grid/flex parents on mobile */
+.perf-canvas,
+.intelligence-sidebar,
+.timeline-section,
+.breakdown-card {
+  min-width: 0;
+}
+
 /* Timeline Section */
 .timeline-section {
   padding: 2.5rem;
@@ -162,8 +170,8 @@
 /* Content Breakdown */
 .breakdown-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
+  gap: clamp(1rem, 3vw, 1.5rem);
 }
 
 .breakdown-card {
@@ -171,6 +179,7 @@
   border-radius: var(--radius-lg);
   background: var(--card-bg);
   border: 1px solid var(--card-border);
+  overflow: hidden;
 }
 
 .card-title {
@@ -384,5 +393,70 @@
   .timeline-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+/* Mobile refinements */
+@media (max-width: 768px) {
+  .performance-container {
+    padding: 1rem;
+    gap: 1.5rem;
+  }
+
+  .perf-page-hero {
+    align-items: flex-start;
+  }
+
+  .perf-page-title {
+    font-size: 1.7rem;
+  }
+
+  .range-tabs {
+    width: 100%;
+  }
+
+  .range-tab {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0;
+  }
+
+  .perf-header {
+    gap: 1rem;
+  }
+
+  .kpi-card {
+    padding: 1.25rem;
+  }
+
+  .kpi-value {
+    font-size: 1.8rem;
+  }
+
+  .timeline-section {
+    padding: 1.25rem;
+    border-radius: 20px;
+    min-height: 0;
+  }
+
+  .timeline-controls {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .metric-toggle {
+    flex-shrink: 0;
+  }
+
+  .breakdown-card {
+    padding: 1.25rem;
+  }
+
+  .growth-score-card {
+    padding: 1.5rem;
+  }
+
+  .intelligence-sidebar {
+    gap: 1rem;
   }
 }

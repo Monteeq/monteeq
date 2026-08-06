@@ -21,6 +21,7 @@ import {
     useAudienceSplit, 
     useGrowthIntelligence 
 } from '@/hooks/usePerformance';
+import useWindowWidth from '@/hooks/useWindowWidth';
 import '@/styles/pages/PerformanceV2.css';
 
 const StatCard = ({ label, value, growth, icon: Icon, color, sparkData }) => (
@@ -175,6 +176,8 @@ const Performance = () => {
     const router = useRouter();
     const [activeMetric, setActiveMetric] = useState('views');
     const [activeRange, setActiveRange] = useState(30);
+    const windowWidth = useWindowWidth();
+    const isMobile = windowWidth < 768;
 
     const { data: perfData, isLoading: perfLoading } = useUserPerformance(token, activeMetric, activeRange);
     const { data: insightsData, isLoading: insightsLoading } = useUserInsights(token);
@@ -211,9 +214,10 @@ const Performance = () => {
         return parseFloat(((curr - prev) / prev * 100).toFixed(1));
     };
 
+    const labelLimit = isMobile ? 14 : 22;
     const contentBreakdownData = contentData.length > 0
-        ? contentData.map(v => ({
-            name: v.title.length > 22 ? v.title.slice(0, 22) + '…' : v.title,
+        ? contentData.slice(0, isMobile ? 5 : 8).map(v => ({
+            name: v.title.length > labelLimit ? v.title.slice(0, labelLimit) + '…' : v.title,
             views: v.views,
             engage: v.engagement_rate,
           }))
@@ -321,7 +325,7 @@ const Performance = () => {
                             </div>
                         </div>
                         
-                        <div style={{ width: '100%', height: '350px' }}>
+                        <div style={{ width: '100%', height: isMobile ? 260 : 350 }}>
                             <ResponsiveContainer>
                                 <AreaChart data={performanceData}>
                                     <defs>
@@ -335,12 +339,14 @@ const Performance = () => {
                                         dataKey="displayDate" 
                                         axisLine={false} 
                                         tickLine={false} 
-                                        tick={{ fill: 'var(--text-muted)', fontSize: 12 }} 
+                                        tick={{ fill: 'var(--text-muted)', fontSize: isMobile ? 10 : 12 }}
+                                        minTickGap={isMobile ? 10 : 24}
                                     />
                                     <YAxis 
                                         axisLine={false} 
                                         tickLine={false} 
-                                        tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                                        tick={{ fill: 'var(--text-muted)', fontSize: isMobile ? 10 : 12 }}
+                                        width={isMobile ? 40 : 50}
                                         tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}
                                     />
                                     <Tooltip 
@@ -378,24 +384,24 @@ const Performance = () => {
                                     <p style={{ fontSize: '0.9rem' }}>No videos yet</p>
                                 </div>
                             ) : (
-                                <div style={{ height: '300px' }}>
+                                <div style={{ height: isMobile ? 240 : 300 }}>
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={contentBreakdownData} layout="vertical" margin={{ left: 0, right: 16 }}>
+                                        <BarChart data={contentBreakdownData} layout="vertical" margin={{ left: 0, right: isMobile ? 8 : 16 }}>
                                             <XAxis type="number" hide />
                                             <YAxis
                                                 dataKey="name"
                                                 type="category"
                                                 axisLine={false}
                                                 tickLine={false}
-                                                tick={{ fill: 'rgba(255,255,255,0.85)', fontWeight: 600, fontSize: 11 }}
-                                                width={130}
+                                                tick={{ fill: 'rgba(255,255,255,0.85)', fontWeight: 600, fontSize: isMobile ? 10 : 11 }}
+                                                width={isMobile ? 76 : 130}
                                             />
                                             <Tooltip
                                                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                                                 contentStyle={{ background: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', backdropFilter: 'blur(10px)' }}
                                                 formatter={(v, n) => [n === 'views' ? v.toLocaleString() : `${v}%`, n === 'views' ? 'Views' : 'Engagement']}
                                             />
-                                            <Bar dataKey="views" name="views" fill="#FF3B30" radius={[0, 6, 6, 0]} barSize={18} />
+                                            <Bar dataKey="views" name="views" fill="#FF3B30" radius={[0, 6, 6, 0]} barSize={isMobile ? 14 : 18} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -408,15 +414,15 @@ const Performance = () => {
                                 Engagement Distribution
                             </h3>
                             {/* Donut with centred overlay */}
-                            <div style={{ height: '280px', position: 'relative' }}>
+                            <div style={{ height: isMobile ? 210 : 260, position: 'relative' }}>
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
                                             data={audienceSplitData}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={64}
-                                            outerRadius={84}
+                                            innerRadius={isMobile ? 50 : 64}
+                                            outerRadius={isMobile ? 68 : 84}
                                             paddingAngle={audienceData && (audienceData.returning_viewers + audienceData.new_viewers) > 0 ? 8 : 0}
                                             dataKey="value"
                                         >
@@ -434,16 +440,16 @@ const Performance = () => {
                                     <p style={{ fontSize: '1.8rem', fontWeight: 900, lineHeight: 1 }}>{loyaltyPct}%</p>
                                     <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '1.5px' }}>LOYALTY</p>
                                 </div>
-                                {/* Legend */}
-                                <div style={{ position: 'absolute', bottom: '12px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '1.5rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
-                                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#FF3B30', display: 'inline-block' }} />
-                                        Returning
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
-                                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#00E5FF', display: 'inline-block' }} />
-                                        New
-                                    </div>
+                            </div>
+                            {/* Legend — normal flow so it never overlaps the donut */}
+                            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 'clamp(0.75rem, 4vw, 1.5rem)', marginTop: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#FF3B30', display: 'inline-block' }} />
+                                    Returning
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#00E5FF', display: 'inline-block' }} />
+                                    New
                                 </div>
                             </div>
                         </div>
@@ -456,14 +462,14 @@ const Performance = () => {
                             </h3>
                             <div style={{ 
                                 display: 'grid', 
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                                gap: '2rem',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', 
+                                gap: 'clamp(1rem, 3vw, 2rem)',
                                 padding: '1rem 0'
                             }}>
                                 {insightsData?.top_countries?.length > 0 ? (
                                     insightsData.top_countries.map((c, i) => (
                                         <div key={i} className="geo-stat">
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '10px' }}>
                                                 <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{c.country}</span>
                                                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{c.count.toLocaleString()} views</span>
                                             </div>
